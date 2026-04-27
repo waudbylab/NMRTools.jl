@@ -1,0 +1,9 @@
+{
+  "name": "schema-migrate-tests",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tests for migration-code/schema_migrate.js",
+  "scripts": {
+    "test": "node --test test_migrate.js"
+  }
+}

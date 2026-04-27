@@ -1,0 +1,65 @@
+{
+    "people": {
+        "users": [
+            "Alice"
+        ]
+    },
+    "sample": {
+        "label": "Test v0.2.0 multi-component",
+        "physical_form": "solution",
+        "components": [
+            {
+                "name": "Protein X",
+                "concentration_or_amount": 0.8,
+                "unit": "mM",
+                "isotopic_labelling": "2H,13C,15N",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Inhibitor",
+                "concentration_or_amount": 2.0,
+                "unit": "equiv",
+                "isotopic_labelling": "unlabelled",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Co-factor",
+                "concentration_or_amount": 1.0,
+                "unit": "equiv",
+                "isotopic_labelling": "",
+                "custom_labelling": ""
+            }
+        ]
+    },
+    "buffer": {
+        "ph": 7.2,
+        "components": [
+            {
+                "name": "HEPES",
+                "concentration": 20,
+                "unit": "mM"
+            }
+        ],
+        "chemical_shift_reference": "DSS",
+        "reference_concentration": 10,
+        "reference_unit": "uM",
+        "solvent": "10% D2O",
+        "custom_solvent": ""
+    },
+    "nmr_tube": {
+        "diameter": 5.0,
+        "type": "shigemi",
+        "sample_volume_uL": 300,
+        "rack_id": "rack-002"
+    },
+    "reference": {
+        "labbook_entry": "book 2 p 10",
+        "sample_id": "EXP-2024-002"
+    },
+    "notes": "",
+    "metadata": {
+        "created_timestamp": "2024-06-01T00:00:00Z",
+        "schema_version": "0.2.0",
+        "schema_source": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.2.0/schema.json"
+    }
+}

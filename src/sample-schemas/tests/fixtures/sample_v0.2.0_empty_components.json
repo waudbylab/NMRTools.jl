@@ -1,0 +1,18 @@
+{
+    "people": {
+        "users": []
+    },
+    "sample": {
+        "label": "No components",
+        "physical_form": "",
+        "components": []
+    },
+    "buffer": {},
+    "nmr_tube": {},
+    "reference": {},
+    "notes": "",
+    "metadata": {
+        "schema_version": "0.2.0",
+        "schema_source": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.2.0/schema.json"
+    }
+}

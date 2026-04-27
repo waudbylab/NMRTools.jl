@@ -5,7 +5,7 @@ Load an NMR sample JSON file and return an `NMRSample` descriptor.
 """
 function NMRSample(path::String)
     isfile(path) || throw(NMRToolsError("sample file not found: $path"))
-    return NMRSample(abspath(path), load_sample(path))
+    return NMRSample(abspath(path), loadsample(path))
 end
 
 """
@@ -142,7 +142,7 @@ function _collect_sample_files!(results, dir, recursive)
             _collect_sample_files!(results, entry, recursive)
         elseif isfile(entry) && endswith(entry, ".json")
             try
-                j = load_sample(entry)
+                j = loadsample(entry)
                 m = get(j, "metadata", nothing)
                 isnothing(m) && continue
                 v = VersionNumber(get(m, "schema_version", "0"))

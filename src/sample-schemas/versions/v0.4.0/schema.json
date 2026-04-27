@@ -1,0 +1,405 @@
+{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "$id": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.4.0/schema.json",
+    "title": "NMR Sample Metadata",
+    "description": "Schema for NMR sample metadata collection in TopSpin environments",
+    "version": "0.4.0",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [],
+    "properties": {
+        "people": {
+            "title": "People",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "users": {
+                    "title": "Users",
+                    "type": "array",
+                    "description": "People involved in this experiment",
+                    "items": {
+                        "type": "string",
+                        "title": "User"
+                    }
+                },
+                "groups": {
+                    "title": "Research Groups",
+                    "type": "array",
+                    "description": "Research groups (surnames) involved in this experiment",
+                    "items": {
+                        "type": "string",
+                        "title": "Group"
+                    }
+                }
+            }
+        },
+        "sample": {
+            "type": "object",
+            "title": "Sample",
+            "additionalProperties": false,
+            "properties": {
+                "label": {
+                    "title": "Label",
+                    "type": "string",
+                    "description": "Quick sample identifier"
+                },
+                "physical_form": {
+                    "title": "Physical form",
+                    "enum": [
+                        "",
+                        "solution",
+                        "aligned",
+                        "solid"
+                    ],
+                    "type": "string",
+                    "default": "",
+                    "description": "Physical form of sample"
+                },
+                "components": {
+                    "type": "array",
+                    "title": "Components",
+                    "description": "Sample components (allows for multiple components)",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "title": "Name",
+                                "type": "string",
+                                "description": "Molecule name"
+                            },
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "",
+                                    "small molecule",
+                                    "protein",
+                                    "protein (intrinsically disordered)",
+                                    "peptide",
+                                    "RNA",
+                                    "DNA",
+                                    "lipid",
+                                    "carbohydrate",
+                                    "other"
+                                ],
+                                "default": "",
+                                "description": "Type of molecule (e.g., small molecule, protein, RNA)"
+                            },
+                            "molecular_weight": {
+                                "title": "Molecular weight (Da)",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "Molecular weight in Daltons"
+                            },
+                            "concentration_or_amount": {
+                                "title": "Concentration/amount",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "minimum": 0,
+                                "description": "Concentration or amount"
+                            },
+                            "unit": {
+                                "title": "Unit",
+                                "enum": [
+                                    "",
+                                    "uM",
+                                    "mM",
+                                    "M",
+                                    "mg/mL",
+                                    "%w/v",
+                                    "%v/v",
+                                    "mg",
+                                    "umol",
+                                    "nmol"
+                                ],
+                                "default": "",
+                                "type": "string"
+                            },
+                            "isotopic_labelling": {
+                                "title": "Isotopic labelling",
+                                "type": "string",
+                                "enum": [
+                                    "",
+                                    "natural abundance",
+                                    "19F",
+                                    "15N",
+                                    "13C",
+                                    "13C,15N",
+                                    "2H",
+                                    "2H,15N",
+                                    "2H,13C,15N",
+                                    "Ile-13CH3,15N",
+                                    "ILV-13CH3,15N",
+                                    "Met-13CH3,15N",
+                                    "ILVM-13CH3,15N",
+                                    "2H,Ile-13CH3",
+                                    "2H,ILV-13CH3",
+                                    "2H,Met-13CH3",
+                                    "2H,ILVM-13CH3",
+                                    "2H,ILVA-13CH3",
+                                    "2H,ILVMA-13CH3",
+                                    "2H,ILVMAT-13CH3",
+                                    "custom"
+                                ],
+                                "default": "",
+                                "description": "Type of isotopic labelling used"
+                            },
+                            "custom_labelling": {
+                                "title": "Custom labelling",
+                                "type": "string",
+                                "description": "Custom labelling description if 'custom' is selected above"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "buffer": {
+            "title": "Buffer",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "ph": {
+                    "title": "pH",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 14,
+                    "description": "Buffer pH"
+                },
+                "components": {
+                    "title": "Components",
+                    "type": "array",
+                    "description": "Buffer components and their concentrations",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "name": {
+                                "title": "Name",
+                                "type": "string",
+                                "description": "Buffer component name (e.g., Tris-HCl, NaCl, EDTA)"
+                            },
+                            "concentration": {
+                                "title": "Concentration",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
+                                "minimum": 0
+                            },
+                            "unit": {
+                                "title": "Unit",
+                                "type": "string",
+                                "enum": [
+                                    "",
+                                    "uM",
+                                    "mM",
+                                    "M",
+                                    "mg/mL",
+                                    "%w/v",
+                                    "%v/v",
+                                    "%w/w"
+                                ],
+                                "default": ""
+                            }
+                        }
+                    }
+                },
+                "chemical_shift_reference": {
+                    "title": "Chemical shift reference",
+                    "type": "string",
+                    "enum": [
+                        "",
+                        "none",
+                        "DSS",
+                        "TMS",
+                        "TSP"
+                    ],
+                    "default": "",
+                    "description": "Chemical shift reference compound"
+                },
+                "reference_concentration": {
+                    "title": "Reference concentration",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "minimum": 0,
+                    "description": "Concentration of chemical shift reference"
+                },
+                "reference_unit": {
+                    "title": "Reference unit",
+                    "type": "string",
+                    "enum": [
+                        "",
+                        "uM",
+                        "mM",
+                        "M",
+                        "mg/mL",
+                        "%w/v",
+                        "%v/v",
+                        "%w/w"
+                    ],
+                    "default": "",
+                    "description": "Unit for reference concentration"
+                },
+                "solvent": {
+                    "title": "Solvent",
+                    "type": "string",
+                    "enum": [
+                        "",
+                        "10% D2O",
+                        "100% D2O",
+                        "CDCl3",
+                        "DMSO-d6",
+                        "Methanol-d4",
+                        "Acetone-d6",
+                        "Acetonitrile-d3",
+                        "Benzene-d6",
+                        "THF-d8",
+                        "custom"
+                    ],
+                    "default": "",
+                    "description": "Solvent composition"
+                },
+                "custom_solvent": {
+                    "title": "Custom solvent",
+                    "type": "string",
+                    "description": "Custom solvent description if 'custom' is selected above"
+                }
+            }
+        },
+        "nmr_tube": {
+            "type": "object",
+            "description": "NMR tube or rotor properties",
+            "title": "NMR Tube / Rotor",
+            "additionalProperties": false,
+            "properties": {
+                "diameter_mm": {
+                    "title": "Diameter (mm)",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "minimum": 0.1,
+                    "maximum": 10,
+                    "description": "NMR tube or rotor diameter (mm)"
+                },
+                "type": {
+                    "title": "Tube or rotor type",
+                    "type": "string",
+                    "enum": [
+                        "",
+                        "regular",
+                        "shigemi",
+                        "shaped",
+                        "coaxial",
+                        "J Young",
+                        "zirconia rotor",
+                        "silicon nitride rotor",
+                        "sapphire rotor"
+                    ],
+                    "default": "",
+                    "description": "Type of NMR tube or rotor"
+                },
+                "sample_volume_uL": {
+                    "title": "Sample volume (μL)",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "Sample volume (µL)"
+                },
+                "sample_mass_mg": {
+                    "title": "Sample mass (mg)",
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "Sample mass (mg)"
+                },
+                "rack_id": {
+                    "title": "Rack ID",
+                    "type": "string",
+                    "description": "Identifier for SampleJet rack",
+                    "default": ""
+                },
+                "rotor_serial": {
+                    "title": "Rotor serial number",
+                    "type": "string",
+                    "description": "Rotor serial number",
+                    "default": ""
+                }
+            }
+        },
+        "reference": {
+            "title": "Laboratory Reference",
+            "type": "object",
+            "additionalProperties": false,
+            "description": "Cross-references for lab notebooks etc.",
+            "properties": {
+                "sample_id": {
+                    "title": "Sample ID",
+                    "type": "string",
+                    "description": "Local sample identifier"
+                },
+                "labbook_entry": {
+                    "title": "Labbook entry",
+                    "type": "string",
+                    "description": "Reference to laboratory notebook entry"
+                }
+            }
+        },
+        "notes": {
+            "title": "Notes",
+            "type": "string",
+            "description": "Free text field for additional notes and observations"
+        },
+        "metadata": {
+            "title": "Metadata",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "created_timestamp": {
+                    "title": "Created timestamp",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO 8601 timestamp when this record was created"
+                },
+                "modified_timestamp": {
+                    "title": "Modified timestamp",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO 8601 timestamp when this record was last modified"
+                },
+                "ejected_timestamp": {
+                    "title": "Ejected timestamp",
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "ISO 8601 timestamp when this sample was ejected"
+                },
+                "schema_version": {
+                    "title": "Schema version",
+                    "type": "string",
+                    "description": "Version of this schema used",
+                    "default": "0.4.0"
+                },
+                "schema_source": {
+                    "title": "Schema source",
+                    "type": "string",
+                    "description": "Source of this schema version",
+                    "default": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.4.0/schema.json"
+                }
+            }
+        }
+    }
+}

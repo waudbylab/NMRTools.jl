@@ -1,0 +1,68 @@
+{
+    "Users": [
+        "Alice",
+        "Bob"
+    ],
+    "Sample": {
+        "Label": "Test v0.0.2 with multiple components",
+        "Components": [
+            {
+                "Name": "MyProtein",
+                "Concentration": 0.5,
+                "Unit": "mM",
+                "Isotopic labelling": "13C,15N",
+                "Custom labelling": ""
+            },
+            {
+                "Name": "Ligand A",
+                "Concentration": 1.0,
+                "Unit": "equiv",
+                "Isotopic labelling": "unlabelled",
+                "Custom labelling": ""
+            },
+            {
+                "Name": "DSS reference",
+                "Concentration": 10,
+                "Unit": "uM",
+                "Isotopic labelling": "",
+                "Custom labelling": ""
+            }
+        ]
+    },
+    "Buffer": {
+        "pH": 7.4,
+        "Components": [
+            {
+                "name": "Tris-HCl",
+                "Concentration": 25,
+                "Unit": "mM"
+            },
+            {
+                "name": "NaCl",
+                "Concentration": 150,
+                "Unit": "mM"
+            }
+        ],
+        "Chemical shift reference": "DSS",
+        "Reference concentration": 10,
+        "Reference unit": "uM",
+        "Solvent": "10% D2O",
+        "Custom solvent": ""
+    },
+    "NMR Tube": {
+        "Diameter": "5 mm",
+        "Type": "shigemi",
+        "Sample Volume (μL)": 300,
+        "SampleJet Rack Position": "A3",
+        "SampleJet Rack ID": "rack-001"
+    },
+    "Laboratory Reference": {
+        "Labbook Entry": "page 42",
+        "Experiment ID": "EXP-2024-001"
+    },
+    "Notes": "Test sample",
+    "metadata": {
+        "created_timestamp": "2024-01-01T00:00:00Z",
+        "schema_version": "0.0.2"
+    }
+}

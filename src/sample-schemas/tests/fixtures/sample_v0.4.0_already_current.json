@@ -1,0 +1,37 @@
+{
+    "people": {
+        "users": [
+            "Alice"
+        ]
+    },
+    "sample": {
+        "label": "already at v0.4.0",
+        "physical_form": "solution",
+        "components": [
+            {
+                "name": "Protein",
+                "type": "protein",
+                "molecular_weight": 12000,
+                "concentration_or_amount": 0.3,
+                "unit": "mM",
+                "isotopic_labelling": "19F",
+                "custom_labelling": ""
+            }
+        ]
+    },
+    "buffer": {
+        "ph": 7.4,
+        "solvent": "10% D2O",
+        "custom_solvent": ""
+    },
+    "nmr_tube": {
+        "diameter_mm": 5.0,
+        "type": "shigemi"
+    },
+    "reference": {},
+    "notes": "",
+    "metadata": {
+        "schema_version": "0.4.0",
+        "schema_source": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.4.0/schema.json"
+    }
+}

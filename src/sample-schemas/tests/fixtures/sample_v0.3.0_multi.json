@@ -1,0 +1,72 @@
+{
+    "people": {
+        "users": [
+            "Alice",
+            "Bob"
+        ],
+        "groups": [
+            "Hansen"
+        ]
+    },
+    "sample": {
+        "label": "v0.3.0 sample with 3 components",
+        "physical_form": "solution",
+        "components": [
+            {
+                "name": "Ubiquitin",
+                "molecular_weight": 8565.0,
+                "concentration_or_amount": 0.5,
+                "unit": "mM",
+                "isotopic_labelling": "13C,15N",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Drug candidate",
+                "molecular_weight": 350.4,
+                "concentration_or_amount": 1.0,
+                "unit": "mM",
+                "isotopic_labelling": "unlabelled",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Internal reference",
+                "molecular_weight": null,
+                "concentration_or_amount": 0.1,
+                "unit": "mM",
+                "isotopic_labelling": "",
+                "custom_labelling": ""
+            }
+        ]
+    },
+    "buffer": {
+        "ph": 6.8,
+        "components": [
+            {
+                "name": "sodium phosphate",
+                "concentration": 50,
+                "unit": "mM"
+            }
+        ],
+        "chemical_shift_reference": "DSS",
+        "reference_concentration": 100,
+        "reference_unit": "uM",
+        "solvent": "10% D2O",
+        "custom_solvent": ""
+    },
+    "nmr_tube": {
+        "diameter_mm": 5.0,
+        "type": "shigemi",
+        "sample_volume_uL": 280,
+        "rack_id": "rack-003"
+    },
+    "reference": {
+        "sample_id": "EXP-2024-003",
+        "labbook_entry": "book 3 p 21"
+    },
+    "notes": "",
+    "metadata": {
+        "created_timestamp": "2024-10-01T00:00:00Z",
+        "schema_version": "0.3.0",
+        "schema_source": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.3.0/schema.json"
+    }
+}

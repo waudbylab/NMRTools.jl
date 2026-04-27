@@ -262,5 +262,61 @@
         "value": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.3.0/schema.json"
       }
     ]
+  },
+  {
+    "from_version": "0.3.0",
+    "operations": [
+      {
+        "op": "set",
+        "path": "/sample/components/*/type",
+        "value": null
+      },
+      {
+        "op": "map",
+        "path": "/sample/components/*/isotopic_labelling",
+        "from": "unlabelled",
+        "to": "natural abundance"
+      },
+      {
+        "op": "map",
+        "path": "/sample/components/*/isotopic_labelling",
+        "from": "Ile-\u03b41-13CH3,15N",
+        "to": "Ile-13CH3,15N"
+      },
+      {
+        "op": "map",
+        "path": "/sample/components/*/isotopic_labelling",
+        "from": "2H,Ile-\u03b41-13CH3",
+        "to": "2H,Ile-13CH3"
+      },
+      {
+        "op": "map",
+        "path": "/sample/components/*/isotopic_labelling",
+        "from": "2H,Leu/Val-13CH3",
+        "to": ""
+      },
+      {
+        "op": "map",
+        "path": "/buffer/solvent",
+        "from": "D6-DMSO",
+        "to": "DMSO-d6"
+      },
+      {
+        "op": "map",
+        "path": "/buffer/solvent",
+        "from": "D4-methanol",
+        "to": "Methanol-d4"
+      },
+      {
+        "op": "set",
+        "path": "/metadata/schema_version",
+        "value": "0.4.0"
+      },
+      {
+        "op": "set",
+        "path": "/metadata/schema_source",
+        "value": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.4.0/schema.json"
+      }
+    ]
   }
 ]

@@ -1,0 +1,12 @@
+name = "SchemaMigrateTests"
+uuid = "c3a1f3bc-5e10-4c6d-9f1e-8f1f7f0d0001"
+version = "0.1.0"
+authors = ["NMR Samples Schema"]
+
+[deps]
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+JSON = "1"
+Test = "1"

@@ -10,7 +10,7 @@ using JSON
 using MulticomplexNumbers
 using YAML
 
-include("schema-migration.jl")
+include("../sample-schemas/migration-code/migrate.jl")
 using .SchemaMigrate
 
 include("lists.jl")

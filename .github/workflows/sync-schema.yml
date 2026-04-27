@@ -1,0 +1,72 @@
+name: Sync NMR Samples Schema
+
+permissions:
+  contents: write
+  pull-requests: write
+  
+on:
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  sync-schema:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout application repository
+        uses: actions/checkout@v4
+      
+      - name: Get latest schema release
+        id: schema-release
+        run: |
+          LATEST_TAG=$(curl -s https://api.github.com/repos/nmr-samples/schema/releases/latest | jq -r .tag_name)
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest schema version: $LATEST_TAG"
+      
+      - name: Check current schema version
+        id: current-version
+        run: |
+          if [ -f src/sample-schemas/VERSION ]; then
+            CURRENT_VERSION=$(cat src/sample-schemas/VERSION)
+          else
+            CURRENT_VERSION="none"
+          fi
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current schema version: $CURRENT_VERSION"
+      
+      - name: Clone schema repository
+        if: steps.schema-release.outputs.latest_tag != steps.current-version.outputs.current_version
+        run: |
+          # Remove existing schemas directory if it exists
+          rm -rf src/sample-schemas
+          
+          # Clone the schema repository
+          git clone https://github.com/nmr-samples/schema.git src/sample-schemas
+          
+          # Remove the .git directory (we don't need the schema repo's git history)
+          rm -rf src/sample-schemas/.git
+          
+          # Record the version we've synced to
+          echo ${{ steps.schema-release.outputs.latest_tag }} > src/sample-schemas/VERSION
+      
+      - name: Create Pull Request
+        if: steps.schema-release.outputs.latest_tag != steps.current-version.outputs.current_version
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Update schemas to ${{ steps.schema-release.outputs.latest_tag }}"
+          branch: schema-update-${{ steps.schema-release.outputs.latest_tag }}
+          delete-branch: true
+          title: "Update schemas to ${{ steps.schema-release.outputs.latest_tag }}"
+          body: |
+            Automated schema update from [nmr-sample-schema](https://github.com/nmr-samples/schema).
+            
+            New version: ${{ steps.schema-release.outputs.latest_tag }}
+            Previous version: ${{ steps.current-version.outputs.current_version }}
+            
+            This update includes all schema versions for backwards compatibility.
+            
+            Please review the changes and test compatibility before merging.
+            
+            Schema release: https://github.com/nmr-samples/schema/releases/tag/${{ steps.schema-release.outputs.latest_tag }}

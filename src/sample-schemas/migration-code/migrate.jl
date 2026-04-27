@@ -1,11 +1,10 @@
 """
 Migrate NMR sample metadata to the latest schema version.
-- migration code from nmr-sample-schema repo
 
-Call load_sample(path, migrations_path=MIGRATIONS_PATH[]) to load a JSON file
+Call loadsample(path, migrations_path=MIGRATIONS_PATH[]) to load a JSON file
 and apply migrations. It returns the migrated data as a Dict.
 
-Call update_to_latest_schema!(data) with a parsed JSON Dict. It modifies
+Call updatetolatestschema!(data) with a parsed JSON Dict. It modifies
 the dict in place and returns it.
 
 The migration patch file is expected at current/patch.json relative to
@@ -13,18 +12,18 @@ this module. Override by setting MIGRATIONS_PATH[] or passing migrations_path.
 """
 module SchemaMigrate
 
-export update_to_latest_schema!, load_sample
-
 using JSON
 
-const MIGRATIONS_PATH = Ref(joinpath(@__DIR__, "current", "patch.json"))
+const MIGRATIONS_PATH = Ref(joinpath(@__DIR__, "..", "current", "patch.json"))
+
 
 function _parse_path(path)
     isempty(path) && return String[]
-    startswith(path, "/") || throw(ArgumentError("Path must start with '/': " * path))
+    startswith(path, "/") || error("Path must start with '/': " * path)
     parts = split(path[2:end], "/")
     return [replace(replace(p, "~1" => "/"), "~0" => "~") for p in parts]
 end
+
 
 function _resolve(data, segments)
     results = Tuple{Any,Any}[]
@@ -61,9 +60,10 @@ function _resolve(data, segments)
     return results
 end
 
+
 function _ensure_parents(data, segments)
     obj = data
-    for seg in segments[1:(end - 1)]
+    for seg in segments[1:end-1]
         if !haskey(obj, seg) || !isa(obj[seg], Dict)
             obj[seg] = Dict{String,Any}()
         end
@@ -71,6 +71,7 @@ function _ensure_parents(data, segments)
     end
     return obj, segments[end]
 end
+
 
 function _apply_set(data, op)
     segments = _parse_path(op["path"])
@@ -82,6 +83,7 @@ function _apply_set(data, op)
         _walk_and_set(data, segments, 1, value)
     end
 end
+
 
 function _walk_and_set(obj, segments, depth, value)
     if depth == length(segments)
@@ -106,12 +108,14 @@ function _walk_and_set(obj, segments, depth, value)
             end
         end
     elseif isa(obj, Dict)
-        if !haskey(obj, seg) || !isa(obj[seg], Union{Dict,Vector})
-            obj[seg] = Dict{String,Any}()
+        # With a wildcard elsewhere in the path, a missing intermediate is a
+        # silent no-op. Don't materialize empty containers.
+        if haskey(obj, seg) && isa(obj[seg], Union{Dict,Vector})
+            _walk_and_set(obj[seg], segments, depth + 1, value)
         end
-        _walk_and_set(obj[seg], segments, depth + 1, value)
     end
 end
+
 
 function _apply_remove(data, op)
     segments = _parse_path(op["path"])
@@ -122,19 +126,20 @@ function _apply_remove(data, op)
     end
 end
 
+
 function _apply_rename_key(data, op)
     segments = _parse_path(op["path"])
     to = op["to"]
     for (parent, key) in _resolve(data, segments)
         if isa(parent, Dict) && haskey(parent, key)
             if haskey(parent, to)
-                throw(ArgumentError("rename_key: target key '" * to * "' already exists at path '" *
-                                    op["path"] * "'"))
+                error("rename_key: target key '" * to * "' already exists at path '" * op["path"] * "'")
             end
             parent[to] = pop!(parent, key)
         end
     end
 end
+
 
 function _apply_map(data, op)
     segments = _parse_path(op["path"])
@@ -147,6 +152,7 @@ function _apply_map(data, op)
     end
 end
 
+
 function _apply_move(data, op)
     segments = _parse_path(op["path"])
     matches = _resolve(data, segments)
@@ -155,14 +161,18 @@ function _apply_move(data, op)
     value = pop!(parent, key)
     to_segments = _parse_path(op["to"])
     dest_parent, dest_key = _ensure_parents(data, to_segments)
-    return dest_parent[dest_key] = value
+    dest_parent[dest_key] = value
 end
 
-const _OPS = Dict{String,Function}("set" => _apply_set,
-                                   "remove" => _apply_remove,
-                                   "rename_key" => _apply_rename_key,
-                                   "map" => _apply_map,
-                                   "move" => _apply_move)
+
+const _OPS = Dict{String,Function}(
+    "set" => _apply_set,
+    "remove" => _apply_remove,
+    "rename_key" => _apply_rename_key,
+    "map" => _apply_map,
+    "move" => _apply_move,
+)
+
 
 function _get_version(data)
     metadata = get(data, "metadata", nothing)
@@ -170,18 +180,19 @@ function _get_version(data)
     return get(metadata, "schema_version", nothing)
 end
 
+
 function _load_migrations(path=MIGRATIONS_PATH[])
     return JSON.parsefile(path)
 end
 
 """
-    update_to_latest_schema!(data, migrations_path=MIGRATIONS_PATH[]) -> Dict
+    updatetolatestschema!(data, migrations_path=MIGRATIONS_PATH[]) -> Dict
 
 Apply migrations to the given data Dict to update it to the latest schema version.
 The data is modified in place and returned. Migrations are loaded from the given
 migrations_path (default is MIGRATIONS_PATH[]).
 """
-function update_to_latest_schema!(data, migrations_path=MIGRATIONS_PATH[])
+function updatetolatestschema!(data, migrations_path=MIGRATIONS_PATH[])
     migrations = _load_migrations(migrations_path)
 
     while true
@@ -191,7 +202,7 @@ function update_to_latest_schema!(data, migrations_path=MIGRATIONS_PATH[])
             if block["from_version"] == version
                 for op in block["operations"]
                     handler = get(_OPS, op["op"], nothing)
-                    handler === nothing && throw(ArgumentError("Unknown operation: " * op["op"]))
+                    handler === nothing && error("Unknown operation: " * op["op"])
                     handler(data, op)
                 end
                 applied = true
@@ -205,14 +216,16 @@ function update_to_latest_schema!(data, migrations_path=MIGRATIONS_PATH[])
 end
 
 """
-    load_sample(path, migrations_path=MIGRATIONS_PATH[]) -> Dict
+    loadsample(path, migrations_path=MIGRATIONS_PATH[]) -> Dict
 
 Load a JSON file from the given path and apply migrations to update it to the
 latest schema version. Returns the migrated data as a Dict.
 """
-function load_sample(path, migrations_path=MIGRATIONS_PATH[])
+function loadsample(path, migrations_path=MIGRATIONS_PATH[])
     data = JSON.parsefile(path; dicttype=Dict{String,Any})
-    return update_to_latest_schema!(data, migrations_path)
+    return updatetolatestschema!(data, migrations_path)
 end
+
+export updatetolatestschema!, loadsample
 
 end # module

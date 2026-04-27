@@ -1,0 +1,50 @@
+{
+    "sample": {
+        "label": "v0.3.0 labelling and solvent mapping test",
+        "physical_form": "solution",
+        "components": [
+            {
+                "name": "Small molecule",
+                "molecular_weight": 350.4,
+                "concentration_or_amount": 1.0,
+                "unit": "mM",
+                "isotopic_labelling": "unlabelled",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Ile-labelled protein",
+                "molecular_weight": 25000.0,
+                "concentration_or_amount": 0.2,
+                "unit": "mM",
+                "isotopic_labelling": "Ile-\u03b41-13CH3,15N",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Deuterated Ile protein",
+                "molecular_weight": 25000.0,
+                "concentration_or_amount": 0.2,
+                "unit": "mM",
+                "isotopic_labelling": "2H,Ile-\u03b41-13CH3",
+                "custom_labelling": ""
+            },
+            {
+                "name": "Leu/Val labelled",
+                "molecular_weight": 15000.0,
+                "concentration_or_amount": 0.1,
+                "unit": "mM",
+                "isotopic_labelling": "2H,Leu/Val-13CH3",
+                "custom_labelling": ""
+            }
+        ]
+    },
+    "buffer": {
+        "ph": 7.0,
+        "components": [],
+        "solvent": "D6-DMSO",
+        "custom_solvent": ""
+    },
+    "metadata": {
+        "schema_version": "0.3.0",
+        "schema_source": "https://raw.githubusercontent.com/nmr-samples/schema/main/versions/v0.3.0/schema.json"
+    }
+}
