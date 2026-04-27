@@ -1,6 +1,6 @@
 name = "NMRTools"
 uuid = "c2839fe3-f1de-42fc-897f-c1b0e8db4db6"
-version = "0.2.9"
+version = "0.2.10"
 authors = ["Chris Waudby"]
 
 [deps]
