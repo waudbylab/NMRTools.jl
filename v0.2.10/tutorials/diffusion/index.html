@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Diffusion analysis · NMRTools.jl</title><meta name="title" content="Diffusion analysis · NMRTools.jl"/><meta property="og:title" content="Diffusion analysis · NMRTools.jl"/><meta property="twitter:title" content="Diffusion analysis · NMRTools.jl"/><meta name="description" content="Documentation for NMRTools.jl."/><meta property="og:description" content="Documentation for NMRTools.jl."/><meta property="twitter:description" content="Documentation for NMRTools.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="NMRTools.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">NMRTools.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting started</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../data/">Working with NMR data</a></li><li><a class="tocitem" href="../plotting/">Plotting</a></li><li><a class="tocitem" href="../peaks/">Peak detection</a></li><li><a class="tocitem" href="../metadata/">Metadata</a></li><li><a class="tocitem" href="../animation/">Animating spectra</a></li><li><a class="tocitem" href="../relaxation/">1D relaxation analysis</a></li><li class="is-active"><a class="tocitem" href>Diffusion analysis</a><ul class="internal"><li><a class="tocitem" href="#Set-up-parameters"><span>Set up parameters</span></a></li><li><a class="tocitem" href="#Plot-the-data"><span>Plot the data</span></a></li><li><a class="tocitem" href="#Calculate-noise-and-peak-integrals"><span>Calculate noise and peak integrals</span></a></li><li><a class="tocitem" href="#Fitting"><span>Fitting</span></a></li><li><a class="tocitem" href="#Plot-the-results"><span>Plot the results</span></a></li><li><a class="tocitem" href="#Estimating-the-hydrodynamic-radius"><span>Estimating the hydrodynamic radius</span></a></li></ul></li></ul></li><li><span class="tocitem">Metadata</span><ul><li><a class="tocitem" href="../../metadata/">Overview</a></li><li><a class="tocitem" href="../../metadata/timeunits/">Times and frequencies</a></li><li><a class="tocitem" href="../../metadata/power/">Power levels</a></li><li><a class="tocitem" href="../../metadata/fqlists/">Frequency lists</a></li><li><a class="tocitem" href="../../metadata/windows/">Window functions</a></li><li><a class="tocitem" href="../../metadata/samples/">Sample metadata</a></li></ul></li><li><a class="tocitem" href="../../utilities/">Utilities</a></li><li><span class="tocitem">Reference guide</span><ul><li><a class="tocitem" href="../../reference/referencing/">Chemical shift referencing</a></li><li><a class="tocitem" href="../../reference/metadata/">Metadata</a></li><li><a class="tocitem" href="../../reference/annotations/">Annotations</a></li><li><a class="tocitem" href="../../reference/coherences/">Coherences and isotope data</a></li></ul></li><li><a class="tocitem" href="../../api/">API</a></li><li><a class="tocitem" href="../../indexes/">Index</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Diffusion analysis</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Diffusion analysis</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/waudbylab/NMRTools.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/waudbylab/NMRTools.jl/blob/main/docs/src/tutorials/diffusion.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="1D-diffusion-analysis"><a class="docs-heading-anchor" href="#1D-diffusion-analysis">1D diffusion analysis</a><a id="1D-diffusion-analysis-1"></a><a class="docs-heading-anchor-permalink" href="#1D-diffusion-analysis" title="Permalink"></a></h1><p>Let&#39;s analyse a 15N-edited XSTE measurement of translational diffusion. This experiment was acquired as a single pseudo-2D measurement, with gradient strengths ranging from 2 to 98% of the maximum strength, 0.55 T/m.</p><p>First, we need to load the required packages. We will use <code>LsqFit</code> for the non-linear least squares fitting, <code>Measurements</code> to handle uncertainties, and <code>Statistics</code> for calculation of means and standard deviations.</p><pre><code class="language-julia hljs">using NMRTools
+using Plots
+using LsqFit
+using Measurements
+using Statistics
+
+spec = exampledata(&quot;pseudo2D_XSTE&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">2048</span>×<span class="sgr38_5" style="color:#0087d7">10</span> NMRData{Float64, 2}<span class="sgr90"> ┐</span>
+<span class="sgr90">├─────────────────────────────┴────────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(14.69741, -5.298823244973492, 2048)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>,
+  <span class="sgr38_5" style="color:#0087d7">→ X2Dim</span> Sampled{Int64} <span class="sgr38_5" style="color:#0087d7">1:10</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 19 entries:
+  :rg               =&gt; 128
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :field            =&gt; 11.7398
+  :label            =&gt; &quot;15N aSyn, 283 K - XSTE&quot;
+  :ns               =&gt; 16
+  :format           =&gt; :pdata
+  :noise            =&gt; 102.056
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :temperature      =&gt; 283.056
+  :nuclei           =&gt; Set(Nucleus[H1])
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :pulseprogram     =&gt; &quot;stebpgp1s19xn.jk&quot;
+  :ndim             =&gt; 2
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :title            =&gt; &quot;15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G =…
+  :topspin          =&gt; v&quot;2.1.0&quot;
+  :acqu2s           =&gt; Dict{Symbol, Any}(:origin=&gt;nothing, :sw=&gt;33, :sw_h=&gt;1671…
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :date             =&gt; DateTime(&quot;2013-06-24T15:15:03&quot;)
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱  </code></pre><h2 id="Set-up-parameters"><a class="docs-heading-anchor" href="#Set-up-parameters">Set up parameters</a><a id="Set-up-parameters-1"></a><a class="docs-heading-anchor-permalink" href="#Set-up-parameters" title="Permalink"></a></h2><p>The file we have just loaded has an <code>UnknownDimension</code> as the non-frequency dimension. We need to replace this with a <code>GradientDimension</code> and set the gradient strengths that were used. We do this with the <code>setgradientlist</code> function:</p><pre><code class="language-julia hljs">gradients = LinRange(0.02, 0.98, size(spec, X2Dim))
+Gmax = 0.55 # T/m
+
+spec = setgradientlist(spec, gradients, Gmax)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">2048</span>×<span class="sgr38_5" style="color:#0087d7">10</span> NMRData{Float64, 2}<span class="sgr90"> ┐</span>
+<span class="sgr90">├─────────────────────────────┴────────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(14.69741, -5.298823244973492, 2048)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>,
+  <span class="sgr38_5" style="color:#0087d7">→ G2Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#0087d7">LinRange{Float64}(0.011000000000000001, 0.539, 10)</span> <span class="sgr38_5" style="color:#808080">ForwardOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 19 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :label            =&gt; &quot;15N aSyn, 283 K - XSTE&quot;
+  :ns               =&gt; 16
+  :temperature      =&gt; 283.056
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :pulseprogram     =&gt; &quot;stebpgp1s19xn.jk&quot;
+  :ndim             =&gt; 2
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/ff9e57f22e47a400f959356c2…
+  :title            =&gt; &quot;15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G =…
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :field            =&gt; 11.7398
+  :format           =&gt; :pdata
+  :noise            =&gt; 102.056
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :nuclei           =&gt; Set(Nucleus[H1])
+  :topspin          =&gt; v&quot;2.1.0&quot;
+  :acqu2s           =&gt; Dict{Symbol, Any}(:origin=&gt;nothing, :sw=&gt;33, :sw_h=&gt;1671…
+  :date             =&gt; DateTime(&quot;2013-06-24T15:15:03&quot;)
+  :rg               =&gt; 128
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱  </code></pre><p>Next, we extract or set other acquisition parameters required for analysis. In particular, we extract the diffusion pulse length, δ, and the diffusion delay, Δ, from the acqus file. We also specify the chemical shift ranges used for plotting, fitting, and for determination of the noise level.</p><pre><code class="language-julia hljs">δ = acqus(spec, :p, 30) * 2    # gradient pulse length = p30/2
+Δ = acqus(spec, :d, 20)        # diffusion delay = d20
+σ = 0.9                        # gradient pulse shape factor (for SMSQ10)
+
+coherence = SQ(H1)             # coherence for diffusion encoding
+γ = gyromagneticratio(coherence)            # calculate effective gyromagnetic ratio
+
+g = data(spec, G2Dim)          # list of gradient strengths
+
+# select chemical shift ranges for plotting and fitting
+plotrange = 6 .. 10 # ppm
+datarange = 7.7 .. 8.6 # ppm
+noiseposition = 10.5 # ppm</code></pre><h2 id="Plot-the-data"><a class="docs-heading-anchor" href="#Plot-the-data">Plot the data</a><a id="Plot-the-data-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-the-data" title="Permalink"></a></h2><p>To take a quick look at the data, we can plot the experiment either as 3D lines using the <code>plot</code> command, or as a heatmap:</p><pre><code class="language-julia hljs">plot(
+    plot(spec[plotrange,:]),
+    heatmap(spec[plotrange,:])
+)</code></pre><p><img src="../tutorial-diffusion-plot.svg" alt/></p><h2 id="Calculate-noise-and-peak-integrals"><a class="docs-heading-anchor" href="#Calculate-noise-and-peak-integrals">Calculate noise and peak integrals</a><a id="Calculate-noise-and-peak-integrals-1"></a><a class="docs-heading-anchor-permalink" href="#Calculate-noise-and-peak-integrals" title="Permalink"></a></h2><p>Now, we can determine the measurement noise, by taking the standard deviation of integrals across the different gradient points:</p><pre><code class="language-julia hljs"># create a selector for the noise, matching the width of the data range
+noisewidth = datarange.right - datarange.left
+noiserange = (noiseposition-0.5noisewidth)..(noiseposition+0.5noisewidth)
+
+# integrate over the noise regions and take the standard deviation
+# (calculate the sum over the frequency dimension F1Dim, and use
+# `data` to convert from NMRData to a regular array)
+noise = sum(spec[noiserange,:], dims=F1Dim) |&gt; data |&gt; std
+
+# calculate the integral of the data region similarly, using vec to convert to a list
+integrals = sum(spec[datarange,:], dims=F1Dim) |&gt; data |&gt; vec
+
+# normalise noise and integrals by the maximum value
+noise /= maximum(integrals)
+integrals /= maximum(integrals)</code></pre><h2 id="Fitting"><a class="docs-heading-anchor" href="#Fitting">Fitting</a><a id="Fitting-1"></a><a class="docs-heading-anchor-permalink" href="#Fitting" title="Permalink"></a></h2><p>Now, we can fit the data to the Stejskal-Tanner equation using the <code>LsqFit</code> package.</p><pre><code class="language-julia hljs"># model parameters are (I0, D) - scale D by 1e-10 for a nicer numerical value
+model(g, p) = p[1] * exp.(-(γ*δ*σ*g).^2 .* (Δ - δ/3) .* p[2] .* 1e-10)
+
+p0 = [1.0, 1.0] # rough guess of initial parameters
+
+fit = curve_fit(model, g, integrals, p0) # run the fit
+
+# extract the fit parameters and standard errors
+pfit = coef(fit)
+err = stderror(fit)
+D = (pfit[2] ± err[2]) * 1e-10</code></pre><p class="math-container">\[4.275e-11 \pm 3.6e-13\]</p><h2 id="Plot-the-results"><a class="docs-heading-anchor" href="#Plot-the-results">Plot the results</a><a id="Plot-the-results-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-the-results" title="Permalink"></a></h2><p>Finally, plot the results:</p><pre><code class="language-julia hljs">x = LinRange(0, maximum(g)*1.1, 100)
+yfit = model(x, pfit)
+
+p1 = scatter(g, integrals .± noise, label=&quot;observed&quot;,
+        frame=:box,
+        xlabel=&quot;G (T m⁻¹)&quot;,
+        ylabel=&quot;Integrated signal&quot;,
+        title=&quot;&quot;,
+        ylims=(0,Inf), # make sure y axis starts at zero
+        widen=true,
+        grid=nothing)
+plot!(p1, x, yfit, label=&quot;fit&quot;)
+
+p2 = plot(spec[plotrange,1],linecolor=:black)
+plot!(p2, spec[datarange,1], fill=(0,:orange), linecolor=:red)
+hline!(p2, [0], c=:grey)
+title!(p2, &quot;&quot;)
+
+plot(p1, p2, layout=(1,2))</code></pre><p><img src="../tutorial-diffusion-fit.svg" alt/></p><h2 id="Estimating-the-hydrodynamic-radius"><a class="docs-heading-anchor" href="#Estimating-the-hydrodynamic-radius">Estimating the hydrodynamic radius</a><a id="Estimating-the-hydrodynamic-radius-1"></a><a class="docs-heading-anchor-permalink" href="#Estimating-the-hydrodynamic-radius" title="Permalink"></a></h2><p>We can use the known viscosity of water as a function of temperature to estimate the hydrodynamic radius from the measured diffusion coefficient. First, we extract the temperature from the spectrum metadata:</p><pre><code class="language-julia hljs">T = acqus(spec, :te)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">283.0556</code></pre><p>Next, we can create a little function to calculate viscosity for H2O or D2O solvents as a function of temperature:</p><pre><code class="language-julia hljs">function viscosity(solvent, T)
+	if solvent==:h2o
+        A = 802.25336
+        a = 3.4741e-3
+        b = -1.7413e-5
+        c = 2.7719e-8
+        gamma = 1.53026
+        T0 = 225.334
+    elseif solvent==:d2o
+        A = 885.60402
+        a = 2.799e-3
+        b = -1.6342e-5
+        c = 2.9067e-8
+        gamma = 1.55255
+        T0 = 231.832
+    else
+        @error &quot;solvent not recognised (should be :h2o or :d2o)&quot;
+    end
+
+    DT = T - T0
+    k = 1.38e-23
+
+    return A * (DT + a*DT^2 + b*DT^3 + c*DT^4)^(-gamma)
+end
+η = viscosity(:h2o, T)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1.3102945185540058</code></pre><p>Finally, we can use the Stokes-Einstein equation to calculate the hydrodynamic radius:</p><pre><code class="language-julia hljs">k = 1.38e-23
+rH = k*T / (6π * η * 0.001 * D) * 1e9 # in nm</code></pre><p class="math-container">\[3.7 \pm 0.031\]</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../relaxation/">« 1D relaxation analysis</a><a class="docs-footer-nextpage" href="../../metadata/">Overview »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Monday 27 April 2026 22:17">Monday 27 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

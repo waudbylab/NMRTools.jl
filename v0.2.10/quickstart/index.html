@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Getting started · NMRTools.jl</title><meta name="title" content="Getting started · NMRTools.jl"/><meta property="og:title" content="Getting started · NMRTools.jl"/><meta property="twitter:title" content="Getting started · NMRTools.jl"/><meta name="description" content="Documentation for NMRTools.jl."/><meta property="og:description" content="Documentation for NMRTools.jl."/><meta property="twitter:description" content="Documentation for NMRTools.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../"><img src="../assets/logo.png" alt="NMRTools.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../">NMRTools.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Getting started</a><ul class="internal"><li><a class="tocitem" href="#Installing-NMRTools"><span>Installing NMRTools</span></a></li><li><a class="tocitem" href="#Plot-a-1D-spectrum"><span>Plot a 1D spectrum</span></a></li><li><a class="tocitem" href="#Plot-a-2D-spectrum"><span>Plot a 2D spectrum</span></a></li><li><a class="tocitem" href="#Accessing-your-data"><span>Accessing your data</span></a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../tutorials/data/">Working with NMR data</a></li><li><a class="tocitem" href="../tutorials/plotting/">Plotting</a></li><li><a class="tocitem" href="../tutorials/peaks/">Peak detection</a></li><li><a class="tocitem" href="../tutorials/metadata/">Metadata</a></li><li><a class="tocitem" href="../tutorials/animation/">Animating spectra</a></li><li><a class="tocitem" href="../tutorials/relaxation/">1D relaxation analysis</a></li><li><a class="tocitem" href="../tutorials/diffusion/">Diffusion analysis</a></li></ul></li><li><span class="tocitem">Metadata</span><ul><li><a class="tocitem" href="../metadata/">Overview</a></li><li><a class="tocitem" href="../metadata/timeunits/">Times and frequencies</a></li><li><a class="tocitem" href="../metadata/power/">Power levels</a></li><li><a class="tocitem" href="../metadata/fqlists/">Frequency lists</a></li><li><a class="tocitem" href="../metadata/windows/">Window functions</a></li><li><a class="tocitem" href="../metadata/samples/">Sample metadata</a></li></ul></li><li><a class="tocitem" href="../utilities/">Utilities</a></li><li><span class="tocitem">Reference guide</span><ul><li><a class="tocitem" href="../reference/referencing/">Chemical shift referencing</a></li><li><a class="tocitem" href="../reference/metadata/">Metadata</a></li><li><a class="tocitem" href="../reference/annotations/">Annotations</a></li><li><a class="tocitem" href="../reference/coherences/">Coherences and isotope data</a></li></ul></li><li><a class="tocitem" href="../api/">API</a></li><li><a class="tocitem" href="../indexes/">Index</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Getting started</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Getting started</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/waudbylab/NMRTools.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/waudbylab/NMRTools.jl/blob/main/docs/src/quickstart.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Getting-started"><a class="docs-heading-anchor" href="#Getting-started">Getting started</a><a id="Getting-started-1"></a><a class="docs-heading-anchor-permalink" href="#Getting-started" title="Permalink"></a></h1><h2 id="Installing-NMRTools"><a class="docs-heading-anchor" href="#Installing-NMRTools">Installing NMRTools</a><a id="Installing-NMRTools-1"></a><a class="docs-heading-anchor-permalink" href="#Installing-NMRTools" title="Permalink"></a></h2><p>Install NMRTools.jl through the Julia package manager:</p><pre><code class="language-julia hljs">using Pkg
+Pkg.add(&quot;NMRTools&quot;)</code></pre><p>The examples in this tutorial also using the <code>Plots</code> package, which can be obtained similarly.</p><h2 id="Plot-a-1D-spectrum"><a class="docs-heading-anchor" href="#Plot-a-1D-spectrum">Plot a 1D spectrum</a><a id="Plot-a-1D-spectrum-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-a-1D-spectrum" title="Permalink"></a></h2><p>Let&#39;s load some example data. This can be a Bruker experiment directory, a specific pdata folder, or an NMRPipe-format file.</p><pre><code class="language-julia hljs">using NMRTools, Plots
+spec = exampledata(&quot;1D_19F&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">5000-element </span>NMRData{Float64, 1}<span class="sgr90"> ┐</span>
+<span class="sgr90">├──────────────────────────────────┴───────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-119.5922, -124.16252020246354, 5000)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 18 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :field            =&gt; 11.7461
+  :label            =&gt; &quot;Example 19F 1D spectrum&quot;
+  :ns               =&gt; 64
+  :format           =&gt; :pdata
+  :noise            =&gt; 424.03
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :temperature      =&gt; 318.151
+  :nuclei           =&gt; Set(Nucleus[F19])
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :pulseprogram     =&gt; &quot;zg&quot;
+  :ndim             =&gt; 1
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :title            =&gt; &quot;Example 19F 1D spectrum\nSample details in second line\…
+  :topspin          =&gt; v&quot;3.2.0&quot;
+  :date             =&gt; DateTime(&quot;2017-08-07T07:08:12&quot;)
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :rg               =&gt; 76.02
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱  </code></pre><p>NMRTools contains Plots recipes for common types of spectrum. To plot a 1D spectrum, use the <code>plot</code> command:</p><pre><code class="language-julia hljs">plot(spec)</code></pre><p><img src="../plot-y.svg" alt/></p><p>We could zoom in on a particular region using the usual <code>xlims</code> arguments from <code>Plots</code>, but we can also select a chemical shift range from the data directly. To do this, we use square brackets <code>[...]</code> to access the data like an array, but use the <code>..</code> selector to specify our chemical shift range:</p><pre><code class="language-julia hljs">plot(spec[-124.5 .. -123])</code></pre><p><img src="../plot-y2.svg" alt/></p><p>All plots can be saved as high quality vector graphics or png files, using the <code>savefig</code> command:</p><pre><code class="language-julia hljs">savefig(&quot;myspectrum.pdf&quot;)</code></pre><h2 id="Plot-a-2D-spectrum"><a class="docs-heading-anchor" href="#Plot-a-2D-spectrum">Plot a 2D spectrum</a><a id="Plot-a-2D-spectrum-1"></a><a class="docs-heading-anchor-permalink" href="#Plot-a-2D-spectrum" title="Permalink"></a></h2><p>Two-dimensional spectra can be plotted in exactly the same way as for 1Ds.</p><pre><code class="language-julia hljs">spec = exampledata(&quot;2D_HN&quot;)
+plot(spec)</code></pre><p><img src="../plot-2d.svg" alt/></p><p>Contour levels are set to five times the noise level. To adjust them, multiply or divide the spectrum by a scaling factor. You can also adjust the title — by default taken from the spectrum label — using the <code>title</code> keyword. Use an empty string (<code>title=&quot;&quot;</code>) to remove the title.</p><pre><code class="language-julia hljs">plot(spec / 2, title=&quot;spectrum divided by two&quot;)</code></pre><p><img src="../plot-2d-scaled.svg" alt/></p><h2 id="Accessing-your-data"><a class="docs-heading-anchor" href="#Accessing-your-data">Accessing your data</a><a id="Accessing-your-data-1"></a><a class="docs-heading-anchor-permalink" href="#Accessing-your-data" title="Permalink"></a></h2><p>Spectrum data and associated axis information, metadata, etc, is encapsulated in an <a href="../api/#NMRTools.NMRBase.NMRData"><code>NMRData</code></a> structure.</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec = exampledata(&quot;1D_19F&quot;)</code><code class="nohighlight hljs ansi" style="display:block;"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">5000-element </span>NMRData{Float64, 1}<span class="sgr90"> ┐</span>
+<span class="sgr90">├──────────────────────────────────┴───────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-119.5922, -124.16252020246354, 5000)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 18 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :field            =&gt; 11.7461
+  :label            =&gt; &quot;Example 19F 1D spectrum&quot;
+  :ns               =&gt; 64
+  :format           =&gt; :pdata
+  :noise            =&gt; 424.03
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :temperature      =&gt; 318.151
+  :nuclei           =&gt; Set(Nucleus[F19])
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :pulseprogram     =&gt; &quot;zg&quot;
+  :ndim             =&gt; 1
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :title            =&gt; &quot;Example 19F 1D spectrum\nSample details in second line\…
+  :topspin          =&gt; v&quot;3.2.0&quot;
+  :date             =&gt; DateTime(&quot;2017-08-07T07:08:12&quot;)
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :rg               =&gt; 76.02
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱</code></pre><p>Data can be accessed with conventional array indexing, but also using the value-based selectors, <code>Near</code> and <code>..</code>:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec[100:105]</code><code class="nohighlight hljs ansi" style="display:block;"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">6-element </span>NMRData{Float64, 1}<span class="sgr90"> ┐</span>
+<span class="sgr90">├───────────────────────────────┴──────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-119.68271044209722, -119.68728167654656, 6)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 18 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :label            =&gt; &quot;Example 19F 1D spectrum&quot;
+  :ns               =&gt; 64
+  :temperature      =&gt; 318.151
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :pulseprogram     =&gt; &quot;zg&quot;
+  :ndim             =&gt; 1
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :title            =&gt; &quot;Example 19F 1D spectrum\nSample details in second line\…
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :field            =&gt; 11.7461
+  :format           =&gt; :pdata
+  :noise            =&gt; 424.03
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :nuclei           =&gt; Set(Nucleus[F19])
+  :topspin          =&gt; v&quot;3.2.0&quot;
+  :date             =&gt; DateTime(&quot;2017-08-07T07:08:12&quot;)
+  :rg               =&gt; 76.02
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec[Near(-124)]</code><code class="nohighlight hljs ansi" style="display:block;">5808.748229980469</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec[-124 .. -123.5]</code><code class="nohighlight hljs ansi" style="display:block;"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">547-element </span>NMRData{Float64, 1}<span class="sgr90"> ┐</span>
+<span class="sgr90">├─────────────────────────────────┴────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(-123.50060545419717, -123.99978425606656, 547)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 18 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :label            =&gt; &quot;Example 19F 1D spectrum&quot;
+  :ns               =&gt; 64
+  :temperature      =&gt; 318.151
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :pulseprogram     =&gt; &quot;zg&quot;
+  :ndim             =&gt; 1
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/8581f841a7ad0ab21edeb8fd0…
+  :title            =&gt; &quot;Example 19F 1D spectrum\nSample details in second line\…
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :field            =&gt; 11.7461
+  :format           =&gt; :pdata
+  :noise            =&gt; 424.03
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :nuclei           =&gt; Set(Nucleus[F19])
+  :topspin          =&gt; v&quot;3.2.0&quot;
+  :date             =&gt; DateTime(&quot;2017-08-07T07:08:12&quot;)
+  :rg               =&gt; 76.02
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱</code></pre><p>This also works for multidimensional data. For example:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec2d = exampledata(&quot;2D_HN&quot;)</code><code class="nohighlight hljs ansi" style="display:block;"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">1216</span>×<span class="sgr38_5" style="color:#0087d7">512</span> NMRData{Float64, 2}<span class="sgr90"> ┐</span>
+<span class="sgr90">├──────────────────────────────┴───────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(11.07119, 5.722488424064256, 1216)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>,
+  <span class="sgr38_5" style="color:#0087d7">→ F2Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#0087d7">LinRange{Float64}(128.9998, 107.04307400088886, 512)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 19 entries:
+  :rg               =&gt; 203
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :field            =&gt; 14.0967
+  :label            =&gt; &quot;13C,15N ubiquitin&quot;
+  :ns               =&gt; 2
+  :format           =&gt; :pdata
+  :noise            =&gt; 502.842
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :temperature      =&gt; 276.999
+  :nuclei           =&gt; Set(Nucleus[N15, H1])
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :pulseprogram     =&gt; &quot;sfhmqcf3gpph.cw&quot;
+  :ndim             =&gt; 2
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :title            =&gt; &quot;13C,15N ubiquitin\n500 uM in 10% D2O, 20 mM Pi pH 6.5, …
+  :topspin          =&gt; v&quot;6.0.0&quot;
+  :acqu2s           =&gt; Dict{Symbol, Any}(:origin=&gt;nothing, :sw=&gt;21.9971, :sw_h=…
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :date             =&gt; DateTime(&quot;2019-11-20T19:41:09&quot;)
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱</code><br/><code class="language-julia-repl hljs" style="display:block;">julia&gt; spec2d[8.1 .. 8.3, Near(124)]</code><code class="nohighlight hljs ansi" style="display:block;"><span class="sgr90">┌ </span><span class="sgr38_5" style="color:#ff875f">45-element </span>NMRData{Float64, 1}<span class="sgr90"> ┐</span>
+<span class="sgr90">├────────────────────────────────┴─────────────────────────────────────── dims ┐</span>
+  <span class="sgr38_5" style="color:#ff875f">↓ F1Dim</span> Sampled{Float64} <span class="sgr38_5" style="color:#ff875f">LinRange{Float64}(8.297789182848133, 8.10409134799943, 45)</span> <span class="sgr38_5" style="color:#808080">ReverseOrdered</span> <span class="sgr38_5" style="color:#808080">Regular</span> <span class="sgr38_5" style="color:#808080">Points</span>
+<span class="sgr90">├──────────────────────────────────────────────────────────────────── metadata ┤</span>
+  Dict{Symbol, Any} with 19 entries:
+  :filename         =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :label            =&gt; &quot;13C,15N ubiquitin&quot;
+  :ns               =&gt; 2
+  :temperature      =&gt; 276.999
+  :experimentfolder =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :pulseprogram     =&gt; &quot;sfhmqcf3gpph.cw&quot;
+  :ndim             =&gt; 2
+  :acqusfilename    =&gt; &quot;/home/runner/.julia/artifacts/278430abd2b28a265273e7074…
+  :title            =&gt; &quot;13C,15N ubiquitin\n500 uM in 10% D2O, 20 mM Pi pH 6.5, …
+  :acqus            =&gt; Dict{Symbol, Any}(:fcuchan=&gt;Dict(0=&gt;0, 4=&gt;0, 5=&gt;0, 6=&gt;0,…
+  :field            =&gt; 14.0967
+  :format           =&gt; :pdata
+  :noise            =&gt; 502.842
+  :solvent          =&gt; &quot;H2O+D2O&quot;
+  :nuclei           =&gt; Set(Nucleus[N15, H1])
+  :topspin          =&gt; v&quot;6.0.0&quot;
+  :acqu2s           =&gt; Dict{Symbol, Any}(:origin=&gt;nothing, :sw=&gt;21.9971, :sw_h=…
+  :date             =&gt; DateTime(&quot;2019-11-20T19:41:09&quot;)
+  :rg               =&gt; 203
+<span class="sgr90">└──────────────────────────────────────────────────────────────────────────────┘</span>
+ ⋮      ⋱</code></pre><p>A plain array of data for the spectrum can be obtained from this using the <a href="../api/#NMRTools.NMRBase.data-Tuple{NMRData, Any}"><code>data</code></a> command:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; data(spec)</code><code class="nohighlight hljs ansi" style="display:block;">5000-element Vector{Float64}:
+ 4671.5184326171875
+ 4675.192687988281
+ 4679.9979248046875
+ 4685.8551025390625
+ 4692.506896972656
+ 4699.526428222656
+ 4706.362731933594
+ 4712.417419433594
+ 4717.134460449219
+ 4720.0810546875
+    ⋮
+ 5900.0340576171875
+ 5896.165588378906
+ 5891.2984619140625
+ 5885.714294433594
+ 5879.7239990234375
+ 5873.638427734375
+ 5867.738952636719
+ 5862.253173828125
+ 5857.3370361328125</code></pre><p>Similarly, a plain vector containing axis values can be obtained from this using the <a href="../api/#NMRTools.NMRBase.data-Tuple{NMRData, Any}"><code>data</code></a> command, passing an additional argument to specify the dimension. This can either be a number or the axis type, e.g. <code>F1Dim</code>:</p><pre><code class="language-julia-repl hljs" style="display:block;">julia&gt; data(spec, 1)</code><code class="nohighlight hljs ansi" style="display:block;">5000-element LinRange{Float64, Int64}:
+ -119.592, -119.593, -119.594, -119.595, …, -124.161, -124.162, -124.163</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../tutorials/data/">Working with NMR data »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Monday 27 April 2026 22:17">Monday 27 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
