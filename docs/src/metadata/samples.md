@@ -38,9 +38,24 @@ sample(spec, :buffer, :solvent)
 
 # Get component list
 sample(spec, "sample", "components")
+
+# Get component names (key mapped over array elements)
+sample(spec, :sample, :components, :name)
 ```
 
 Keys can be strings or symbols and are case-insensitive. If a key is not found at any level, `nothing` is returned.
+
+When a key is applied to an array (such as `components`), it is mapped over each element and a filtered array of results is returned.
+
+For `isotopic_labelling` and `solvent`, if the stored value is `"custom"`, the corresponding `custom_labelling` or `custom_solvent` field is returned automatically:
+
+```julia
+# Returns "custom_labelling" value if isotopic_labelling == "custom"
+sample(spec, :sample, :components, :isotopic_labelling)
+
+# Returns "custom_solvent" value if solvent == "custom"
+sample(spec, :buffer, :solvent)
+```
 
 ## Schema structure
 

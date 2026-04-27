@@ -481,19 +481,73 @@ end
     @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
 
-@testset "Samples" begin
+@testset "Samples and Experiments" begin
     spec = loadnmr(joinpath("test-data", "samples", "2"))
     @test spec[:date] == DateTime(2023, 10, 9, 10, 11, 34)
     @test basename(samplefile(spec)) == "2025-08-23_163924_lysozyme.json"
     @test sample(spec, "sample", "label") == "lysozyme"
     @test hassample(spec) == true
     @test sample(spec, :sample, :label) == "lysozyme"
+    @test sample(spec, :sample, :components, :name) == ["HEWL"]
 
     spec = loadnmr(joinpath("test-data", "samples", "12"))
     @test sample(spec, "sample", "label") == "lysozyme (1mM Gd)"
-    @test sample(spec, "sample", "label") == "lysozyme (1mM Gd)"
+    @test sample(spec, :sample, :components, :name) == ["HEWL", "gadodiamide"]
 
     spec = loadnmr(joinpath("test-data", "samples", "22"))
     @test isnothing(spec[:sample])
     @test hassample(spec) == false
+
+    # Custom field auto-resolution
+    s = NMRSample(joinpath("test-data", "samples", "custom_fields_fixture.json"))
+    @test sample(s, :buffer, :solvent) == "95% H2O / 5% D2O + glycerol"
+    @test sample(s, :sample, :components, :isotopic_labelling) ==
+          ["2H,13C-Met", "unlabelled"]
+
+    # NMRExperiment: same sample access as NMRData
+    expt = NMRExperiment(joinpath("test-data", "samples", "2"))
+    @test hassample(expt)
+    @test sample(expt, :sample, :label) == "lysozyme"
+    @test sample(expt, :sample, :components, :name) == ["HEWL"]
+
+    expt2 = NMRExperiment(joinpath("test-data", "samples", "12"))
+    @test sample(expt2, :sample, :components, :name) == ["HEWL", "gadodiamide"]
+
+    # scansamples: returns sorted NMRSample list (excludes non-JSON files and experiment folders)
+    samples = scansamples(joinpath("test-data", "samples"))
+    @test length(samples) == 3   # lysozyme, lysozyme_1mM, custom_fields_fixture
+    @test sample(samples[1], :sample, :label) == "lysozyme"
+    @test sample(samples[2], :sample, :label) == "lysozyme (1mM Gd)"
+
+    # findsample: match by timestamp from pre-scanned list
+    @test sample(findsample(expt, samples), :sample, :label) == "lysozyme"
+    @test sample(findsample(expt2, samples), :sample, :label) == "lysozyme (1mM Gd)"
+
+    expt22 = NMRExperiment(joinpath("test-data", "samples", "22"))
+    @test isnothing(findsample(expt22, samples))
+
+    # scanexperiments: returns sorted NMRExperiment list, sample auto-associated
+    expts = scanexperiments(joinpath("test-data", "samples"))
+    @test length(expts) == 3
+    @test expts[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
+    @test expts[2][:date] == DateTime(2023, 10, 10, 11, 40, 17)
+    @test expts[3][:date] == DateTime(2023, 10, 11, 10, 6, 7)
+    @test label(expts[1]) == "10 mg/mL HEWL, 308 K, 1D zgesgp"
+    @test label(expts[2]) == "10 mg/mL HEWL, 1 mM gadodiamide, 308 K, 1D zgesgp"
+    @test label(expts[3]) == "10 mg/mL HEWL, 2 mM gadodiamide, 308 K, 1D zgesgp"
+    @test hassample(expts[1])
+    @test hassample(expts[2])
+    @test !hassample(expts[3])
+    @test sample(expts[1], :sample, :label) == "lysozyme"
+    @test sample(expts[2], :sample, :label) == "lysozyme (1mM Gd)"
+
+    # findsample from directory, and no-match case
+    @test sample(findsample(expts[1], joinpath("test-data", "samples")), :sample, :label) ==
+          "lysozyme"
+    @test isnothing(findsample(expts[3]))
+
+    # findexperiments: find all experiments belonging to a sample
+    found = findexperiments(samples[1], expts)
+    @test length(found) == 1
+    @test found[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
 end

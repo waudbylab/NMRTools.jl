@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "schema_version": "0.4.0",
+    "created_timestamp": "2024-01-01T10:00:00.000Z"
+  },
+  "sample": {
+    "label": "custom fields test",
+    "components": [
+      {
+        "name": "Protein A",
+        "isotopic_labelling": "custom",
+        "custom_labelling": "2H,13C-Met",
+        "concentration_or_amount": 0.5,
+        "unit": "mM"
+      },
+      {
+        "name": "Protein B",
+        "isotopic_labelling": "unlabelled",
+        "custom_labelling": "",
+        "concentration_or_amount": 0.2,
+        "unit": "mM"
+      }
+    ]
+  },
+  "buffer": {
+    "solvent": "custom",
+    "custom_solvent": "95% H2O / 5% D2O + glycerol"
+  }
+}

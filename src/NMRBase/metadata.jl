@@ -265,7 +265,16 @@ julia> sample(spec, "sample", "components")
 2-element Vector{Any}:
  Dict{String, Any}("name" => "HEWL", "isotopic_labelling" => "unlabelled", "unit" => "mM", "concentration" => 10)
  Dict{String, Any}("name" => "gadodiamide", "isotopic_labelling" => "unlabelled", "unit" => "mM", "concentration" => 1)
+
+julia> sample(spec, :sample, :components, :name)
+2-element Vector{Any}:
+ "HEWL"
+ "gadodiamide"
 ```
+
+When the final key is applied to an array (such as `components`), the key is mapped over each element and a filtered array is returned.
+
+For `isotopic_labelling` and `solvent`, if the stored value is `"custom"`, the corresponding `custom_labelling` or `custom_solvent` field is returned automatically.
 
 See also [`metadata`](@ref), [`hassample`](@ref).
 """
@@ -283,14 +292,33 @@ function sample(spec, keys::Union{String,Symbol}...)
 end
 
 function sample(s::NMRSample, keys::Union{String,Symbol}...)
-    current = s.metadata
-    for key in keys
-        key_str = lowercase(string(key))
-        current isa AbstractDict || return nothing
-        current = get(current, key_str, nothing)
-        isnothing(current) && return nothing
+    return _sample_traverse(s.metadata, keys...)
+end
+
+# Fields whose value "custom" should resolve to a sibling custom_* field
+const _CUSTOM_FIELD_MAP = Dict{String,String}(
+    "isotopic_labelling" => "custom_labelling",
+    "solvent" => "custom_solvent",
+)
+
+function _sample_traverse(current, keys::Union{String,Symbol}...)
+    isempty(keys) && return current
+    key_str = lowercase(string(first(keys)))
+    remaining = Base.tail(keys)
+    if current isa AbstractArray
+        results = [_sample_traverse(el, keys...) for el in current]
+        return filter(!isnothing, results)
     end
-    return current
+    current isa AbstractDict || return nothing
+    value = get(current, key_str, nothing)
+    isnothing(value) && return nothing
+    if value == "custom"
+        custom_key = get(_CUSTOM_FIELD_MAP, key_str, nothing)
+        if !isnothing(custom_key)
+            value = get(current, custom_key, value)
+        end
+    end
+    return _sample_traverse(value, remaining...)
 end
 
 """
