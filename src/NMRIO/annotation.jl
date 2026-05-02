@@ -34,8 +34,18 @@ function annotate(spec::NMRData)
     schema_version = get(parsed_annotations, "schema_version", nothing)
     if isnothing(schema_version)
         return spec
-    elseif schema_version != "0.0.2"
-        @warn "Pulse programme uses unsupported schema version $schema_version. Only v0.0.2 is currently supported. Annotations may not parse correctly."
+    end
+
+    # Parse and validate schema version (support ≥ 0.0.2)
+    try
+        version = VersionNumber(schema_version)
+        min_version = v"0.0.2"
+        if version < min_version
+            @warn "Pulse programme uses unsupported schema version $schema_version. Minimum supported version is v$min_version. Annotations may not parse correctly."
+            return spec
+        end
+    catch e
+        @warn "Failed to parse schema version '$schema_version': $e. Annotations may not parse correctly."
         return spec
     end
 
@@ -78,8 +88,17 @@ function _annotate_metadata!(md::Dict{Symbol,Any})
 
     schema_version = get(parsed_annotations, "schema_version", nothing)
     isnothing(schema_version) && return md
-    if schema_version != "0.0.2"
-        @warn "Pulse programme uses unsupported schema version $schema_version. Only v0.0.2 is currently supported."
+
+    # Parse and validate schema version (support ≥ 0.0.2)
+    try
+        version = VersionNumber(schema_version)
+        min_version = v"0.0.2"
+        if version < min_version
+            @warn "Pulse programme uses unsupported schema version $schema_version. Minimum supported version is v$min_version."
+            return md
+        end
+    catch e
+        @warn "Failed to parse schema version '$schema_version': $e."
         return md
     end
 
