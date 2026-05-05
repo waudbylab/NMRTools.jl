@@ -1,8 +1,3 @@
-# default constructor: dictionary of Symbol => Any #################################################
-
-# struct NMRMetadata <: DimensionalData.Dimensions.LookupArrays.AbstractMetadata
-# Metadata() = Metadata(Dict{Symbol,Any}())
-
 # getters ##########################################################################################
 
 # metadata accessor functions

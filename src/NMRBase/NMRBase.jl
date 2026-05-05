@@ -27,19 +27,18 @@ using Statistics
 # using Reexport: Reexport
 # Reexport.@reexport using DimensionalData
 using DimensionalData
-using DimensionalData.LookupArrays,
+using DimensionalData.Lookups,
       DimensionalData.Dimensions
 const DD = DimensionalData
 
 # using DimensionalData: Name, NoName
 # using .Dimensions: StandardIndices, DimTuple, Dimension
-# using .LookupArrays: LookupArrayTuple
+# using .Lookups: LookupTuple
 
 import DimensionalData.refdims_title
-import .LookupArrays: metadata, set, _set, rebuild, basetypeof, Metadata,
-                      order, span, sampling, locus, val, index, bounds, hasselection, units,
-                      SelectorOrInterval,
-                      ForwardOrdered
+import .Lookups: metadata, set, _set, rebuild, basetypeof, Metadata,
+                 order, span, sampling, locus, val, bounds, hasselection, units,
+                 SelectorOrInterval, ForwardOrdered
 import .Dimensions: dims, refdims, lookup, hasdim, label, _astuple
 
 include("exceptions.jl")
