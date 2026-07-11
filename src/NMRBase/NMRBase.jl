@@ -54,6 +54,8 @@ include("windows.jl")
 include("metadata.jl")
 include("noise.jl")
 include("processing.jl")
+include("harmonic.jl")
+include("solvent.jl")
 include("peaks.jl")
 include("pcls.jl")
 include("reference.jl")
@@ -112,6 +114,9 @@ export zerofill
 export ft
 export phase
 export extract
+export frequencyshift
+export linearpredict
+export solventfilter
 
 # Dimensions
 export NMRDimension

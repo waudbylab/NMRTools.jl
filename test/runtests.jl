@@ -14,6 +14,10 @@ end
     include("processing_test.jl")
 end
 
+@safetestset "Advanced processing" begin
+    include("advanced_processing_test.jl")
+end
+
 @safetestset "loadfid" begin
     include("loadfid_test.jl")
 end

@@ -367,6 +367,37 @@ function phase(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
     return Dict(k => phase(v, args...; kw...) for (k, v) in d)
 end
 
+# frequencyshift ###################################################################################
+
+"""
+    frequencyshift(spec, dim, Δ)
+
+Shift a time-domain dimension in frequency by `Δ` Hz — multiply the FID by `exp(-imₖ·2π·Δ·t)`, so a
+signal at `+Δ` Hz moves to the carrier (0 Hz). A native multicomplex operation (no reinterpretation),
+used internally by [`solventfilter`](@ref) to move an off-carrier target on resonance, and useful on
+its own for time-domain re-referencing. Curried form `frequencyshift(dim, Δ)` for pipelines.
+"""
+function frequencyshift(spec::NMRData, dim, Δ::Real)
+    di = resolvedim(spec, dim)
+    d = dims(spec, di)
+    mcindex = metadata(d, :mcindex)
+    isnothing(mcindex) &&
+        throw(NMRToolsError("cannot frequency-shift dimension $di ($(typeof(d))): no :mcindex"))
+
+    M = eltype(parent(spec))
+    imk = M(imN(mcindex))
+    t = collect(data(d))
+    θ = -2π * Δ .* t
+    pf = @. cos(θ) + sin(θ) * imk
+    newdata = parent(spec) .* _reshape_along(pf, di, ndims(spec))
+    return rebuild(spec; data=newdata)
+end
+
+frequencyshift(dim, Δ::Real) = spec -> frequencyshift(spec, dim, Δ)
+function frequencyshift(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
+    return Dict(k => frequencyshift(v, args...; kw...) for (k, v) in d)
+end
+
 # extract ##########################################################################################
 
 """
