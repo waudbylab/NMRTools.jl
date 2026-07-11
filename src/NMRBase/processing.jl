@@ -12,9 +12,6 @@
 # Mapping from dimension index to TimeDimension constructor (mirrors FDIM_CONSTRUCTORS)
 const TDIM_CONSTRUCTORS = Dict(1 => T1Dim, 2 => T2Dim, 3 => T3Dim, 4 => T4Dim)
 
-# imaginary units indexed by :mcindex
-const _IMUNITS = (im1, im2, im3, im4)
-
 # Internal helpers #################################################################################
 
 """
@@ -97,14 +94,14 @@ function _mcfft!(A::AbstractArray{<:Multicomplex{T,N,C}}, unit::Integer, di;
 end
 
 """
-    _buildfreqdim(d::TimeDimension, mcindex, n) -> FrequencyDimension
+    _buildfreqdim(d::TimeDimension, di, n) -> FrequencyDimension
 
-Construct the `FrequencyDimension` (`F1Dim`…`F4Dim`, chosen by `mcindex`) produced by Fourier
-transforming time dimension `d` to `n` points. The chemical-shift axis is computed from `:bf`,
-`:swhz` and `:offsetppm`, decreasing (high ppm first) to match the convention used elsewhere in
-NMRTools. All time-dimension metadata is carried over, including `:mcindex`.
+Construct the `FrequencyDimension` (`F1Dim`…`F4Dim`, chosen by the array position `di`) produced by
+Fourier transforming time dimension `d` to `n` points. The chemical-shift axis is computed from
+`:bf`, `:swhz` and `:offsetppm`, decreasing (high ppm first) to match the convention used elsewhere
+in NMRTools. All time-dimension metadata is carried over, including `:mcindex`.
 """
-function _buildfreqdim(d, mcindex, n)
+function _buildfreqdim(d, di, n)
     md = deepcopy(metadata(d).val)
     bf = md[:bf]
     swhz = md[:swhz]
@@ -120,16 +117,16 @@ function _buildfreqdim(d, mcindex, n)
     # the naive band edge offsetppm + swppm/2.
     Δ = swppm / n
     δ = range(offsetppm + (n ÷ 2 - 1) * Δ; step=-Δ, length=n)
-    return FDIM_CONSTRUCTORS[mcindex](δ; metadata=md)
+    return FDIM_CONSTRUCTORS[di](δ; metadata=md)
 end
 
 """
-    _buildtimedim(d::FrequencyDimension, mcindex, n) -> TimeDimension
+    _buildtimedim(d::FrequencyDimension, di, n) -> TimeDimension
 
-Inverse of [`_buildfreqdim`](@ref): construct the `TimeDimension` (`T1Dim`…`T4Dim`) obtained by
-inverse Fourier transforming frequency dimension `d` to `n` points.
+Inverse of [`_buildfreqdim`](@ref): construct the `TimeDimension` (`T1Dim`…`T4Dim`, chosen by the
+array position `di`) obtained by inverse Fourier transforming frequency dimension `d` to `n` points.
 """
-function _buildtimedim(d, mcindex, n)
+function _buildtimedim(d, di, n)
     md = deepcopy(metadata(d).val)
     swhz = md[:swhz]
     dt = 1 / swhz
@@ -138,7 +135,7 @@ function _buildtimedim(d, mcindex, n)
     md[:units] = "s"
     md[:region] = missing
     t = range(0.0; step=dt, length=n)
-    return TDIM_CONSTRUCTORS[mcindex](t; metadata=md)
+    return TDIM_CONSTRUCTORS[di](t; metadata=md)
 end
 
 # apodize ##########################################################################################
@@ -241,7 +238,7 @@ function zerofill(spec::NMRData, dim; factor=2)
     frontidx = ntuple(i -> i == di ? (1:n) : Colon(), nd)
     newdata[frontidx...] = parent(spec)
 
-    newdim = _extendtimedim(d, mcindex, newn)
+    newdim = _extendtimedim(d, di, newn)
     newdims = _replacedimtuple(dims(spec), di, newdim)
     return _rebuilddims(spec, newdata, newdims)
 end
@@ -261,13 +258,13 @@ function zerofill(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
 end
 
 "extend a time dimension to `n` points, continuing the time axis at the same dwell"
-function _extendtimedim(d, mcindex, n)
+function _extendtimedim(d, di, n)
     md = deepcopy(metadata(d).val)
     swhz = md[:swhz]
     dt = 1 / swhz
     md[:tdzf] = n
     t = range(0.0; step=dt, length=n)
-    return TDIM_CONSTRUCTORS[mcindex](t; metadata=md)
+    return TDIM_CONSTRUCTORS[di](t; metadata=md)
 end
 
 # Fourier transform ################################################################################
@@ -297,12 +294,12 @@ function ft(spec::NMRData, dim; inverse=false)
         newdata = reverse(newdata; dims=di)
         newdata = ifftshift(newdata, di)
         _mcfft!(newdata, mcindex, di; inverse=true)
-        newdim = _buildtimedim(d, mcindex, size(newdata, di))
+        newdim = _buildtimedim(d, di, size(newdata, di))
     else
         _mcfft!(newdata, mcindex, di; inverse=false)
         newdata = fftshift(newdata, di)
         newdata = reverse(newdata; dims=di)
-        newdim = _buildfreqdim(d, mcindex, size(newdata, di))
+        newdim = _buildfreqdim(d, di, size(newdata, di))
     end
 
     newdims = _replacedimtuple(dims(spec), di, newdim)
@@ -347,7 +344,7 @@ function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
         throw(NMRToolsError("cannot phase dimension $di ($(typeof(d))): no :mcindex metadata"))
 
     M = eltype(parent(spec))
-    imk = M(_IMUNITS[mcindex])
+    imk = M(imN(mcindex))
     n = size(spec, di)
 
     # fractional point position; pivot defaults to the first point (index 0), as in TopSpin/nmrPipe

@@ -5,8 +5,9 @@
 # performed here so that the returned object is a clean time-domain signal ready for the processing
 # pipeline (`apodize |> zerofill |> ft |> phase |> real`).
 #
-# Currently implemented: 1D, pseudo-2D (non-phase-sensitive indirect dimension) and phase-sensitive
-# 2D (States, States-TPPI, echo/anti-echo). 3D+ raise a clear error until validated.
+# Handles 1D, 2D and 3D data with any mix of phase-sensitive (States, States-TPPI, echo/anti-echo)
+# and pseudo (non-phase-sensitive) indirect dimensions. The multicomplex order equals the number of
+# phase-sensitive dimensions; pseudo dimensions become X-dimensions. 4D+ raises a clear error.
 #
 # NOTE ON CONVENTIONS: several sign conventions in raw-data handling (imaginary sign, digital-filter
 # phase-ramp direction, echo/anti-echo recombination) can only be pinned down against a reference
@@ -92,136 +93,164 @@ end
 # Binary reading ###################################################################################
 
 """
-    _readfid(datafile, acqusdic) -> Matrix
+    _readfid(datafile, acqusdic, nrows) -> Matrix
 
 Read a raw Bruker `fid`/`ser` file into a `(paddedtd, nrows)` matrix of the on-disk numeric type,
-handling endianness (`BYTORDA`) and data type (`DTYPA`). The direct dimension is padded on disk to a
-multiple of 1024 bytes; padding is retained here and trimmed by the caller.
+handling endianness (`BYTORDA`) and data type (`DTYPA`). The directly-detected dimension is
+zero-padded on disk to a block boundary; the padded row length is recovered from the file size and
+the number of stored FIDs (`nrows`), so no block-size assumption is needed. Padding is trimmed by
+the caller.
 """
-function _readfid(datafile, acqusdic)
+function _readfid(datafile, acqusdic, nrows)
     dtype = get(acqusdic, :dtypa, 0) == 2 ? Float64 : Int32
     bigendian = get(acqusdic, :bytorda, 0) == 1
 
-    td = acqusdic[:td]                      # real points in the direct dimension
-    bytes = sizeof(dtype)
-    blockpts = 1024 ÷ bytes                 # 256 (Int32) or 128 (Float64)
-    paddedtd = cld(td, blockpts) * blockpts
-
-    raw = Vector{dtype}(undef, filesize(datafile) ÷ bytes)
+    raw = Vector{dtype}(undef, filesize(datafile) ÷ sizeof(dtype))
     open(datafile) do f
         return read!(f, raw)
     end
     raw = bigendian ? ntoh.(raw) : ltoh.(raw)
 
-    nrows = length(raw) ÷ paddedtd
+    paddedtd = length(raw) ÷ nrows
     return reshape(raw, paddedtd, nrows)
 end
 
 """
-    _directcomplex(rawmatrix, td) -> Matrix{ComplexF64}
+    _directcomplex(raw, td) -> Array{ComplexF64}
 
-Trim the direct-dimension padding and deinterleave the real/imaginary points of every FID into a
-`(td÷2, nrows)` complex matrix (im1 quadrature of the directly detected dimension).
+Trim the direct-dimension padding (to `td` real points) and deinterleave the real/imaginary points
+into a complex array — the im1 quadrature of the directly detected dimension — with `td÷2` points
+along the direct axis.
 """
-function _directcomplex(rawmatrix, td)
-    raw = @view rawmatrix[1:td, :]
-    re = Float64.(@view raw[1:2:end, :])
-    im_ = Float64.(@view raw[2:2:end, :])
+function _directcomplex(raw, td)
+    trimmed = selectdim(raw, 1, 1:td)
+    re = Float64.(selectdim(trimmed, 1, 1:2:td))
+    im_ = Float64.(selectdim(trimmed, 1, 2:2:td))
     return complex.(re, im_)
 end
 
 # Assembly #########################################################################################
 
+const _TDIMS = (T1Dim, T2Dim, T3Dim, T4Dim)
+const _XDIMS = (X1Dim, X2Dim, X3Dim, X4Dim)
+
+# quadrature scheme for an indirect dimension; unknown/absent FnMODE → :undefined (treated as pseudo)
+_scheme(aq) = get(_FNMODE_SCHEMES, Int(get(aq, :fnmode, 0)), :undefined)
+
+"""
+    _indirectstorageorder(acqusdic, ndim) -> Vector{Int}
+
+Return the acqus-file indices (`2:ndim`) of the indirect dimensions, ordered from the fastest-varying
+(innermost) loop to the slowest (outermost) as stored in the `ser` file. For 3D this depends on the
+Bruker `AQSEQ` parameter: `AQSEQ=0` (3-2-1) nests `acqu2s` inside `acqu3s`; `AQSEQ=1` (3-1-2) swaps
+them. 1D/2D have a single (or no) indirect dimension.
+"""
+function _indirectstorageorder(acqusdic, ndim)
+    ndim < 3 && return collect(2:ndim)
+    return Int(get(acqusdic, :aqseq, 0)) == 1 ? [3, 2] : [2, 3]
+end
+
 function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
-    rawmatrix = _readfid(datafile, acqusdic)
-    zc = _directcomplex(rawmatrix, acqusdic[:td])   # (ncomplex1, nrows)
-
-    # dimensionality from the presence of indirect acquXs parameter sets
-    acqu2s = get(md, :acqu2s, nothing)
-    acqu3s = get(md, :acqu3s, nothing)
-
-    if isnothing(acqu2s)
-        return _build1d(zc, md, acqusdic; removefilter=removefilter, firstpoint=firstpoint)
-    elseif isnothing(acqu3s)
-        return _build2d(zc, md, acqusdic, acqu2s; removefilter=removefilter,
-                        firstpoint=firstpoint)
-    else
-        throw(NMRToolsError("loadfid: 3D and higher raw data are not yet supported " *
-                            "(experiment has $(md[:ndim]) dimensions)"))
+    # per-dimension acquisition dictionaries (directly detected dimension first)
+    acqdicts = Any[acqusdic]
+    for k in 2:4
+        aq = get(md, Symbol("acqu$(k)s"), nothing)
+        isnothing(aq) && break
+        push!(acqdicts, aq)
     end
-end
+    ndim = length(acqdicts)
+    ndim <= 3 || throw(NMRToolsError("loadfid: $(ndim)D raw data is not yet supported"))
 
-function _build1d(zc, md, acqusdic; removefilter, firstpoint)
-    size(zc, 2) == 1 ||
-        @warn "loadfid: 1D fid file contains $(size(zc,2)) records; using the first only"
-    y = Multicomplex.(vec(zc[:, 1]))      # order-1 multicomplex vector
+    # The ser file nests the indirect loops fastest→slowest; which indirect dimension is the inner
+    # loop is set by the acquisition (Bruker AQSEQ for 3D), not fixed. Order the acquisition
+    # dictionaries by array axis (axis 1 = direct, axis 2 = innermost indirect, …) so the reshape
+    # puts each indirect dimension's size on the correct axis.
+    axisacq = Any[acqusdic]
+    for k in _indirectstorageorder(acqusdic, ndim)
+        push!(axisacq, acqdicts[k])
+    end
 
+    # read the binary data and reshape to (paddedtd, td2, td3, …)
+    tddirect = Int(acqusdic[:td])
+    indirecttds = [Int(axisacq[k][:td]) for k in 2:ndim]
+    nrows = isempty(indirecttds) ? 1 : prod(indirecttds)
+    raw = _readfid(datafile, acqusdic, nrows)
+    # (paddedtd, td2, td3, …); for 1D this collapses to a plain vector
+    raw = reshape(raw, size(raw, 1), indirecttds...)
+    C = _directcomplex(raw, tddirect)          # ComplexF64 (nc1, td2, td3, …), im1 = direct
+
+    # recombine each phase-sensitive indirect dimension into an extra multicomplex order.
+    # mcindex counts imaginary units in acquisition order (1 = direct); pseudo-dims get `nothing`.
+    y = Multicomplex.(C)                        # order-1 array
+    mcindex = Union{Int,Nothing}[1]
+    nextunit = 2
+    for k in 2:ndim
+        if _scheme(axisacq[k]) in _PHASESENSITIVE
+            y = _recombine_axis(y, k, _scheme(axisacq[k]))
+            push!(mcindex, nextunit)
+            nextunit += 1
+        else
+            push!(mcindex, nothing)
+        end
+    end
+
+    # digital-filter removal (direct dimension only) and first-point scaling (acquisition order)
     removefilter && _removedigitalfilter!(y, acqusdic)
-    _scalefirstpoint!(y, [1 => T1Dim], firstpoint)
+    fourieraxes = [k for k in 1:ndim if !isnothing(mcindex[k])]
+    _scalefirstpoint!(y, [k => _TDIMS[mcindex[k]] for k in fourieraxes], firstpoint)
 
-    xdim = _timedim(acqusdic, 1, T1Dim)
-    outmd = _mainmetadata(md, 1, [xdim])
-    return NMRData(y, (xdim,); metadata=outmd)
-end
+    # reorder axes so Fourier dimensions come first (in acquisition order) and pseudo-dimensions
+    # last, matching the dimension ordering used by loadnmr/loadpdata (e.g. the [1,3,2] permute when
+    # a pseudo-dimension was acquired before a frequency one)
+    pseudoaxes = [k for k in 1:ndim if isnothing(mcindex[k])]
+    neworder = vcat(fourieraxes, pseudoaxes)
+    neworder == collect(1:ndim) || (y = permutedims(y, neworder))
 
-function _build2d(zc, md, acqusdic, acqu2s; removefilter, firstpoint)
-    scheme = _FNMODE_SCHEMES[get(acqu2s, :fnmode, 0)]
-
-    if scheme in _PHASESENSITIVE
-        y = _recombine_indirect(zc, scheme)         # order-2 multicomplex (nc1, nc2)
-        removefilter && _removedigitalfilter!(y, acqusdic)
-        _scalefirstpoint!(y, [1 => T1Dim, 2 => T2Dim], firstpoint)
-
-        xdim = _timedim(acqusdic, 1, T1Dim)
-        ydim = _timedim(acqu2s, 2, T2Dim)
-        ydim[:quadrature] = scheme
-        outmd = _mainmetadata(md, 2, [xdim, ydim])
-        return NMRData(y, (xdim, ydim); metadata=outmd)
-    else
-        # non-phase-sensitive indirect dimension → pseudo-2D (relaxation/diffusion/CEST series)
-        y = Multicomplex.(zc)                        # order-1 multicomplex (nc1, nrows)
-        removefilter && _removedigitalfilter!(y, acqusdic)
-        _scalefirstpoint!(y, [1 => T1Dim], firstpoint)
-
-        xdim = _timedim(acqusdic, 1, T1Dim)
-        n2 = size(y, 2)
-        ydim = X2Dim(1:n2; metadata=Dict{Symbol,Any}(:label => "", :pseudodim => true))
-        outmd = _mainmetadata(md, 2, [xdim, ydim])
-        return NMRData(y, (xdim, ydim); metadata=outmd)
+    # build dimensions in the reordered layout. For a Fourier dimension the new position equals its
+    # :mcindex, so the dimension number (Tn) and imaginary unit stay aligned; pseudo-dims trail.
+    dimlist = NMRDimension[]
+    for (p, k) in enumerate(neworder)
+        if isnothing(mcindex[k])
+            push!(dimlist,
+                  _XDIMS[p](1:size(y, p);
+                            metadata=Dict{Symbol,Any}(:label => "", :pseudodim => true)))
+        else
+            d = _timedim(axisacq[k], p, mcindex[k])
+            k > 1 && (d[:quadrature] = _scheme(axisacq[k]))
+            push!(dimlist, d)
+        end
     end
+
+    outmd = _mainmetadata(md, ndim, dimlist)
+    return NMRData(y, Tuple(dimlist); metadata=outmd)
 end
 
 """
-    _recombine_indirect(zc, scheme) -> Matrix{<:Multicomplex}
+    _recombine_axis(y, k, scheme) -> Array{<:Multicomplex}
 
-Recombine the interleaved real/imaginary records of a phase-sensitive indirect dimension into a
-bicomplex `(ncomplex1, ncomplex2)` matrix, where im1 encodes the direct-dimension quadrature and im2
-the indirect-dimension quadrature.
+Recombine the interleaved real/imaginary records of a phase-sensitive indirect dimension (array axis
+`k`) into an extra multicomplex order, halving that axis. `scheme` selects States, States-TPPI or
+echo/anti-echo (Rance–Kay) recombination. The new imaginary unit encodes that dimension's quadrature.
 """
-function _recombine_indirect(zc, scheme)
-    a = zc[:, 1:2:end]          # "cosine" / echo records
-    b = zc[:, 2:2:end]          # "sine" / anti-echo records
+function _recombine_axis(y, k, scheme)
+    a = copy(selectdim(y, k, 1:2:size(y, k)))   # "cosine" / echo records
+    b = copy(selectdim(y, k, 2:2:size(y, k)))   # "sine" / anti-echo records
 
-    if scheme === :states
-        # nothing further to do
-    elseif scheme === :states_tppi
-        # π phase shift on alternate increments: negate every other complex point
-        for k in axes(a, 2)
-            if iseven(k)
-                @views a[:, k] .*= -1
-                @views b[:, k] .*= -1
-            end
+    if scheme === :states_tppi
+        # π phase shift on alternate increments
+        for i in 2:2:size(a, k)
+            selectdim(a, k, i:i) .*= -1
+            selectdim(b, k, i:i) .*= -1
         end
     elseif scheme === :echoantiecho
-        # Rance–Kay recombination (P = echo, N = anti-echo). The +90° combination conjugates the
-        # indirect (im2) quadrature relative to −90°, giving the correct indirect frequency sign.
-        P = copy(a)
-        N = copy(b)
+        # Rance–Kay recombination (P = echo, N = anti-echo). The 90° shift is in the direct (im1)
+        # plane; +im1 gives the correct indirect frequency sign.
+        P, N = a, b
         a = P .+ N
-        b = (P .- N) .* im
+        b = (P .- N) .* imN(1)
     end
 
-    return Multicomplex.(a, b)   # Multicomplex(::Complex, ::Complex) → order-2 (rr,ir,ri,ii)
+    return Multicomplex.(a, b)   # order N → N+1
 end
 
 # Digital filter removal ###########################################################################
@@ -245,7 +274,7 @@ function _removedigitalfilter!(y, acqusdic)
 
     N = size(y, 1)
     M = eltype(y)
-    imk = M(im1)
+    imk = M(imN(1))
 
     NMRBase._mcfft!(y, 1, 1)                      # FT along direct dimension (im1)
     θ = 2π * grpdly .* (0:(N - 1)) ./ N           # first-order phase ramp (+ sign: to be validated)
@@ -257,9 +286,9 @@ end
 
 # First-point scaling ##############################################################################
 
-function _scalefirstpoint!(y, dimtypes, firstpoint)
+function _scalefirstpoint!(y, axistype_pairs, firstpoint)
     nd = ndims(y)
-    for (di, T) in dimtypes
+    for (di, T) in axistype_pairs
         f = _firstpointfactor(T, firstpoint)
         idx = ntuple(i -> i == di ? (1:1) : Colon(), nd)
         @views y[idx...] .*= f
@@ -274,21 +303,22 @@ _firstpointfactor(::Type, fp::Real) = fp
 # Dimension / metadata construction ################################################################
 
 """
-    _timedim(acqusdic, mcindex, DimType) -> TimeDimension
+    _timedim(aq, di, mcindex) -> TimeDimension
 
-Construct a `TimeDimension` from a Bruker acquisition-parameter dictionary (`acqus`, `acqu2s`, …).
+Construct the `TimeDimension` at array position `di` (naming it `T1Dim`…`T4Dim`) from a Bruker
+acquisition-parameter dictionary `aq` (`acqus`, `acqu2s`, …), linking it to imaginary unit `mcindex`.
 Frequencies are already in Hz (`replacefrequencies!` has run). The time axis is `t = (0:td-1)/sw`.
 """
-function _timedim(acqusdic, mcindex, DimType)
-    swhz = Float64(acqusdic[:sw_h])
-    bf = Float64(acqusdic[:bf1])
-    sf = Float64(acqusdic[:sfo1])
-    o1 = Float64(get(acqusdic, :o1, sf - bf))
+function _timedim(aq, di, mcindex)
+    swhz = Float64(aq[:sw_h])
+    bf = Float64(aq[:bf1])
+    sf = Float64(aq[:sfo1])
+    o1 = Float64(get(aq, :o1, sf - bf))
     offsetppm = o1 / bf * 1e6
     swppm = 1e6 * swhz / bf
-    ncomplex = acqusdic[:td] ÷ 2
+    ncomplex = Int(aq[:td]) ÷ 2
 
-    nucstr = string(get(acqusdic, :nuc1, ""))
+    nucstr = string(get(aq, :nuc1, ""))
     nuc = try
         nucleus(nucstr)
     catch
@@ -315,7 +345,7 @@ function _timedim(acqusdic, mcindex, DimType)
                           :window => nothing,
                           :pseudodim => false,
                           :units => "s")
-    return DimType(t; metadata=dd)
+    return _TDIMS[di](t; metadata=dd)
 end
 
 "assemble the top-level NMRData metadata from the loaded text metadata and the constructed dims"
