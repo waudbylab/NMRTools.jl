@@ -1,0 +1,423 @@
+# Processing pipeline ##############################################################################
+#
+# Composable, non-mutating processing functions for time-domain NMRData. Every function accepts an
+# NMRData (and optionally a dimension identifier), returns a new NMRData, and provides a curried
+# single-argument form for use with `|>` piping. Collection forms map over the values of a
+# `Dict{Symbol,<:NMRData}`.
+#
+# The element type stays `Multicomplex` throughout; only `real`/`imag`/`abs`/`complex` convert.
+# Each processing function reads `:mcindex` from the target dimension to determine which imaginary
+# unit it should operate on.
+
+# Mapping from dimension index to TimeDimension constructor (mirrors FDIM_CONSTRUCTORS)
+const TDIM_CONSTRUCTORS = Dict(1 => T1Dim, 2 => T2Dim, 3 => T3Dim, 4 => T4Dim)
+
+# imaginary units indexed by :mcindex
+const _IMUNITS = (im1, im2, im3, im4)
+
+# Internal helpers #################################################################################
+
+"""
+    _fourierdims(spec) -> Vector{Int}
+
+Return the array-dimension indices of every dimension that carries an `:mcindex` (i.e. the
+`TimeDimension`s / `FrequencyDimension`s that participate in Fourier transformation). Non-Fourier
+axes such as `TrelaxDim` or `X2Dim` have `:mcindex == nothing` and are skipped.
+"""
+function _fourierdims(spec::NMRData)
+    return [i for (i, d) in enumerate(dims(spec)) if !isnothing(metadata(d, :mcindex))]
+end
+
+"reshape a vector `v` so it broadcasts along array dimension `di` of an `nd`-dimensional array"
+_reshape_along(v, di, nd) = reshape(v, ntuple(i -> i == di ? length(v) : 1, nd))
+
+"return a copy of a dimension tuple with the `di`-th element replaced by `newdim`"
+function _replacedimtuple(dimstuple, di, newdim)
+    # type the vector as the abstract supertype so a FrequencyDimension can replace a TimeDimension
+    v = Vector{NMRDimension}([dimstuple...])
+    v[di] = newdim
+    return Tuple(v)
+end
+
+"""
+    _rebuilddims(spec, newdata, newdims)
+
+Rebuild `spec` with new data and dimensions, going through the `NMRData(A, dims; …)` constructor so
+that DimensionalData's `format` runs on the new dimensions (a plain `rebuild` bypasses formatting and
+leaves freshly-built dimensions as unformatted `AutoLookup`s).
+"""
+function _rebuilddims(spec, newdata, newdims)
+    return NMRData(newdata, Tuple(newdims); refdims=spec.refdims, name=spec.name,
+                   metadata=deepcopy(metadata(spec)), missingval=spec.missingval)
+end
+
+"acquisition time (s) for a time dimension, used as the default window `tmax`"
+function _acqtime(d)
+    sw = metadata(d, :swhz)
+    td = metadata(d, :td)
+    if !isnothing(sw) && !isnothing(td)
+        return td / sw
+    elseif !isnothing(sw)
+        return length(d) / sw
+    else
+        return Inf
+    end
+end
+
+# fill in a window's tmax when it was left unspecified (Inf), so sine/cosine windows have a length
+_settmax(w::NullWindow, ::Real) = w
+_settmax(w::UnknownWindow, ::Real) = w
+_settmax(w::ExponentialWindow, t::Real) = isfinite(w.tmax) ? w : ExponentialWindow(w.lb, t)
+_settmax(w::CosWindow, t::Real) = isfinite(w.tmax) ? w : CosWindow(t)
+_settmax(w::Cos²Window, t::Real) = isfinite(w.tmax) ? w : Cos²Window(t)
+function _settmax(w::GeneralSineWindow, t::Real)
+    return isfinite(w.tmax) ? w : GeneralSineWindow(w.offset, w.endpoint, w.power, t)
+end
+_settmax(w::WindowFunction, ::Real) = w
+
+"""
+    _mcfft!(A, unit, di; inverse=false)
+
+In-place Fourier transform of a multicomplex array `A` along array dimension `di`, treating the
+imaginary unit `unit` (the dimension's `:mcindex`) as the complex `i`. Reinterprets the multicomplex
+memory as `Complex` (via MulticomplexNumbers' unsafe reinterpretation, exactly as its FFTW extension
+does), applies `FFTW.fft!`/`ifft!`, then reinterprets back. `ifft!` includes the `1/N` normalisation
+so that `_mcfft!(inverse=true)` inverts `_mcfft!`.
+"""
+function _mcfft!(A::AbstractArray{<:Multicomplex{T,N,C}}, unit::Integer, di;
+                 inverse=false) where {T,N,C}
+    w = MulticomplexNumbers.unsafe_ascomplex!(A, unit)
+    d = di .+ (N - 1)   # the complex reinterpretation prepends (N-1) collapsed dimensions
+    try
+        inverse ? FFTW.ifft!(w, d) : FFTW.fft!(w, d)
+    finally
+        MulticomplexNumbers.unsafe_fromcomplex!(A, unit)
+    end
+    return A
+end
+
+"""
+    _buildfreqdim(d::TimeDimension, mcindex, n) -> FrequencyDimension
+
+Construct the `FrequencyDimension` (`F1Dim`…`F4Dim`, chosen by `mcindex`) produced by Fourier
+transforming time dimension `d` to `n` points. The chemical-shift axis is computed from `:bf`,
+`:swhz` and `:offsetppm`, decreasing (high ppm first) to match the convention used elsewhere in
+NMRTools. All time-dimension metadata is carried over, including `:mcindex`.
+"""
+function _buildfreqdim(d, mcindex, n)
+    md = deepcopy(metadata(d).val)
+    bf = md[:bf]
+    swhz = md[:swhz]
+    offsetppm = md[:offsetppm]
+    swppm = 1e6 * swhz / bf
+    md[:swppm] = swppm
+    md[:tdzf] = n
+    md[:npoints] = n
+    md[:region] = missing
+    md[:units] = "ppm"
+    # decreasing ppm axis (a range → Regular lookup). `reverse ∘ fftshift` places the carrier (DC)
+    # at data index n÷2, so the axis labels that point offsetppm; δ[1] is therefore one point below
+    # the naive band edge offsetppm + swppm/2.
+    Δ = swppm / n
+    δ = range(offsetppm + (n ÷ 2 - 1) * Δ; step=-Δ, length=n)
+    return FDIM_CONSTRUCTORS[mcindex](δ; metadata=md)
+end
+
+"""
+    _buildtimedim(d::FrequencyDimension, mcindex, n) -> TimeDimension
+
+Inverse of [`_buildfreqdim`](@ref): construct the `TimeDimension` (`T1Dim`…`T4Dim`) obtained by
+inverse Fourier transforming frequency dimension `d` to `n` points.
+"""
+function _buildtimedim(d, mcindex, n)
+    md = deepcopy(metadata(d).val)
+    swhz = md[:swhz]
+    dt = 1 / swhz
+    md[:tdzf] = n
+    md[:npoints] = n
+    md[:units] = "s"
+    md[:region] = missing
+    t = range(0.0; step=dt, length=n)
+    return TDIM_CONSTRUCTORS[mcindex](t; metadata=md)
+end
+
+# apodize ##########################################################################################
+
+"""
+    apodize(spec, [dim], [window]; inverse=false)
+
+Apply a window function along the specified `TimeDimension`(s) of `spec`. Pass a
+[`WindowFunction`](@ref) positionally to set the window; omit it to use the window stored in each
+dimension's `:window` metadata (falling back to no apodization). With no dimension argument every
+Fourier time dimension is apodized. The window's `tmax` is filled in automatically from the
+dimension's acquisition time (`:td`/`:swhz`), so lengths need not be given — e.g. `Cos²Window()`.
+`inverse=true` divides by the window (undoing a previous apodization). Curried and dictionary forms
+are provided for pipelines.
+
+```julia
+loadfid("1/ser") |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft
+loadfid("1/ser") |> apodize(T1Dim, ExponentialWindow(5.0)) |> apodize(T2Dim, Cos²Window())
+```
+"""
+function apodize(spec::NMRData, dim, window::WindowFunction; inverse=false)
+    di = resolvedim(spec, dim)
+    d = dims(spec, di)
+    d isa TimeDimension ||
+        throw(ArgumentError("apodize: dimension $di ($(typeof(d))) is not a TimeDimension"))
+
+    w = _settmax(window, _acqtime(d))
+    wv = apod(collect(data(d)), w)
+    inverse && (wv = 1 ./ wv)
+
+    newdata = parent(spec) .* _reshape_along(wv, di, ndims(spec))
+    newspec = rebuild(spec; data=newdata)
+    metadata(newspec, di)[:window] = w
+    return newspec
+end
+
+# specific dimension, window taken from the dimension's metadata
+function apodize(spec::NMRData, dim; inverse=false)
+    d = dims(spec, resolvedim(spec, dim))
+    w = metadata(d, :window)
+    isnothing(w) && (w = NullWindow())
+    return apodize(spec, dim, w; inverse=inverse)
+end
+
+# all Fourier dimensions, explicit window
+function apodize(spec::NMRData, window::WindowFunction; inverse=false)
+    out = spec
+    for di in _fourierdims(spec)
+        out = apodize(out, di, window; inverse=inverse)
+    end
+    return out
+end
+
+# all Fourier dimensions, window from metadata
+function apodize(spec::NMRData; inverse=false)
+    out = spec
+    for di in _fourierdims(spec)
+        out = apodize(out, di; inverse=inverse)
+    end
+    return out
+end
+
+# curried forms for piping
+apodize(; inverse=false) = spec -> apodize(spec; inverse=inverse)
+apodize(window::WindowFunction; inverse=false) = spec -> apodize(spec, window; inverse=inverse)
+apodize(dim; inverse=false) = spec -> apodize(spec, dim; inverse=inverse)
+function apodize(dim, window::WindowFunction; inverse=false)
+    return spec -> apodize(spec, dim, window; inverse=inverse)
+end
+
+# collection form
+function apodize(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
+    return Dict(k => apodize(v, args...; kw...) for (k, v) in d)
+end
+
+# zerofill #########################################################################################
+
+"""
+    zerofill(spec, [dim]; factor=2)
+
+Zero-fill the specified `TimeDimension`(s) by the given integer `factor` (default doubling the
+number of points), appending zeros to the end of the FID. The dimension length and `:tdzf` metadata
+are updated. With no dimension argument, every Fourier time dimension is zero-filled.
+"""
+function zerofill(spec::NMRData, dim; factor=2)
+    di = resolvedim(spec, dim)
+    d = dims(spec, di)
+    d isa TimeDimension ||
+        throw(ArgumentError("zerofill: dimension $di ($(typeof(d))) is not a TimeDimension"))
+    mcindex = metadata(d, :mcindex)
+    isnothing(mcindex) &&
+        throw(ArgumentError("zerofill: dimension $di has no :mcindex and cannot be zero-filled"))
+
+    n = size(spec, di)
+    newn = factor * n
+    nd = ndims(spec)
+    M = eltype(parent(spec))
+    newsz = ntuple(i -> i == di ? newn : size(spec, i), nd)
+    newdata = zeros(M, newsz)
+    frontidx = ntuple(i -> i == di ? (1:n) : Colon(), nd)
+    newdata[frontidx...] = parent(spec)
+
+    newdim = _extendtimedim(d, mcindex, newn)
+    newdims = _replacedimtuple(dims(spec), di, newdim)
+    return _rebuilddims(spec, newdata, newdims)
+end
+
+function zerofill(spec::NMRData; kw...)
+    out = spec
+    for di in _fourierdims(spec)
+        out = zerofill(out, di; kw...)
+    end
+    return out
+end
+
+zerofill(; kw...) = spec -> zerofill(spec; kw...)
+zerofill(dim; kw...) = spec -> zerofill(spec, dim; kw...)
+function zerofill(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
+    return Dict(k => zerofill(v, args...; kw...) for (k, v) in d)
+end
+
+"extend a time dimension to `n` points, continuing the time axis at the same dwell"
+function _extendtimedim(d, mcindex, n)
+    md = deepcopy(metadata(d).val)
+    swhz = md[:swhz]
+    dt = 1 / swhz
+    md[:tdzf] = n
+    t = range(0.0; step=dt, length=n)
+    return TDIM_CONSTRUCTORS[mcindex](t; metadata=md)
+end
+
+# Fourier transform ################################################################################
+
+"""
+    ft(spec, [dim]; inverse=false)
+
+Fourier transform the specified dimension(s). A `TimeDimension` becomes the corresponding
+`FrequencyDimension` (and vice versa for `inverse=true`). The imaginary unit used for the transform
+is read from the dimension's `:mcindex`. With no dimension argument, every Fourier time dimension is
+transformed in dimension order (direct dimension first).
+
+The forward transform is `reverse ∘ fftshift ∘ fft`, so that a positive offset frequency maps to
+higher chemical shift and the spectrum is ordered high-ppm-first, matching data loaded via
+[`loadnmr`](@ref NMRTools.NMRIO.loadnmr); the inverse composes the exact opposites so that
+`ft(inverse=true) ∘ ft ≈ identity`.
+"""
+function ft(spec::NMRData, dim; inverse=false)
+    di = resolvedim(spec, dim)
+    d = dims(spec, di)
+    mcindex = metadata(d, :mcindex)
+    isnothing(mcindex) && throw(NMRToolsError("cannot Fourier transform dimension $di " *
+                                              "($(typeof(d))): no :mcindex metadata"))
+
+    newdata = copy(parent(spec))
+    if inverse
+        newdata = reverse(newdata; dims=di)
+        newdata = ifftshift(newdata, di)
+        _mcfft!(newdata, mcindex, di; inverse=true)
+        newdim = _buildtimedim(d, mcindex, size(newdata, di))
+    else
+        _mcfft!(newdata, mcindex, di; inverse=false)
+        newdata = fftshift(newdata, di)
+        newdata = reverse(newdata; dims=di)
+        newdim = _buildfreqdim(d, mcindex, size(newdata, di))
+    end
+
+    newdims = _replacedimtuple(dims(spec), di, newdim)
+    # refresh the noise estimate: it only becomes physically meaningful in the frequency domain
+    return estimatenoise(_rebuilddims(spec, newdata, newdims))
+end
+
+function ft(spec::NMRData; kw...)
+    out = spec
+    for di in _fourierdims(spec)
+        out = ft(out, di; kw...)
+    end
+    return out
+end
+
+ft(; kw...) = spec -> ft(spec; kw...)
+ft(dim; kw...) = spec -> ft(spec, dim; kw...)
+function ft(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
+    return Dict(k => ft(v, args...; kw...) for (k, v) in d)
+end
+
+# phase ############################################################################################
+
+"""
+    phase(spec, dim, p0, p1=0; pivot=nothing)
+
+Apply a phase correction along dimension `dim`: zero-order `p0` and first-order `p1`, both in
+degrees. The imaginary unit that carries the phase is read from the dimension's `:mcindex`, so the
+same function works in the time or frequency domain.
+
+The correction follows the TopSpin / nmrPipe convention: the phase applied to point `n`
+(0-indexed) is `p0 + p1·n/N`, multiplied in as `exp(imₖ·θ)`. The pivot — the point where only `p0`
+acts — therefore defaults to the **first point** (left edge, highest ppm), so `p0`/`p1` correspond
+directly to TopSpin's `PHC0`/`PHC1`. Pass `pivot` (ppm for a frequency dimension, seconds for a time
+dimension) to move it. A curried form `phase(dim, p0, p1=0; pivot)` is provided for pipelines.
+"""
+function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
+    di = resolvedim(spec, dim)
+    d = dims(spec, di)
+    mcindex = metadata(d, :mcindex)
+    isnothing(mcindex) &&
+        throw(NMRToolsError("cannot phase dimension $di ($(typeof(d))): no :mcindex metadata"))
+
+    M = eltype(parent(spec))
+    imk = M(_IMUNITS[mcindex])
+    n = size(spec, di)
+
+    # fractional point position; pivot defaults to the first point (index 0), as in TopSpin/nmrPipe
+    ipiv = isnothing(pivot) ? 0.0 : _pivotindex(d, pivot)
+    frac = ((0:(n - 1)) .- ipiv) ./ n
+    θ = deg2rad(p0) .+ deg2rad(p1) .* frac
+    pf = @. cos(θ) + sin(θ) * imk
+    newdata = parent(spec) .* _reshape_along(pf, di, ndims(spec))
+    return rebuild(spec; data=newdata)
+end
+
+"0-based fractional point index at which the dimension axis equals `pivot`"
+function _pivotindex(d, pivot)
+    ax = data(d)
+    return (pivot - ax[1]) / (ax[2] - ax[1])
+end
+
+phase(dim, p0::Real, p1::Real=0.0; pivot=nothing) = spec -> phase(spec, dim, p0, p1; pivot)
+function phase(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
+    return Dict(k => phase(v, args...; kw...) for (k, v) in d)
+end
+
+# extract ##########################################################################################
+
+"""
+    extract(dim, range)
+    extract(dim1 => range1, dim2 => range2, ...)
+
+Return a pipeline-compatible closure that selects a region of a spectrum. `dim` is a dimension type
+(e.g. `F1Dim`) and `range` an interval (e.g. `6.0 .. 10.0`).
+
+```julia
+loadfid("1/ser") |> ft |> extract(F1Dim, 6.0 .. 10.0) |> phase(F1Dim, -50) |> real
+```
+"""
+extract(dim, range) = spec -> spec[dim(range)]
+function extract(pairs::Pair...)
+    return spec -> spec[(p.first(p.second) for p in pairs)...]
+end
+
+# element-type conversions #########################################################################
+
+"""
+    real(spec::NMRData)
+
+Extract the purely real component of a multicomplex spectrum (elementwise `realest`), returning an
+`NMRData` with `Float64` element type. This is the final step of a processing pipeline.
+"""
+Base.real(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=realest.(parent(spec)))
+
+"""
+    imag(spec::NMRData)
+
+Elementwise imaginary part (strips the highest-order imaginary unit).
+"""
+Base.imag(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=imag.(parent(spec)))
+
+"""
+    abs(spec::NMRData)
+
+Elementwise magnitude of a multicomplex spectrum, returning `Float64` data.
+"""
+Base.abs(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=abs.(parent(spec)))
+
+"""
+    complex(spec::NMRData)
+
+Convert a first-order multicomplex spectrum (`Multicomplex{T,1,2}`) to Julia `Complex{T}`.
+"""
+function Base.complex(spec::NMRData{<:Multicomplex{T,1,2}}) where {T}
+    z = [Complex(realest(m), imag(m)) for m in parent(spec)]
+    return rebuild(spec; data=z)
+end

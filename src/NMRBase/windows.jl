@@ -80,6 +80,9 @@ struct GeneralSineWindow <: SineWindow
     endpoint::Float64
     power::Float64
     tmax::Float64
+    function GeneralSineWindow(offset=0.0, endpoint=1.0, power=1.0, tmax=Inf)
+        return new(offset, endpoint, power, tmax)
+    end
 end
 
 """
@@ -91,6 +94,7 @@ See also [`Cos²Window`](@ref), [`SineWindow`](@ref).
 """
 struct CosWindow <: SineWindow
     tmax::Float64
+    CosWindow(tmax=Inf) = new(tmax)
 end
 
 """
@@ -102,6 +106,7 @@ See also [`CosWindow`](@ref), [`SineWindow`](@ref).
 """
 struct Cos²Window <: SineWindow
     tmax::Float64
+    Cos²Window(tmax=Inf) = new(tmax)
 end
 
 """

@@ -15,6 +15,7 @@ using .SchemaMigrate
 
 include("lists.jl")
 include("loadnmr.jl")
+include("loadfid.jl")
 include("jdx.jl")
 include("acqus.jl")
 include("nmrpipe.jl")
@@ -28,6 +29,7 @@ include("exampledata.jl")
 include("sumexpts.jl")
 
 export loadnmr
+export loadfid
 export loadmetadata
 export loadjdx
 export FQList

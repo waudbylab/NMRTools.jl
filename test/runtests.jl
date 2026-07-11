@@ -10,6 +10,14 @@ end
     include("nmrio_test.jl")
 end
 
+@safetestset "Processing" begin
+    include("processing_test.jl")
+end
+
+@safetestset "loadfid" begin
+    include("loadfid_test.jl")
+end
+
 @safetestset "PlotsExt" begin
     include("plotsext_test.jl")
 end

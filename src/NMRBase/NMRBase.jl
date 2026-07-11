@@ -16,6 +16,7 @@ const DDarraydocs = joinpath(DDdocs, "#DimensionalData.AbstractDimensionalArray"
 # const DDtidocs = joinpath(DDdocs, "#DimensionalData.Ti")
 
 using Dates: Dates, DateTime, Date, unix2datetime
+using FFTW
 using LinearAlgebra
 using MulticomplexNumbers
 using Optim
@@ -52,6 +53,7 @@ include("nmrdata.jl")
 include("windows.jl")
 include("metadata.jl")
 include("noise.jl")
+include("processing.jl")
 include("peaks.jl")
 include("pcls.jl")
 include("reference.jl")
@@ -103,6 +105,13 @@ export set, rebuild, reorder, modify, broadcast_dims, broadcast_dims!, ForwardOr
 export scale
 export estimatenoise
 export decimate
+
+# Processing pipeline
+export apodize
+export zerofill
+export ft
+export phase
+export extract
 
 # Dimensions
 export NMRDimension
