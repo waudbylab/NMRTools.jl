@@ -133,15 +133,37 @@ function _lpextrapolate(x::AbstractVector{<:Complex}, a::AbstractVector{<:Comple
 end
 
 """
+    _zhubaxforward(x, order, rootfix) -> Vector{Complex}
+
+Forward-extension LP coefficients by the Zhu–Bax scheme: fit *backward* LP, treat the roots of its
+prediction polynomial (`Σⱼ bⱼwʲ = 1`) as the candidate poles, reflect any with `|z|>1` to `1/conj(z)`
+so the forward extrapolation cannot grow, and rebuild forward coefficients. This separates signal
+poles (inside the unit circle) from noise poles more cleanly than a direct forward fit, and is the
+variant NMR usually prefers. With `rootfix=false`, falls back to a plain forward least-squares fit.
+"""
+function _zhubaxforward(x::AbstractVector{<:Complex}, order::Integer, rootfix::Bool)
+    rootfix || return _lpcoefficients(x, order, :forward)
+    b = _lpcoefficients(x, order, :backward)
+    poles = _polyroots(vcat(reverse(b), -one(eltype(b))))     # roots of Σ bⱼ wʲ − 1
+    poles = [abs(z) > 1 ? 1 / conj(z) : z for z in poles]     # keep inside for stable forward
+    return -_polyfromroots(poles)[2:end]                      # rebuild forward coefficients
+end
+
+"""
     _lppredict(x; npred, order, direction, rootfix) -> Vector{Complex}
 
-Linear-prediction extension of `x` by `npred` points: fit LP coefficients, optionally reflect roots
-for stability, and extrapolate by recurrence.
+Linear-prediction extension of `x` by `npred` points, extrapolating by recurrence. Forward extension
+uses the Zhu–Bax backward-fit-and-reflect coefficients (stable); backward extension uses a direct
+backward fit with root reflection.
 """
 function _lppredict(x::AbstractVector{<:Complex}; npred::Integer, order::Integer,
                     direction::Symbol=:forward, rootfix::Bool=true)
-    a = _lpcoefficients(x, order, direction)
-    rootfix && (a = _reflectroots(a, direction))
+    if direction === :forward
+        a = _zhubaxforward(x, order, rootfix)
+    else
+        a = _lpcoefficients(x, order, :backward)
+        rootfix && (a = _reflectroots(a, :backward))
+    end
     return _lpextrapolate(x, a, npred, direction)
 end
 
@@ -299,10 +321,11 @@ end
                   direction=:forward, replace=0, rootfix=true)
 
 Linear-prediction extension (or first-point repair) of the specified `TimeDimension`(s) using the
-autoregressive coefficient method (as in nmrPipe/nmrglue): fit LP coefficients, optionally reflect
-the prediction-polynomial roots for stability, and extrapolate by recurrence. With no dimension
-argument, every *indirect* Fourier dimension is extended (forward LP of the directly detected
-dimension is rarely wanted). Applied per vector — cheap because the model `order` is small.
+autoregressive coefficient method (as in nmrPipe/nmrglue). Forward extension uses the Zhu–Bax scheme
+by default (fit backward LP, reflect the prediction-polynomial roots inside the unit circle, rebuild
+forward coefficients), which is the stable variant preferred for NMR; extrapolation is by recurrence.
+With no dimension argument, every *indirect* Fourier dimension is extended (forward LP of the directly
+detected dimension is rarely wanted). Applied per vector — cheap because the model `order` is small.
 
 # Keywords
 - `npoints`: target length after prediction. Defaults to `factor × td`.
