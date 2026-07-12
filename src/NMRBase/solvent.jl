@@ -113,7 +113,7 @@ function solventfilter(spec::NMRData, dim; shift=:carrier, method::Symbol=:lowpa
         bandhz = isnothing(band) ? Float64(width) : Float64(band)
         n = size(sp, di)
         nc = ncoef === :auto ? clamp(n ÷ 16, 16, 48) : ncoef
-        kernel = x -> _hsvdsubtract(x; dt=dt, targethz=0.0, bandhz=bandhz, ncoef=nc)
+        kernel = _percolumn(x -> _hsvdsubtract(x; dt=dt, targethz=0.0, bandhz=bandhz, ncoef=nc))
         out = rebuild(sp; data=_maptransform(parent(sp), di, mcindex, kernel))
     else
         throw(ArgumentError("solventfilter: method must be :lowpass or :hsvd, got $method"))

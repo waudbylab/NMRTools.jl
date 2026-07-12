@@ -1,17 +1,169 @@
-# Harmonic inversion (Hankel-SVD) core ############################################################
+# Parametric signal analysis ######################################################################
 #
-# Models a 1-D complex signal as a sum of K damped complex exponentials
-#   x[n] ≈ Σ_k cₖ · zₖⁿ ,   zₖ = exp((-λₖ + i·2π·fₖ)·dt)
-# via the state-space / matrix-pencil (ESPRIT/Kung) method: SVD of a Hankel matrix gives the signal
-# subspace, whose shift-invariance yields the poles zₖ; amplitudes cₖ follow from a Vandermonde fit.
+# Two distinct methods on 1-D complex signals, kept separate because they are used for different
+# things (and the earlier code wrongly used the first for both):
 #
-# This single core backs both linear prediction (extrapolate with the fitted model) and HSVD solvent
-# suppression (reconstruct and subtract only the components whose frequency falls in a chosen band).
-# The kernels operate on plain complex vectors so they can be tested in isolation; multicomplex data
-# is fed in one imₖ-plane vector at a time by `_maptransform` (see below).
+#   Linear prediction (`linearpredict`) — the standard autoregressive method (as in nmrPipe /
+#   nmrglue). Solve for LP coefficients `aⱼ` such that `x[n] ≈ Σⱼ aⱼ x[n∓j]`, optionally reflect the
+#   roots of the prediction polynomial for stability, then EXTRAPOLATE by recurrence. Cheap per
+#   vector (small order), no pole/amplitude fitting.
+#
+#   Harmonic inversion / HSVD (`solventfilter(method=:hsvd)`) — the state-space (ESPRIT) method:
+#   model `x[n] ≈ Σₖ cₖ zₖⁿ` as damped exponentials via SVD of a Hankel matrix, giving explicit
+#   frequencies used to subtract only the components in a chosen band.
+#
+# Kernels operate on plain complex vectors (testable in isolation); multicomplex data is fed one
+# imₖ-plane vector at a time by `_maptransform`.
 
-# cap the Hankel row count so the per-vector SVD stays cheap on long FIDs. `L` bounds both the
-# frequency resolution (~sw/L) and the cost (SVD is O(L²·M)); the ESPRIT eigenproblem is O(K³).
+# ---------------------------------------------------------------------------------------------------
+# Linear prediction (autoregressive coefficient method)
+# ---------------------------------------------------------------------------------------------------
+
+"""
+    _lpcoefficients(x, order, direction) -> Vector{Complex}
+
+Least-squares LP coefficients `a` of the given `order` for complex vector `x`. For `:forward`,
+`x[n] ≈ Σⱼ aⱼ x[n-j]`; for `:backward`, `x[n] ≈ Σⱼ aⱼ x[n+j]`. Solved by QR (`D \\ d`).
+"""
+function _lpcoefficients(x::AbstractVector{<:Complex}, order::Integer, direction::Symbol)
+    N = length(x)
+    m = clamp(order, 1, N - 1)
+    K = N - m
+    D = Matrix{eltype(x)}(undef, K, m)
+    d = Vector{eltype(x)}(undef, K)
+    if direction === :forward
+        @inbounds for i in 1:K
+            for j in 1:m
+                D[i, j] = x[m + i - j]     # x[n-1 … n-m], n = m+i
+            end
+            d[i] = x[m + i]
+        end
+    else                                    # backward
+        @inbounds for i in 1:K
+            for j in 1:m
+                D[i, j] = x[i + j]          # x[n+1 … n+m], n = i
+            end
+            d[i] = x[i]
+        end
+    end
+    return D \ d
+end
+
+# polynomial helpers for root reflection --------------------------------------------------------
+
+"coefficients (descending, leading first) of ∏(z − rₖ)"
+function _polyfromroots(r::AbstractVector{<:Complex})
+    p = Complex{Float64}[1]
+    for rk in r
+        q = similar(p, length(p) + 1)
+        fill!(q, 0)
+        for i in eachindex(p)
+            q[i] += p[i]
+            q[i + 1] -= p[i] * rk
+        end
+        p = q
+    end
+    return p
+end
+
+"roots of the monic-normalised polynomial with descending coefficients `pc`"
+function _polyroots(pc::AbstractVector{<:Complex})
+    a = pc ./ pc[1]
+    m = length(a) - 1
+    m == 0 && return Complex{Float64}[]
+    Cm = zeros(Complex{Float64}, m, m)
+    Cm[1, :] .= -a[2:end]
+    for i in 2:m
+        Cm[i, i - 1] = 1
+    end
+    return eigvals(Cm)
+end
+
+"""
+    _reflectroots(a, direction) -> Vector{Complex}
+
+Stabilise LP coefficients `a` by reflecting the roots of the prediction polynomial across the unit
+circle: for `:forward` extension, roots with `|z|>1` (growing) are mapped to `1/conj(z)` (inside);
+for `:backward`, roots with `|z|<1` are pushed outside. Coefficients are rebuilt from the reflected
+roots.
+"""
+function _reflectroots(a::AbstractVector{<:Complex}, direction::Symbol)
+    # recurrence characteristic polynomial: zᵐ − a₁zᵐ⁻¹ − … − aₘ  →  coeffs [1, −a₁, …, −aₘ]
+    r = _polyroots(vcat(one(eltype(a)), -a))
+    for k in eachindex(r)
+        ρ = abs(r[k])
+        if direction === :forward && ρ > 1
+            r[k] = 1 / conj(r[k])
+        elseif direction === :backward && 0 < ρ < 1
+            r[k] = 1 / conj(r[k])
+        end
+    end
+    pc = _polyfromroots(r)          # [1, −a₁′, …]
+    return -pc[2:end]
+end
+
+"""
+    _lpextrapolate(x, a, npred, direction) -> Vector{Complex}
+
+Extend `x` by `npred` points by iterating the LP recurrence with coefficients `a`: `:forward` appends
+`Σⱼ aⱼ x[end-j+1]`, `:backward` prepends `Σⱼ aⱼ x[j]`.
+"""
+function _lpextrapolate(x::AbstractVector{<:Complex}, a::AbstractVector{<:Complex}, npred::Integer,
+                        direction::Symbol)
+    m = length(a)
+    y = collect(x)
+    if direction === :forward
+        for _ in 1:npred
+            v = zero(eltype(y))
+            @inbounds for j in 1:m
+                v += a[j] * y[end - j + 1]
+            end
+            push!(y, v)
+        end
+    else
+        for _ in 1:npred
+            v = zero(eltype(y))
+            @inbounds for j in 1:m
+                v += a[j] * y[j]
+            end
+            pushfirst!(y, v)
+        end
+    end
+    return y
+end
+
+"""
+    _lppredict(x; npred, order, direction, rootfix) -> Vector{Complex}
+
+Linear-prediction extension of `x` by `npred` points: fit LP coefficients, optionally reflect roots
+for stability, and extrapolate by recurrence.
+"""
+function _lppredict(x::AbstractVector{<:Complex}; npred::Integer, order::Integer,
+                    direction::Symbol=:forward, rootfix::Bool=true)
+    a = _lpcoefficients(x, order, direction)
+    rootfix && (a = _reflectroots(a, direction))
+    return _lpextrapolate(x, a, npred, direction)
+end
+
+"""
+    _lprepair(x; nrepair, order, rootfix) -> Vector{Complex}
+
+Replace the first `nrepair` points of `x` by backward prediction from the remaining points (length
+unchanged).
+"""
+function _lprepair(x::AbstractVector{<:Complex}; nrepair::Integer, order::Integer,
+                   rootfix::Bool=true)
+    good = collect(@view x[(nrepair + 1):end])
+    a = _lpcoefficients(good, order, :backward)
+    rootfix && (a = _reflectroots(a, :backward))
+    return _lpextrapolate(good, a, nrepair, :backward)   # prepends nrepair points
+end
+
+# ---------------------------------------------------------------------------------------------------
+# Harmonic inversion / HSVD (used by solvent suppression)
+# ---------------------------------------------------------------------------------------------------
+
+# cap the Hankel row count so the per-vector SVD stays cheap on long FIDs.
 const _HANKEL_LMAX = 256
 
 """
@@ -19,14 +171,13 @@ const _HANKEL_LMAX = 256
 
 Estimate up to `K` signal poles `zₖ` of the complex vector `x` by ESPRIT: SVD of the Hankel matrix,
 then the eigenvalues of the shift-invariance operator on the truncated left singular subspace. `L`
-(Hankel rows) is capped at `_HANKEL_LMAX` by default to bound cost; the model order `K` is the main
-speed lever (eigenproblem is O(K³)).
+(Hankel rows) is capped at `_HANKEL_LMAX`; the model order `K` sets the eigenproblem size.
 """
 function _hankelpoles(x::AbstractVector{<:Complex}, K::Integer; L::Integer=0)
     N = length(x)
     K = clamp(K, 1, (N - 1) ÷ 2)
     L = L > 0 ? L : min((N + 1) ÷ 2, _HANKEL_LMAX)
-    L = clamp(L, K + 1, N - K)      # need L>K and M=N-L+1>K for the pencil
+    L = clamp(L, K + 1, N - K)
     M = N - L + 1
     H = Matrix{eltype(x)}(undef, L, M)
     for j in 1:M, i in 1:L
@@ -34,15 +185,11 @@ function _hankelpoles(x::AbstractVector{<:Complex}, K::Integer; L::Integer=0)
     end
     F = svd(H)
     Uk = @view F.U[:, 1:K]
-    Z = Uk[1:(end - 1), :] \ Uk[2:end, :]   # least-squares shift invariance
+    Z = Uk[1:(end - 1), :] \ Uk[2:end, :]
     return eigvals(Z)
 end
 
-"""
-    _amplitudes(x, poles) -> Vector{Complex}
-
-Least-squares complex amplitudes `cₖ` such that `x[n] ≈ Σ cₖ·polesₖ^(n-1)` (Vandermonde solve).
-"""
+"least-squares complex amplitudes `cₖ` such that `x[n] ≈ Σ cₖ·polesₖ^(n-1)`"
 function _amplitudes(x::AbstractVector{<:Complex}, poles::AbstractVector{<:Complex})
     N = length(x)
     V = Matrix{eltype(x)}(undef, N, length(poles))
@@ -57,22 +204,11 @@ function _amplitudes(x::AbstractVector{<:Complex}, poles::AbstractVector{<:Compl
     return V \ collect(x)
 end
 
-"reflect poles outside the unit circle to inside (keep angle) so extrapolation cannot diverge"
-_stabilize(poles, ::Val{:decreasing}) = [abs(z) > 1 ? 1 / conj(z) : z for z in poles]
-"reflect poles inside the unit circle to outside (for backward prediction)"
-_stabilize(poles, ::Val{:increasing}) = [abs(z) < 1 ? 1 / conj(z) : z for z in poles]
-_stabilize(poles, ::Val{:none}) = poles
-
-"""
-    _evalmodel(poles, c, ns) -> Vector
-
-Evaluate the fitted model `Σ cₖ·polesₖ^(n-1)` at the sample indices in the range `ns`, iterating the
-powers (`cur .*= poles`) rather than recomputing `polesₖ^(n-1)` each time.
-"""
+"evaluate `Σ cₖ·polesₖ^(n-1)` over the index range `ns`, iterating the powers"
 function _evalmodel(poles, c, ns::AbstractRange)
     K = length(poles)
     T = eltype(c)
-    cur = T[poles[k]^(first(ns) - 1) for k in 1:K]     # powers at the first index
+    cur = T[poles[k]^(first(ns) - 1) for k in 1:K]
     stepfac = step(ns) == 1 ? poles : T[poles[k]^step(ns) for k in 1:K]
     out = Vector{T}(undef, length(ns))
     @inbounds for i in eachindex(out)
@@ -87,44 +223,6 @@ function _evalmodel(poles, c, ns::AbstractRange)
 end
 
 """
-    _lpextend(x; npred, ncoef, direction, rootfix) -> Vector{Complex}
-
-Linear-prediction extension of complex vector `x` by `npred` points, using the Hankel-SVD model with
-`ncoef` poles. `direction` is `:forward` (append) or `:backward` (prepend); `rootfix` stabilises the
-poles (`:decreasing` for forward, `:increasing` for backward, or `:none`).
-"""
-function _lpextend(x::AbstractVector{<:Complex}; npred::Integer, ncoef::Integer,
-                   direction::Symbol=:forward, rootfix::Symbol=:decreasing)
-    poles = _stabilize(_hankelpoles(x, ncoef), Val(rootfix))
-    c = _amplitudes(x, poles)
-    N = length(x)
-    if direction === :forward
-        ext = _evalmodel(poles, c, (N + 1):(N + npred))
-        return vcat(collect(x), ext)
-    elseif direction === :backward
-        ext = _evalmodel(poles, c, (1 - npred):0)
-        return vcat(ext, collect(x))
-    else
-        throw(ArgumentError("linearpredict: direction must be :forward or :backward, got $direction"))
-    end
-end
-
-"""
-    _lprepair(x; nrepair, ncoef, rootfix) -> Vector{Complex}
-
-Replace the first `nrepair` points of `x` by backward prediction from the remaining points (repairs
-distorted initial points without changing the length).
-"""
-function _lprepair(x::AbstractVector{<:Complex}; nrepair::Integer, ncoef::Integer,
-                   rootfix::Symbol=:increasing)
-    good = @view x[(nrepair + 1):end]
-    poles = _stabilize(_hankelpoles(good, ncoef), Val(rootfix))
-    c = _amplitudes(good, poles)
-    repaired = _evalmodel(poles, c, (1 - nrepair):0)   # extrapolate backwards from `good`
-    return vcat(repaired, collect(good))
-end
-
-"""
     _hsvdsubtract(x; dt, targethz, bandhz, ncoef) -> Vector{Complex}
 
 Fit `x` with `ncoef` damped exponentials and subtract those whose frequency lies within `bandhz` of
@@ -136,25 +234,26 @@ function _hsvdsubtract(x::AbstractVector{<:Complex}; dt::Real, targethz::Real, b
     c = _amplitudes(x, poles)
     freqs = angle.(poles) ./ (2π * dt)
     keep = abs.(freqs .- targethz) .<= (bandhz / 2)
-    isempty(findall(keep)) && return collect(x)
+    any(keep) || return collect(x)
     solvent = _evalmodel(poles[keep], c[keep], 1:length(x))
     return collect(x) .- solvent
 end
 
-# Multicomplex glue ###############################################################################
+# ---------------------------------------------------------------------------------------------------
+# Multicomplex glue
+# ---------------------------------------------------------------------------------------------------
 
 """
-    _maptransform(A, di, mcindex, f) -> Array{<:Multicomplex}
+    _maptransform(A, di, mcindex, matkernel) -> Array{<:Multicomplex}
 
-Apply the complex-vector kernel `f` (which may change length) to every imₖ-plane vector of the
-multicomplex array `A` along array dimension `di`, where `mcindex` is that dimension's imaginary
-unit. Uses the same zero-copy reinterpretation as `_mcfft!`; a fresh output array is built so `f` is
-free to change the length along `di`. The other imaginary units and the other array axes ride along
-as independent vectors (so, e.g., LP of an indirect dimension carries the direct-dimension quadrature
-as extra realisations of the same poles).
+Apply the matrix kernel `matkernel` — mapping the `(L, ncols)` complex matrix of imₖ-plane vectors
+(one per column) to a `(L2, ncols)` matrix, possibly with `L2 ≠ L` — to the multicomplex array `A`
+along array dimension `di`, where `mcindex` is that dimension's imaginary unit. Uses the same
+zero-copy reinterpretation as `_mcfft!`; a fresh output array is built so the kernel is free to change
+the length along `di`.
 """
 function _maptransform(A::AbstractArray{<:Multicomplex{T,N,C}}, di::Integer, mcindex::Integer,
-                       f) where {T,N,C}
+                       matkernel) where {T,N,C}
     D = ndims(A)
     Ac = copy(A)
     w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # transform axis at di+(N-1)
@@ -166,14 +265,8 @@ function _maptransform(A::AbstractArray{<:Multicomplex{T,N,C}}, di::Integer, mci
     rest = size(wp)[2:end]
     mat = reshape(wp, L, :)
 
-    outcols = [f(view(mat, :, j)) for j in axes(mat, 2)]
-    L2 = length(first(outcols))
-    all(c -> length(c) == L2, outcols) ||
-        throw(DimensionMismatch("_maptransform: kernel returned inconsistent lengths"))
-    outmat = Matrix{Complex{T}}(undef, L2, size(mat, 2))
-    for j in axes(mat, 2)
-        @views outmat[:, j] .= outcols[j]
-    end
+    outmat = matkernel(mat)::AbstractMatrix
+    L2 = size(outmat, 1)
     wnew = permutedims(reshape(outmat, L2, rest...), invperm(perm))
 
     outsize = ntuple(i -> i == di ? L2 : size(A, i), D)
@@ -184,31 +277,46 @@ function _maptransform(A::AbstractArray{<:Multicomplex{T,N,C}}, di::Integer, mci
     return Aout
 end
 
-# linearpredict ###################################################################################
+"wrap a per-column complex-vector kernel `f` as a matrix kernel"
+function _percolumn(f)
+    return function (mat)
+        cols = [f(view(mat, :, j)) for j in axes(mat, 2)]
+        L2 = length(first(cols))
+        out = Matrix{eltype(mat)}(undef, L2, size(mat, 2))
+        for j in axes(mat, 2)
+            @views out[:, j] .= cols[j]
+        end
+        return out
+    end
+end
+
+# ---------------------------------------------------------------------------------------------------
+# linearpredict
+# ---------------------------------------------------------------------------------------------------
 
 """
-    linearpredict(spec, [dim]; npoints=nothing, factor=2, ncoef=:auto,
-                  direction=:forward, replace=0, rootfix=:auto)
+    linearpredict(spec, [dim]; npoints=nothing, factor=2, order=:auto,
+                  direction=:forward, replace=0, rootfix=true)
 
-Linear-prediction extension (or first-point repair) of the specified `TimeDimension`(s), using the
-Hankel-SVD model. With no dimension argument, every *indirect* Fourier dimension is extended (forward
-LP of the directly detected dimension is rarely wanted).
+Linear-prediction extension (or first-point repair) of the specified `TimeDimension`(s) using the
+autoregressive coefficient method (as in nmrPipe/nmrglue): fit LP coefficients, optionally reflect
+the prediction-polynomial roots for stability, and extrapolate by recurrence. With no dimension
+argument, every *indirect* Fourier dimension is extended (forward LP of the directly detected
+dimension is rarely wanted). Applied per vector — cheap because the model `order` is small.
 
 # Keywords
 - `npoints`: target length after prediction. Defaults to `factor × td`.
 - `factor`: length multiplier when `npoints` is not given (default `2`).
-- `ncoef`: number of LP coefficients (model order); `:auto` ⇒ `clamp(td ÷ 4, 6, 24)`. This is the
-  dominant cost lever (the ESPRIT eigenproblem is O(ncoef³)); raise it for crowded dimensions.
+- `order`: LP order (number of coefficients); `:auto` ⇒ `clamp(td ÷ 2, 8, 32)`.
 - `direction`: `:forward` (append points) or `:backward` (prepend).
 - `replace`: if `> 0`, repair the first `replace` points by backward prediction (length unchanged;
   overrides `npoints`/`direction`).
-- `rootfix`: pole stabilisation, `:auto` (`:decreasing` for forward, `:increasing` for backward),
-  `:decreasing`, `:increasing`, or `:none`.
+- `rootfix`: reflect unstable roots for a stable extrapolation (default `true`).
 
-Runs on time-domain data before `apodize`; updates `:td`/`:tdzf`. Element type stays `Multicomplex`.
+Runs on time-domain data before `apodize`; updates `:td`. Element type stays `Multicomplex`.
 """
-function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, ncoef=:auto,
-                       direction::Symbol=:forward, replace::Integer=0, rootfix::Symbol=:auto)
+function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, order=:auto,
+                       direction::Symbol=:forward, replace::Integer=0, rootfix::Bool=true)
     di = resolvedim(spec, dim)
     d = dims(spec, di)
     d isa TimeDimension ||
@@ -218,19 +326,18 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, n
         throw(ArgumentError("linearpredict: dimension $di has no :mcindex"))
 
     n = size(spec, di)
-    nc = ncoef === :auto ? clamp(n ÷ 4, 6, 24) : ncoef
+    m = order === :auto ? clamp(n ÷ 2, 8, 32) : order
 
     if replace > 0
-        kernel = x -> _lprepair(x; nrepair=replace, ncoef=nc,
-                                rootfix=(rootfix === :auto ? :increasing : rootfix))
+        kernel = _percolumn(x -> _lprepair(x; nrepair=replace, order=m, rootfix=rootfix))
         newlen = n
     else
         target = isnothing(npoints) ? factor * n : npoints
         npred = target - n
         npred > 0 ||
             throw(ArgumentError("linearpredict: target length $target ≤ current length $n"))
-        rf = rootfix === :auto ? (direction === :backward ? :increasing : :decreasing) : rootfix
-        kernel = x -> _lpextend(x; npred=npred, ncoef=nc, direction=direction, rootfix=rf)
+        kernel = _percolumn(x -> _lppredict(x; npred=npred, order=m, direction=direction,
+                                            rootfix=rootfix))
         newlen = target
     end
 

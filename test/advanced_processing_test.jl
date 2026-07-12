@@ -32,20 +32,23 @@ end
     end
 end
 
-@testset "harmonic core: linear prediction of a damped exponential" begin
+@testset "harmonic core: linear prediction (coefficient method)" begin
     N = 48
-    ω, λ = 2π * 0.07, 0.03
-    x = ComplexF64[exp((im * ω - λ) * n) for n in 0:(N - 1)]
-    ext = NB._lpextend(x; npred=16, ncoef=1, direction=:forward)
+    z1 = exp(im * 2π * 0.07 - 0.03)                       # one damped exponential
+    x = ComplexF64[z1^n for n in 0:(N - 1)]
+    ext = NB._lppredict(x; npred=16, order=1, direction=:forward)
     @test length(ext) == N + 16
-    analytic = ComplexF64[exp((im * ω - λ) * n) for n in 0:(N + 16 - 1)]
-    @test ext ≈ analytic rtol = 1e-6
+    @test ext ≈ ComplexF64[z1^n for n in 0:(N + 16 - 1)] rtol = 1e-6
 
-    # backward prediction reconstructs earlier points
-    back = NB._lpextend(x; npred=8, ncoef=1, direction=:backward)
-    @test length(back) == N + 8
-    analback = ComplexF64[exp((im * ω - λ) * n) for n in (-8):(N - 1)]
-    @test back ≈ analback rtol = 1e-6
+    z2 = exp(-im * 2π * 0.2 - 0.05)                       # two components → order 2
+    x2 = ComplexF64[z1^n + z2^n for n in 0:(N - 1)]
+    ext2 = NB._lppredict(x2; npred=12, order=2, direction=:forward)
+    @test ext2 ≈ ComplexF64[z1^n + z2^n for n in 0:(N + 12 - 1)] rtol = 1e-5
+
+    # first-point repair reconstructs early points by backward prediction
+    rep = NB._lprepair(x; nrepair=4, order=1)
+    @test length(rep) == N
+    @test rep ≈ x rtol = 1e-5
 end
 
 @testset "processing: frequencyshift" begin
@@ -65,7 +68,7 @@ end
     ω, λ = 2π * 0.09, 0.02
     z = ComplexF64[exp((im * ω - λ) * n) for n in 0:(N - 1)]
     spec = fid_from_complex(z)
-    lp = linearpredict(spec, T1Dim; factor=2, ncoef=1)
+    lp = linearpredict(spec, T1Dim; factor=2, order=1)
     @test size(lp, 1) == 2N
     @test metadata(lp, 1, :td) == 2N
     # predicted region matches the analytic continuation
