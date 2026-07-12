@@ -83,7 +83,9 @@ argument the directly detected dimension is used.
   filter length via the spectral width.
 - `shape`: low-pass window, `:boxcar` | `:sine` | `:sine²` (`:lowpass` only).
 - `band`: full frequency band (Hz) around the target to remove (`:hsvd` only; default `width`).
-- `ncoef`: number of exponentials to fit (`:hsvd` only); `:auto` ⇒ `clamp(td ÷ 4, 8, 64)`.
+- `ncoef`: number of exponentials to fit (`:hsvd` only); `:auto` ⇒ `clamp(td ÷ 16, 16, 48)`. `:hsvd`
+  runs an SVD per data vector, so it is intended for 1D (or a modest number of vectors); prefer
+  `:lowpass` for 2D+.
 
 Runs on time-domain data before `apodize`. Element type stays `Multicomplex`.
 """
@@ -110,7 +112,7 @@ function solventfilter(spec::NMRData, dim; shift=:carrier, method::Symbol=:lowpa
         dt = 1 / swhz
         bandhz = isnothing(band) ? Float64(width) : Float64(band)
         n = size(sp, di)
-        nc = ncoef === :auto ? clamp(n ÷ 4, 8, 64) : ncoef
+        nc = ncoef === :auto ? clamp(n ÷ 16, 16, 48) : ncoef
         kernel = x -> _hsvdsubtract(x; dt=dt, targethz=0.0, bandhz=bandhz, ncoef=nc)
         out = rebuild(sp; data=_maptransform(parent(sp), di, mcindex, kernel))
     else

@@ -10,22 +10,29 @@
 # The kernels operate on plain complex vectors so they can be tested in isolation; multicomplex data
 # is fed in one imₖ-plane vector at a time by `_maptransform` (see below).
 
+# cap the Hankel row count so the per-vector SVD stays cheap on long FIDs. `L` bounds both the
+# frequency resolution (~sw/L) and the cost (SVD is O(L²·M)); the ESPRIT eigenproblem is O(K³).
+const _HANKEL_LMAX = 256
+
 """
-    _hankelpoles(x, K) -> Vector{Complex}
+    _hankelpoles(x, K; L=0) -> Vector{Complex}
 
 Estimate up to `K` signal poles `zₖ` of the complex vector `x` by ESPRIT: SVD of the Hankel matrix,
-then the eigenvalues of the shift-invariance operator on the truncated left singular subspace.
+then the eigenvalues of the shift-invariance operator on the truncated left singular subspace. `L`
+(Hankel rows) is capped at `_HANKEL_LMAX` by default to bound cost; the model order `K` is the main
+speed lever (eigenproblem is O(K³)).
 """
-function _hankelpoles(x::AbstractVector{<:Complex}, K::Integer)
+function _hankelpoles(x::AbstractVector{<:Complex}, K::Integer; L::Integer=0)
     N = length(x)
-    L = (N + 1) ÷ 2                 # Hankel rows
-    M = N - L + 1                   # Hankel cols  (L + M - 1 == N)
+    K = clamp(K, 1, (N - 1) ÷ 2)
+    L = L > 0 ? L : min((N + 1) ÷ 2, _HANKEL_LMAX)
+    L = clamp(L, K + 1, N - K)      # need L>K and M=N-L+1>K for the pencil
+    M = N - L + 1
     H = Matrix{eltype(x)}(undef, L, M)
     for j in 1:M, i in 1:L
         H[i, j] = x[i + j - 1]
     end
     F = svd(H)
-    K = clamp(K, 1, L - 1)          # need at least one row removed for the pencil
     Uk = @view F.U[:, 1:K]
     Z = Uk[1:(end - 1), :] \ Uk[2:end, :]   # least-squares shift invariance
     return eigvals(Z)
@@ -56,9 +63,27 @@ _stabilize(poles, ::Val{:decreasing}) = [abs(z) > 1 ? 1 / conj(z) : z for z in p
 _stabilize(poles, ::Val{:increasing}) = [abs(z) < 1 ? 1 / conj(z) : z for z in poles]
 _stabilize(poles, ::Val{:none}) = poles
 
-"evaluate the fitted model Σ cₖ·polesₖ^(n-1) at 1-based sample indices `ns`"
-function _evalmodel(poles, c, ns)
-    return [sum(c[k] * poles[k]^(n - 1) for k in eachindex(poles)) for n in ns]
+"""
+    _evalmodel(poles, c, ns) -> Vector
+
+Evaluate the fitted model `Σ cₖ·polesₖ^(n-1)` at the sample indices in the range `ns`, iterating the
+powers (`cur .*= poles`) rather than recomputing `polesₖ^(n-1)` each time.
+"""
+function _evalmodel(poles, c, ns::AbstractRange)
+    K = length(poles)
+    T = eltype(c)
+    cur = T[poles[k]^(first(ns) - 1) for k in 1:K]     # powers at the first index
+    stepfac = step(ns) == 1 ? poles : T[poles[k]^step(ns) for k in 1:K]
+    out = Vector{T}(undef, length(ns))
+    @inbounds for i in eachindex(out)
+        s = zero(T)
+        for k in 1:K
+            s += c[k] * cur[k]
+            cur[k] *= stepfac[k]
+        end
+        out[i] = s
+    end
+    return out
 end
 
 """
@@ -172,7 +197,8 @@ LP of the directly detected dimension is rarely wanted).
 # Keywords
 - `npoints`: target length after prediction. Defaults to `factor × td`.
 - `factor`: length multiplier when `npoints` is not given (default `2`).
-- `ncoef`: number of LP coefficients (model order); `:auto` ⇒ `clamp(td ÷ 2, 8, 64)`.
+- `ncoef`: number of LP coefficients (model order); `:auto` ⇒ `clamp(td ÷ 4, 6, 24)`. This is the
+  dominant cost lever (the ESPRIT eigenproblem is O(ncoef³)); raise it for crowded dimensions.
 - `direction`: `:forward` (append points) or `:backward` (prepend).
 - `replace`: if `> 0`, repair the first `replace` points by backward prediction (length unchanged;
   overrides `npoints`/`direction`).
@@ -192,7 +218,7 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, n
         throw(ArgumentError("linearpredict: dimension $di has no :mcindex"))
 
     n = size(spec, di)
-    nc = ncoef === :auto ? clamp(n ÷ 2, 8, 64) : ncoef
+    nc = ncoef === :auto ? clamp(n ÷ 4, 6, 24) : ncoef
 
     if replace > 0
         kernel = x -> _lprepair(x; nrepair=replace, ncoef=nc,
