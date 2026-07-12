@@ -181,6 +181,109 @@ function _lprepair(x::AbstractVector{<:Complex}; nrepair::Integer, order::Intege
     return _lpextrapolate(good, a, nrepair, :backward)   # prepends nrepair points
 end
 
+# Pooled (shared-coefficient) LP ------------------------------------------------------------------
+#
+# Vectors along a dimension share the same poles ⇒ the same LP recurrence, so the coefficients are
+# estimated ONCE from a stacked fit of the highest-energy vectors and the (cheap, LAPACK-free)
+# recurrence is applied to every column. One QR solve + one eigvals instead of one per column.
+
+"indices of the `nselect` highest-energy columns of `mat` (or all, if fewer)"
+function _selectcols(mat::AbstractMatrix, nselect::Integer)
+    size(mat, 2) <= nselect && return collect(axes(mat, 2))
+    return partialsortperm(vec(sum(abs2, mat; dims=1)), 1:nselect; rev=true)
+end
+
+"stacked least-squares LP coefficients (order `m`, direction `fitdir`) from columns `sel` of `mat`"
+function _pooledfit(mat::AbstractMatrix{<:Complex}, sel, m::Integer, fitdir::Symbol)
+    N = size(mat, 1)
+    K = N - m
+    D = Matrix{ComplexF64}(undef, length(sel) * K, m)
+    d = Vector{ComplexF64}(undef, length(sel) * K)
+    row = 0
+    @inbounds for jj in sel
+        x = view(mat, :, jj)
+        if fitdir === :backward
+            for i in 1:K, j in 1:m
+                D[row + i, j] = x[i + j]
+            end
+            for i in 1:K
+                d[row + i] = x[i]
+            end
+        else
+            for i in 1:K, j in 1:m
+                D[row + i, j] = x[m + i - j]
+            end
+            for i in 1:K
+                d[row + i] = x[m + i]
+            end
+        end
+        row += K
+    end
+    return D \ d
+end
+
+"shared extension coefficients for `direction` (Zhu–Bax for forward), pooled over columns"
+function _pooledcoeffs(mat, m, direction, rootfix, nselect)
+    sel = _selectcols(mat, nselect)
+    if direction === :forward
+        rootfix || return _pooledfit(mat, sel, m, :forward)
+        b = _pooledfit(mat, sel, m, :backward)
+        poles = _polyroots(vcat(reverse(b), -one(eltype(b))))
+        poles = [abs(z) > 1 ? 1 / conj(z) : z for z in poles]
+        return -_polyfromroots(poles)[2:end]
+    else
+        a = _pooledfit(mat, sel, m, :backward)
+        rootfix && (a = _reflectroots(a, :backward))
+        return a
+    end
+end
+
+"""
+    _lpmatrix(mat; npred, order, direction, rootfix, pool, nselect) -> Matrix
+
+Extend every column of `mat` by `npred` points. With `pool` (default), one shared set of
+coefficients is estimated from the `nselect` highest-energy columns and applied to all columns by
+recurrence; otherwise each column is fitted independently (matching nmrglue).
+"""
+function _lpmatrix(mat::AbstractMatrix{<:Complex}; npred::Integer, order::Integer,
+                   direction::Symbol=:forward, rootfix::Bool=true, pool::Bool=true,
+                   nselect::Integer=128)
+    N, ncols = size(mat)
+    m = clamp(order, 1, N - 1)
+    pool ||
+        return _percolumn(x -> _lppredict(x; npred=npred, order=m, direction=direction,
+                                          rootfix=rootfix))(mat)
+
+    a = _pooledcoeffs(mat, m, direction, rootfix, nselect)
+    out = Matrix{ComplexF64}(undef, N + npred, ncols)
+    @inbounds for jc in 1:ncols
+        if direction === :forward
+            for i in 1:N
+                out[i, jc] = mat[i, jc]
+            end
+            for k in 1:npred
+                v = zero(ComplexF64)
+                for j in 1:m
+                    v += a[j] * out[N + k - j, jc]
+                end
+                out[N + k, jc] = v
+            end
+        else
+            for i in 1:N
+                out[npred + i, jc] = mat[i, jc]
+            end
+            for k in npred:-1:1
+                v = zero(ComplexF64)
+                for j in 1:m
+                    v += a[j] * out[k + j, jc]
+                end
+                out[k, jc] = v
+            end
+        end
+    end
+    return out
+end
+
 # ---------------------------------------------------------------------------------------------------
 # Harmonic inversion / HSVD (used by solvent suppression)
 # ---------------------------------------------------------------------------------------------------
@@ -335,11 +438,15 @@ detected dimension is rarely wanted). Applied per vector — cheap because the m
 - `replace`: if `> 0`, repair the first `replace` points by backward prediction (length unchanged;
   overrides `npoints`/`direction`).
 - `rootfix`: reflect unstable roots for a stable extrapolation (default `true`).
+- `pool`: estimate one shared set of coefficients from the highest-energy vectors and apply the
+  recurrence to all vectors (default `true`; valid because vectors along a dimension share poles).
+  `pool=false` fits each vector independently (matching nmrglue) — correct but far slower.
 
 Runs on time-domain data before `apodize`; updates `:td`. Element type stays `Multicomplex`.
 """
 function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, order=:auto,
-                       direction::Symbol=:forward, replace::Integer=0, rootfix::Bool=true)
+                       direction::Symbol=:forward, replace::Integer=0, rootfix::Bool=true,
+                       pool::Bool=true)
     di = resolvedim(spec, dim)
     d = dims(spec, di)
     d isa TimeDimension ||
@@ -359,8 +466,8 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, o
         npred = target - n
         npred > 0 ||
             throw(ArgumentError("linearpredict: target length $target ≤ current length $n"))
-        kernel = _percolumn(x -> _lppredict(x; npred=npred, order=m, direction=direction,
-                                            rootfix=rootfix))
+        kernel = mat -> _lpmatrix(mat; npred=npred, order=m, direction=direction,
+                                  rootfix=rootfix, pool=pool)
         newlen = target
     end
 
