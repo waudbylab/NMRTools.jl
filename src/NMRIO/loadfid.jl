@@ -35,9 +35,19 @@ Load raw Bruker time-domain data (`fid` for 1D, `ser` for nD) into an [`NMRData`
 `filename` may point directly at a `fid`/`ser` file or at the enclosing experiment directory.
 
 # Keywords
-- `removefilter=true`: remove the Bruker digital-filter group delay (read from `GRPDLY`).
-- `firstpoint=nothing`: first-point scaling factor for each time dimension (default `0.5`). Override
-  per dimension with a dictionary keyed by dimension type, e.g. `firstpoint=Dict(T2Dim => 1.0)`.
+- `removefilter=true`: account for the Bruker digital-filter group delay (`GRPDLY`). The filter's
+  build-up points stay in the FID, on a time axis that starts at `-GRPDLY` dwell times, and the
+  delay is recorded in the direct dimension's `:grpdly` metadata; [`ft`](@ref NMRTools.NMRBase.ft)
+  removes it with a linear phase ramp, as TopSpin and NMRPipe do. Keeping the build-up points at
+  negative time, rather than discarding them, avoids baseline distortion at the edges of the
+  spectrum. Data whose `DSPFVS` is outside 10–23, such as FIDs already modified by TopSpin's
+  `cryoproc1d`, get no group delay, with a warning. With `removefilter=false` the time axis starts
+  at zero and no delay is recorded.
+- `firstpoint=nothing`: scaling factor for the t = 0 point of each time dimension. The default is
+  `0.5`, except for the direct dimension of baseopt data (`DIGMOD = 3`), where it is `1.0`: the
+  spectrometer's baseopt correction already gives that point its half weight.
+  Override per dimension with a dictionary keyed by dimension type, e.g.
+  `firstpoint=Dict(T2Dim => 1.0)`, or with a single number for all dimensions.
 
 The element type is `Multicomplex{Float64,N,2^N}` where `N` is the number of phase-sensitive
 (Fourier) dimensions — even 1D data uses `Multicomplex{Float64,1,2}`. Each `TimeDimension` carries an
@@ -194,10 +204,17 @@ function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
         end
     end
 
-    # digital-filter removal (direct dimension only) and first-point scaling (acquisition order)
-    removefilter && _removedigitalfilter!(y, acqusdic)
+    # Digital-filter group delay (direct dimension only). The lead-in stays in the data at negative
+    # times; `ft` removes the delay. First-point scaling acts on the t = 0 point.
+    grpdly = removefilter ? _groupdelay(acqusdic) : 0.0
+    # In baseopt data the t = 0 point already carries its half weight, so by default it is not
+    # scaled again; other dimensions and data use 0.5.
+    if isnothing(firstpoint) && grpdly > 0 && _isbaseopt(acqusdic)
+        firstpoint = Dict{Type,Float64}(T1Dim => 1.0)
+    end
     fourieraxes = [k for k in 1:ndim if !isnothing(mcindex[k])]
-    _scalefirstpoint!(y, [k => _TDIMS[mcindex[k]] for k in fourieraxes], firstpoint)
+    fpfactors = _scalefirstpoint!(y, [k => _TDIMS[mcindex[k]] for k in fourieraxes], firstpoint;
+                                  firstindex=Dict(1 => round(Int, grpdly) + 1))
 
     # reorder axes so Fourier dimensions come first (in acquisition order) and pseudo-dimensions
     # last, matching the dimension ordering used by loadnmr/loadpdata (e.g. the [1,3,2] permute when
@@ -215,13 +232,16 @@ function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
                   _XDIMS[p](1:size(y, p);
                             metadata=Dict{Symbol,Any}(:label => "", :pseudodim => true)))
         else
-            d = _timedim(axisacq[k], p, mcindex[k])
+            d = _timedim(axisacq[k], p, mcindex[k]; delay=(k == 1 ? grpdly : 0.0))
             k > 1 && (d[:quadrature] = _scheme(axisacq[k]))
+            d[:firstpoint] = fpfactors[k]
+            k == 1 && (d[:grpdly] = grpdly)
             push!(dimlist, d)
         end
     end
 
     outmd = _mainmetadata(md, ndim, dimlist)
+    outmd[:acqorder] = neworder          # storage-order axis of each array axis, for `savefid`
     return NMRData(y, Tuple(dimlist); metadata=outmd)
 end
 
@@ -256,44 +276,61 @@ end
 # Digital filter removal ###########################################################################
 
 """
-    _removedigitalfilter!(y, acqusdic)
+    _groupdelay(acqusdic) -> Float64
 
-Remove the Bruker digital-filter group delay in place along the direct dimension of `y`. Uses
-`GRPDLY` when available (modern data): Fourier transform the direct dimension, apply a first-order
-phase ramp of `2π·GRPDLY` across the spectrum, then inverse transform. Legacy `(DSPFVS, DECIM)`
-data without `GRPDLY` is left unshifted with a warning.
+The Bruker digital-filter group delay (points) of the direct dimension: the number of points of
+filter build-up ("lead-in") that precede time zero in the stored FID. The data are not modified; the
+lead-in stays in the FID at negative times and [`ft`](@ref NMRTools.NMRBase.ft) removes the delay with
+a linear phase ramp after the Fourier transform. Which value applies is set by the acquisition
+parameters:
+
+- `DIGMOD = 0` (analogue filtering): no group delay.
+- `DSPFVS` 20–23: `GRPDLY`. For baseopt acquisitions (`DIGMOD = 3`) it is an integer and the
+  spectrometer has already corrected the initial points of the FID.
+- `DSPFVS` 10–19 (older data): the delay should be looked up from `DECIM` and `DSPFVS`. This is not
+  implemented; `GRPDLY` is used if valid, otherwise no delay is applied, with a warning.
+- `DSPFVS` outside 10–23: not a firmware version Bruker defines. TopSpin's `cryoproc1d`, for example,
+  sets `DSPFVS = 0` after removing the start of the FID itself. No delay is applied, with a warning.
 """
-function _removedigitalfilter!(y, acqusdic)
+function _groupdelay(acqusdic)
+    Int(get(acqusdic, :digmod, 1)) == 0 && return 0.0
+    dspfvs = get(acqusdic, :dspfvs, nothing)
+    if dspfvs isa Real && !(10 <= dspfvs <= 23)
+        @warn "loadfid: DSPFVS = $dspfvs is outside the range 10–23, which indicates the FID has " *
+              "already been modified (e.g. by TopSpin's cryoproc1d, which removes the start of the " *
+              "FID). No group delay will be removed. The first points of the FID may be missing; " *
+              "they can be rebuilt by backward linear prediction."
+        return 0.0
+    end
     grpdly = get(acqusdic, :grpdly, -1.0)
     if isnothing(grpdly) || grpdly < 0
-        @warn "loadfid: no valid GRPDLY found; digital filter not removed (legacy DSPFVS/DECIM " *
-              "handling is not yet implemented)"
-        return y
+        @warn "loadfid: no valid GRPDLY found; no group delay will be removed (legacy " *
+              "DSPFVS/DECIM handling is not yet implemented)"
+        return 0.0
     end
-    grpdly == 0 && return y
-
-    N = size(y, 1)
-    M = eltype(y)
-    imk = M(imN(1))
-
-    NMRBase._mcfft!(y, 1, 1)                      # FT along direct dimension (im1)
-    θ = 2π * grpdly .* (0:(N - 1)) ./ N           # first-order phase ramp (+ sign: to be validated)
-    pf = @. cos(θ) + sin(θ) * imk
-    y .= y .* reshape(pf, N, ntuple(_ -> 1, ndims(y) - 1)...)
-    NMRBase._mcfft!(y, 1, 1; inverse=true)        # inverse FT
-    return y
+    return Float64(grpdly)
 end
+
+"baseopt acquisition (`DIGMOD = 3`): the spectrometer has corrected the initial points of the FID"
+_isbaseopt(acqusdic) = Int(get(acqusdic, :digmod, 1)) == 3
 
 # First-point scaling ##############################################################################
 
-function _scalefirstpoint!(y, axistype_pairs, firstpoint)
+"""
+scale the t = 0 point of each axis in `axistype_pairs` (point `firstindex[axis]`, default 1); returns
+the factor used for each axis
+"""
+function _scalefirstpoint!(y, axistype_pairs, firstpoint; firstindex=Dict{Int,Int}())
     nd = ndims(y)
+    factors = Dict{Int,Float64}()
     for (di, T) in axistype_pairs
         f = _firstpointfactor(T, firstpoint)
-        idx = ntuple(i -> i == di ? (1:1) : Colon(), nd)
+        i0 = get(firstindex, di, 1)
+        idx = ntuple(i -> i == di ? (i0:i0) : Colon(), nd)
         @views y[idx...] .*= f
+        factors[di] = f
     end
-    return y
+    return factors
 end
 
 _firstpointfactor(::Type, ::Nothing) = 0.5
@@ -307,9 +344,11 @@ _firstpointfactor(::Type, fp::Real) = fp
 
 Construct the `TimeDimension` at array position `di` (naming it `T1Dim`…`T4Dim`) from a Bruker
 acquisition-parameter dictionary `aq` (`acqus`, `acqu2s`, …), linking it to imaginary unit `mcindex`.
-Frequencies are already in Hz (`replacefrequencies!` has run). The time axis is `t = (0:td-1)/sw`.
+Frequencies are already in Hz (`replacefrequencies!` has run). The time axis is
+`t = ((0:td-1) .- delay) / sw`, so points of digital-filter lead-in (`delay` points) have negative
+times.
 """
-function _timedim(aq, di, mcindex)
+function _timedim(aq, di, mcindex; delay=0.0)
     swhz = Float64(aq[:sw_h])
     bf = Float64(aq[:bf1])
     sf = Float64(aq[:sfo1])
@@ -327,7 +366,7 @@ function _timedim(aq, di, mcindex)
     end
 
     dt = 1 / swhz
-    t = range(0.0; step=dt, length=ncomplex)
+    t = range(-delay * dt; step=dt, length=ncomplex)
 
     dd = Dict{Symbol,Any}(:mcindex => mcindex,
                           :label => nucstr,

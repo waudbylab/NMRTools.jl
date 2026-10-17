@@ -435,8 +435,9 @@ detected dimension is rarely wanted). Applied per vector — cheap because the m
 - `factor`: length multiplier when `npoints` is not given (default `2`).
 - `order`: LP order (number of coefficients); `:auto` ⇒ `clamp(td ÷ 2, 8, 32)`.
 - `direction`: `:forward` (append points) or `:backward` (prepend).
-- `replace`: if `> 0`, repair the first `replace` points by backward prediction (length unchanged;
-  overrides `npoints`/`direction`).
+- `replace`: if `> 0`, repair the first `replace` points from t = 0 by backward prediction (length
+  unchanged; overrides `npoints`/`direction`). Digital-filter build-up points before t = 0 are left
+  unchanged.
 - `rootfix`: reflect unstable roots for a stable extrapolation (default `true`).
 - `pool`: estimate one shared set of coefficients from the highest-energy vectors and apply the
   recurrence to all vectors (default `true`; valid because vectors along a dimension share poles).
@@ -457,17 +458,27 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, o
 
     n = size(spec, di)
     m = order === :auto ? clamp(n ÷ 2, 8, 32) : order
+    # Digital-filter build-up points before t = 0 (direct dimension of `loadfid` data) are left
+    # alone: prediction works on the FID from t = 0.
+    i0 = round(Int, _groupdelaypoints(d)) + 1
+    if i0 > 1 && replace == 0 && direction === :backward
+        throw(ArgumentError("linearpredict: backward extension is not possible while the " *
+                            "dimension holds digital-filter build-up points before t = 0; use " *
+                            "`replace` to rebuild the first points instead"))
+    end
+    fromzero(f) = mat -> vcat(mat[1:(i0 - 1), :], f(mat[i0:end, :]))
 
     if replace > 0
-        kernel = _percolumn(x -> _lprepair(x; nrepair=replace, order=m, rootfix=rootfix))
+        kernel = fromzero(_percolumn(x -> _lprepair(x; nrepair=replace, order=m,
+                                                     rootfix=rootfix)))
         newlen = n
     else
         target = isnothing(npoints) ? factor * n : npoints
         npred = target - n
         npred > 0 ||
             throw(ArgumentError("linearpredict: target length $target ≤ current length $n"))
-        kernel = mat -> _lpmatrix(mat; npred=npred, order=m, direction=direction,
-                                  rootfix=rootfix, pool=pool)
+        kernel = fromzero(mat -> _lpmatrix(mat; npred=npred, order=m, direction=direction,
+                                           rootfix=rootfix, pool=pool))
         newlen = target
     end
 

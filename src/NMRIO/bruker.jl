@@ -6,8 +6,13 @@ Load processed Bruker NMR data from a pdata folder.
 # Arguments
 - `filename`: Path to a pdata directory or a file within it
 - `allcomponents`: If `true`, returns complex (1D) or multicomplex (2D) data with all
-  components. For 2D data, returns `Multicomplex` numbers with components ordered as
-  `rr + ri*im1 + ir*im2 + ii*im1*im2`. Default is `false` (returns real data only).
+  components. For 2D data, returns `Multicomplex` numbers `2rr + 2ir*im1 + 2ri*im2 + 2ii*im1*im2`
+  (TopSpin's `2ir` is imaginary in the direct dimension, `2ri` in the indirect one). Default is
+  `false` (returns real data only).
+
+Imaginary components are conjugated relative to TopSpin's files, so that loaded data follow the
+same convention as spectra produced by [`ft`](@ref NMRTools.NMRBase.ft): TopSpin's `PHC0`/`PHC1`
+applied with [`phase`](@ref NMRTools.NMRBase.phase) give the same spectrum.
 """
 function loadpdata(filename, allcomponents=false)
     # 1. get reference to pdata/X directory
@@ -27,7 +32,7 @@ function loadpdata(filename, allcomponents=false)
         datafiles = ["1r", "1i"]
     elseif isfile(joinpath(pdir, "2rr"))
         ndim = 2
-        datafiles = ["2rr", "2ri", "2ir", "2ii"]
+        datafiles = ["2rr", "2ir", "2ri", "2ii"]    # coefficients of 1, im1, im2, im1·im2
     elseif isfile(joinpath(pdir, "3rrr"))
         ndim = 3
         datafiles = ["3rrr", "3rri", "3rir", "3rii", "3irr", "3iri", "3iir", "3iii"]
@@ -181,7 +186,7 @@ function loadpdata(filename, allcomponents=false)
             @warn "unable to find imaginary data for import of $filename - returning real values only"
             y = dat
         else
-            y = dat[1] + 1im .* dat[2]
+            y = dat[1] - 1im .* dat[2]          # conjugate: NMRTools convention
         end
     else
         if length(dat) == 1
@@ -190,10 +195,10 @@ function loadpdata(filename, allcomponents=false)
         elseif length(dat) == 2
             # only two components - return complex data regardless of what particular files are present
             # (see https://rdrr.io/github/ssokolen/rnmrfit/man/read_processed_2d.html for similar approach)
-            y = dat[1] + 1im .* dat[2]
+            y = dat[1] - 1im .* dat[2]
         else
-            # 4 components for 2D bicomplex: rr + ri*im1 + ir*im2 + ii*im1*im2
-            y = Multicomplex.(dat[1], dat[2], dat[3], dat[4])
+            # 4 components for 2D bicomplex, conjugated in both units: rr − ir*im1 − ri*im2 + ii*im1*im2
+            y = Multicomplex.(dat[1], -dat[2], -dat[3], dat[4])
         end
     end
 

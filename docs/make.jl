@@ -6,10 +6,14 @@ DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 
 makedocs(;
          modules=[NMRTools],
-         format=Documenter.HTML(; prettyurls=(get(ENV, "CI", nothing) == "true")),
+         format=Documenter.HTML(; prettyurls=(get(ENV, "CI", nothing) == "true"),
+                                # all API reference is on one page (api.md)
+                                size_threshold_warn=300 * 2^10,
+                                size_threshold=500 * 2^10),
          pages=["Home" => "index.md",
                 "Getting started" => "quickstart.md",
                 "Tutorials" => ["Working with NMR data" => "tutorials/data.md",
+                                "Processing raw data" => "tutorials/processing.md",
                                 "Plotting with Plots" => "tutorials/plotting.md",
                                 "Plotting with Makie" => "tutorials/makie.md",
                                 "Peak detection" => "tutorials/peaks.md",

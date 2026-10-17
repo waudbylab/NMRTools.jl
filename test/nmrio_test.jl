@@ -263,9 +263,9 @@ end
     @test dat[1, :swppm] == 29.95804208728246
     @test dat[1, :pseudodim] == false
 
-    # load complex spectrum
+    # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
     dat2 = loadnmr(artifact"1D_19F"; allcomponents=true)
-    @test dat2[100] == 4920.725646972656 - 17351.53515625im
+    @test dat2[100] == 4920.725646972656 + 17351.53515625im
 end
 
 @testset "NMRIO: 2D HN (Bruker pdata)" begin
@@ -395,7 +395,7 @@ end
     @test parent(datC) isa Matrix{ComplexF64}
 
     @test dat[2, 3] == -32.08953857421875
-    @test datC[2, 3] == -32.08953857421875 + 87.19561767578125im
+    @test datC[2, 3] == -32.08953857421875 - 87.19561767578125im
 
     @test dat[:title] == "15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G = 5-95%"
 

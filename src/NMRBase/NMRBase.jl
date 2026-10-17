@@ -56,6 +56,8 @@ include("noise.jl")
 include("processing.jl")
 include("harmonic.jl")
 include("solvent.jl")
+include("poles.jl")
+include("autophase.jl")
 include("peaks.jl")
 include("pcls.jl")
 include("reference.jl")
@@ -117,6 +119,8 @@ export extract
 export frequencyshift
 export linearpredict
 export solventfilter
+export Pole, estimatepoles
+export estimatephase, autophase, autophase0
 
 # Dimensions
 export NMRDimension

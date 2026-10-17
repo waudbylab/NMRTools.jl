@@ -65,6 +65,14 @@ Even 1D data uses `Multicomplex{Float64,1,2}` (first-order, isomorphic to Comple
 
 Reading time-domain data (under development):
 - **Bruker raw** (fid/ser): `loadfid("experiment/1")` — under development
+- Digital filter: `loadfid` keeps the `GRPDLY` build-up points on a time axis starting at `-GRPDLY` dwells and records `:grpdly`; `ft` removes the delay with a linear phase ramp after the FFT (as TopSpin/NMRPipe — matches TopSpin 1r to ~1e-8). Dropping the points instead gives the edge "smile". `apodize` leaves t < 0 unwindowed; `linearpredict` works from t = 0. Baseopt (`DIGMOD = 3`): t = 0 point not scaled. `DSPFVS` outside 10–23 (e.g. 0 after TopSpin's `cryoproc1d`, which rewrites the FID with its start removed): no delay, warn.
+
+Writing Bruker data:
+- **`savenmr(path, spec; procno=1)`**: frequency-domain data → `pdata/<procno>/1r`, `2rr`, … (int32 + NC_proc)
+- **`savefid(path, fid)`**: time-domain data → raw `fid`/`ser`, undoing everything `loadfid` did (first-point scaling, group delay, quadrature recombination, axis order); `loadfid(savefid(...))` round-trips
+- Both copy parameter files from the source experiment (`:experimentfolder` metadata) or generate minimal ones
+
+Sign convention: NMRTools spectra are the complex conjugate of TopSpin's in every imaginary unit (real parts agree). `phase` uses TopSpin's sign, so `PHC0`/`PHC1` values carry over directly. `loadnmr(...; allcomponents=true)` and `savenmr` conjugate imaginary components when reading/writing pdata.
 
 ### Annotation system (under development)
 
@@ -80,6 +88,8 @@ loadfid("1/ser") |> apodize |> zerofill |> ft |>
 ```
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
+
+Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata. `poleplot` (MakieExt) plots shift × linewidth coloured by doubled phase.
 
 ## Style Conventions
 

@@ -487,6 +487,7 @@ function defaultmetadata(::Type{<:FrequencyDimension})
                                 :region => nothing,
                                 :units => nothing,
                                 :window => nothing,
+                                :phase => nothing,
                                 :referenceoffset => 0.0,
                                 :mcindex => nothing)
     return Metadata{FrequencyDimension}(defaults)
@@ -553,6 +554,7 @@ function metadatahelp()
              :noise => "RMS noise level",
              :units => "Axis units",
              :window => "Window function",
+             :phase => "Total phase correction applied, (p0, p1) in degrees with p0 at the first point",
              :mcindex => "Index of imaginary component associated with axis (for multicomplex data)")
     return d
 end

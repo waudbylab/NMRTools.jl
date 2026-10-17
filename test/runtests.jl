@@ -22,6 +22,14 @@ end
     include("loadfid_test.jl")
 end
 
+@safetestset "Autophase" begin
+    include("autophase_test.jl")
+end
+
+@safetestset "Bruker writing" begin
+    include("brukerwrite_test.jl")
+end
+
 @safetestset "PlotsExt" begin
     include("plotsext_test.jl")
 end

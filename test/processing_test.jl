@@ -123,3 +123,19 @@ end
     @test sub isa NMRData
     @test size(sub, 1) < size(f, 1)
 end
+
+@testset "processing: digital-filter group delay in ft" begin
+    # an FID whose t = 0 is g points into the array (filter build-up before it) transforms to the
+    # same spectrum as the FID starting at t = 0, followed by g points of zeros
+    n, g, sw = 256, 12, 1000.0
+    base = synthetic_fid(; n=n, sw=sw)
+    x = parent(base)
+    delayed = vcat(zeros(eltype(x), g), x[1:(n - g)])
+    t = collect(((0:(n - 1)) .- g) ./ sw)
+    md = Dict{Symbol,Any}(pairs(metadata(dims(base, 1)).val))
+    md[:grpdly] = Float64(g)
+    fid = NMRData(delayed, (T1Dim(t; metadata=md),))
+    ref = NMRData(vcat(x[1:(n - g)], zeros(eltype(x), g)), (dims(base, 1),))
+    @test parent(ft(fid)) ≈ parent(ft(ref))
+    @test metadata(ft(fid), 1, :grpdly) == 0
+end

@@ -48,17 +48,55 @@ function _rebuilddims(spec, newdata, newdims)
                    metadata=deepcopy(metadata(spec)), missingval=spec.missingval)
 end
 
-"acquisition time (s) for a time dimension, used as the default window `tmax`"
+"""
+    _setdimmetadata(spec, di, pairs...)
+
+Return `spec` with the metadata of dimension `di` updated by `pairs` (`key => value`). The dimension
+is rebuilt with a copy of its metadata, so the input spectrum is left unchanged.
+"""
+function _setdimmetadata(spec, di, pairs::Pair...)
+    d = dims(spec, di)
+    md = deepcopy(metadata(d))
+    for (k, v) in pairs
+        md[k] = v
+    end
+    newd = rebuild(d; val=rebuild(lookup(d); metadata=md))     # metadata lives on the lookup
+    return rebuild(spec; dims=_replacedimtuple(dims(spec), di, newd))
+end
+
+"acquisition time (s) after t = 0 for a time dimension, used as the default window `tmax`"
 function _acqtime(d)
     sw = metadata(d, :swhz)
     td = metadata(d, :td)
     if !isnothing(sw) && !isnothing(td)
-        return td / sw
+        return (td - _groupdelaypoints(d)) / sw
     elseif !isnothing(sw)
         return length(d) / sw
     else
         return Inf
     end
+end
+
+"digital-filter group delay (points) still to be removed from a dimension by `ft`; 0 if none"
+_groupdelaypoints(d) = d isa TimeDimension ? Float64(something(metadata(d, :grpdly), 0.0)) : 0.0
+
+"""
+    _removegroupdelay!(A, unit, di, g)
+
+Remove a digital-filter group delay of `g` points from the spectrum `A` (immediately after the FFT
+along array dimension `di`, before `fftshift`) by multiplying by the linear phase ramp
+`exp(2πi·g·k/N)`, with `k` the signed frequency index. This is the Fourier shift theorem: it moves
+the time origin forward by `g` points, so build-up points stored before t = 0 end up at negative
+time, as in TopSpin and NMRPipe.
+"""
+function _removegroupdelay!(A::AbstractArray{<:Multicomplex}, unit::Integer, di, g::Real)
+    N = size(A, di)
+    k = FFTW.fftfreq(N, N)                        # 0, 1, …, -1: signed frequency index
+    θ = 2π * g .* k ./ N
+    imk = eltype(A)(imN(unit))
+    pf = @. cos(θ) + sin(θ) * imk
+    A .*= _reshape_along(pf, di, ndims(A))
+    return A
 end
 
 # fill in a window's tmax when it was left unspecified (Inf), so sine/cosine windows have a length
@@ -112,6 +150,7 @@ function _buildfreqdim(d, di, n)
     md[:npoints] = n
     md[:region] = missing
     md[:units] = "ppm"
+    md[:grpdly] = 0.0                             # removed by the transform
     # decreasing ppm axis (a range → Regular lookup). `reverse ∘ fftshift` places the carrier (DC)
     # at data index n÷2, so the axis labels that point offsetppm; δ[1] is therefore one point below
     # the naive band edge offsetppm + swppm/2.
@@ -148,6 +187,7 @@ Apply a window function along the specified `TimeDimension`(s) of `spec`. Pass a
 dimension's `:window` metadata (falling back to no apodization). With no dimension argument every
 Fourier time dimension is apodized. The window's `tmax` is filled in automatically from the
 dimension's acquisition time (`:td`/`:swhz`), so lengths need not be given — e.g. `Cos²Window()`.
+The window starts at t = 0; digital-filter build-up points at negative time are left unwindowed.
 `inverse=true` divides by the window (undoing a previous apodization). Curried and dictionary forms
 are provided for pipelines.
 
@@ -163,13 +203,13 @@ function apodize(spec::NMRData, dim, window::WindowFunction; inverse=false)
         throw(ArgumentError("apodize: dimension $di ($(typeof(d))) is not a TimeDimension"))
 
     w = _settmax(window, _acqtime(d))
-    wv = apod(collect(data(d)), w)
+    t = collect(data(d))
+    wv = apod(max.(t, 0.0), w)
+    wv[t .< 0] .= 1                               # digital-filter build-up before t = 0: unwindowed
     inverse && (wv = 1 ./ wv)
 
     newdata = parent(spec) .* _reshape_along(wv, di, ndims(spec))
-    newspec = rebuild(spec; data=newdata)
-    metadata(newspec, di)[:window] = w
-    return newspec
+    return _setdimmetadata(rebuild(spec; data=newdata), di, :window => w)
 end
 
 # specific dimension, window taken from the dimension's metadata
@@ -263,7 +303,7 @@ function _extendtimedim(d, di, n)
     swhz = md[:swhz]
     dt = 1 / swhz
     md[:tdzf] = n
-    t = range(0.0; step=dt, length=n)
+    t = range(first(data(d)); step=dt, length=n)  # keeps negative times of any filter build-up
     return TDIM_CONSTRUCTORS[di](t; metadata=md)
 end
 
@@ -281,6 +321,11 @@ The forward transform is `reverse ∘ fftshift ∘ fft`, so that a positive offs
 higher chemical shift and the spectrum is ordered high-ppm-first, matching data loaded via
 [`loadnmr`](@ref NMRTools.NMRIO.loadnmr); the inverse composes the exact opposites so that
 `ft(inverse=true) ∘ ft ≈ identity`.
+
+If the dimension carries a digital-filter group delay (`:grpdly` metadata, set by
+[`loadfid`](@ref NMRTools.NMRIO.loadfid)), it is removed after the FFT with a linear phase ramp, so the
+filter's build-up points end up at negative time. The resulting frequency dimension has no group
+delay, so an inverse transform gives an FID with its time origin at the first point.
 """
 function ft(spec::NMRData, dim; inverse=false)
     di = resolvedim(spec, dim)
@@ -297,6 +342,8 @@ function ft(spec::NMRData, dim; inverse=false)
         newdim = _buildtimedim(d, di, size(newdata, di))
     else
         _mcfft!(newdata, mcindex, di; inverse=false)
+        g = _groupdelaypoints(d)
+        g == 0 || _removegroupdelay!(newdata, mcindex, di, g)
         newdata = fftshift(newdata, di)
         newdata = reverse(newdata; dims=di)
         newdim = _buildfreqdim(d, di, size(newdata, di))
@@ -330,11 +377,15 @@ Apply a phase correction along dimension `dim`: zero-order `p0` and first-order 
 degrees. The imaginary unit that carries the phase is read from the dimension's `:mcindex`, so the
 same function works in the time or frequency domain.
 
-The correction follows the TopSpin / nmrPipe convention: the phase applied to point `n`
-(0-indexed) is `p0 + p1·n/N`, multiplied in as `exp(imₖ·θ)`. The pivot — the point where only `p0`
-acts — therefore defaults to the **first point** (left edge, highest ppm), so `p0`/`p1` correspond
-directly to TopSpin's `PHC0`/`PHC1`. Pass `pivot` (ppm for a frequency dimension, seconds for a time
+The correction follows the TopSpin convention: the phase applied to point `n` (0-indexed) is
+`θ = p0 + p1·n/N`, multiplied in as `exp(-imₖ·θ)`. The pivot — the point where only `p0` acts —
+defaults to the **first point** (left edge, highest ppm), so `p0`/`p1` are TopSpin's `PHC0`/`PHC1`
+and values can be copied between the two. Pass `pivot` (ppm for a frequency dimension, seconds for a time
 dimension) to move it. A curried form `phase(dim, p0, p1=0; pivot)` is provided for pipelines.
+
+For a frequency dimension, the total correction applied so far is recorded in the dimension's
+`:phase` metadata as `(p0=…, p1=…)`, with `p0` referred to the first point. See also
+[`autophase`](@ref).
 """
 function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
     di = resolvedim(spec, dim)
@@ -351,9 +402,15 @@ function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
     ipiv = isnothing(pivot) ? 0.0 : _pivotindex(d, pivot)
     frac = ((0:(n - 1)) .- ipiv) ./ n
     θ = deg2rad(p0) .+ deg2rad(p1) .* frac
-    pf = @. cos(θ) + sin(θ) * imk
+    pf = @. cos(θ) - sin(θ) * imk
     newdata = parent(spec) .* _reshape_along(pf, di, ndims(spec))
-    return rebuild(spec; data=newdata)
+    newspec = rebuild(spec; data=newdata)
+    d isa FrequencyDimension || return newspec
+
+    # accumulate the total correction, with p0 referred to the first point
+    prev = something(metadata(d, :phase), (p0=0.0, p1=0.0))
+    total = (p0=_wrap180(prev.p0 + p0 - p1 * ipiv / n), p1=prev.p1 + p1)
+    return _setdimmetadata(newspec, di, :phase => total)
 end
 
 "0-based fractional point index at which the dimension axis equals `pivot`"
@@ -363,6 +420,8 @@ function _pivotindex(d, pivot)
 end
 
 phase(dim, p0::Real, p1::Real=0.0; pivot=nothing) = spec -> phase(spec, dim, p0, p1; pivot)
+# resolve the ambiguity between `phase(spec, dim, p0)` and the curried `phase(dim, p0, p1)`
+phase(spec::NMRData, dim::Real, p0::Real; pivot=nothing) = phase(spec, dim, p0, 0.0; pivot)
 function phase(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
     return Dict(k => phase(v, args...; kw...) for (k, v) in d)
 end

@@ -2,19 +2,21 @@ module MakieExt
 
 using NMRTools
 using NMRTools: NMRData, AbstractNMRData, NMRDimension, FrequencyDimension,
-                NonFrequencyDimension
+                NonFrequencyDimension, Pole
 using NMRTools: data, dims, refdims, refdims_title, label, scale, units,
                 reorder, ForwardOrdered
 using MulticomplexNumbers: Multicomplex, realest
 using Statistics: quantile
 using Makie
 using Colors
+using ColorSchemes: ColorSchemes
 
 include("MakieExt/plotutils.jl")
 include("MakieExt/plot_1d.jl")
 include("MakieExt/plot_2d.jl")
 include("MakieExt/plot_pseudo2d.jl")
 include("MakieExt/plot_3d.jl")
+include("MakieExt/plot_poles.jl")
 
 # Convenience: forward `nmrplot!(fig_like, spec)` to the underlying axis so
 # the typical workflow `fig = nmrplot(spec); nmrplot!(fig, spec/2)` just
