@@ -5,6 +5,11 @@ on:
       - main
     tags: '*'
   pull_request:
+# Every push deploys to gh-pages, so serialise them to stop concurrent runs
+# racing to push; superseded PR builds are simply cancelled.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('docs-{0}', github.ref) || 'docs-deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     runs-on: ubuntu-latest
