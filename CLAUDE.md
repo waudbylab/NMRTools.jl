@@ -127,3 +127,4 @@ Prefer multiple dispatch over conditional logic. Use positional arguments for th
 - Visual regression tests for plotting (VisualRegressionTests.jl with reference PNGs)
 - Test data: real NMR datasets bundled as Julia Artifacts (Bruker and nmrPipe formats)
 - Example data accessed via `exampledata("2D_HN")` etc.
+- The precompile workload (`src/precompile.jl`) loads `test/test-data/samples/2` and `test/test-data/19f-cest-ts3`, since the example artifacts are lazy and would need a download. Keep these datasets in place, or update the workload if they move.

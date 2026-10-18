@@ -24,11 +24,28 @@
     newax = TkinDim(110:130)
     dat = replacedimension(dat, 2, newax)
 
-    # # data import
-    # dat = loadnmr("../exampledata/1D_19F/1/test.ft1")
-    # dat = loadnmr("../exampledata/1D_19F/1/pdata/1")
-    # foo = acqus(dat, :pulprog)
-    # foo = dat[1,:window]
-    # dat = loadnmr("../exampledata/2D_HN/1/test.ft2")
-    # dat = loadnmr("../exampledata/pseudo2D_XSTE/1/test.ft1")
+    # data import, using the small Bruker datasets bundled with the tests
+    # (the example data are lazy artifacts, which would need a download)
+    testdata = joinpath(@__DIR__, "..", "test", "test-data")
+    if isdir(testdata)
+        with_logger(NullLogger()) do
+            # 1D, with acqus, title and sample metadata
+            spec = loadnmr(joinpath(testdata, "samples", "2"))
+            foo = spec[:noise]
+            foo = acqus(spec, :pulprog)
+            foo = spec[1, :window]
+            foo = label(spec)
+            foo = sample(spec, :sample, :label)
+            foo = spec[8.0 .. 9.0]
+            foo = ppm(dims(spec, 1))
+            foo = hz(dims(spec, 1))
+            foo = detectpeaks(spec)
+
+            # pseudo-2D, with pulse programme annotations
+            spec = loadnmr(joinpath(testdata, "19f-cest-ts3"))
+            foo = annotations(spec, "cest.offset")
+            foo = spec[:, 1]
+            foo = detectpeaks(spec[:, 1])
+        end
+    end
 end
