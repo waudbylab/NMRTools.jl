@@ -120,10 +120,14 @@ spec = loadfid("myexperiment/1") |>
 | [`ft`](@ref) | either | Fourier transform (`inverse=true` for the inverse) |
 | [`phase`](@ref) | either | zero- and first-order phase correction |
 | [`autophase`](@ref) | frequency domain | estimate and apply a phase correction |
-| `real` | either | take the real part, giving `Float64` data |
+| [`extract`](@ref) | either | select a region, e.g. `extract(F1Dim, 6.0 .. 10.0)` |
+| `real` | either | the purely real part, giving `Float64` data |
 
-With no dimension argument, a function acts on every Fourier dimension. Pass a dimension to act on
-one only, for example to use different windows in each dimension of a 2D experiment:
+Without a dimension argument, `apodize`, `zerofill`, `ft` and `autophase` act on each Fourier
+dimension in turn (for `autophase`, each frequency dimension), applying the same settings to every
+one; `linearpredict` extends the indirect dimensions, and `solventfilter` acts on the direct
+dimension, where the solvent signal is. Pass a dimension to act on one only, for example to use
+different windows in each dimension of a 2D experiment:
 
 ```julia
 spec = loadfid("hsqc/1") |>
@@ -133,7 +137,13 @@ spec = loadfid("hsqc/1") |>
        real
 ```
 
-Each function also accepts a `Dict` of spectra and processes every entry.
+Each function also accepts a `Dict` of spectra and processes every entry. Without a spectrum
+argument, each returns a function for use with `|>`, as in the examples above.
+
+`real(spec)` gives the purely real part of every point, real in every dimension. For a 2D spectrum,
+`imag(spec, F1Dim)` gives the part that is imaginary in the direct dimension only, and
+`imag(spec, F2Dim)` the part imaginary in the indirect dimension only; for 1D data `imag(spec)` is
+enough.
 
 ### Phase conventions
 
@@ -156,15 +166,22 @@ metadata(spec, F1Dim, :phase)    # (p0 = 128.5, p1 = 0.0)
 
 ## Automatic phasing
 
-[`autophase`](@ref) estimates the phase correction of a frequency-domain spectrum and applies it:
+[`autophase`](@ref) estimates the phase correction of a frequency-domain spectrum and applies it,
+to every frequency dimension in turn unless a dimension is given:
 
 ```julia
 spec = loadfid("myexperiment/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |>
        autophase |> real
-# [ Info: autophase: p0 = 141.3°, p1 = -4.2° (residual 11.0° over 15 line groups)
+metadata(spec, F1Dim, :phase)    # (p0 = 141.3, p1 = -4.2)
+
+hsqc = loadfid("hsqc/1") |> apodize(Cos2Window()) |> zerofill |> ft |>
+       autophase(F1Dim) |> phase(F2Dim, 0.0, 180.0)    # autophase the direct dimension only
 ```
 
-To see the estimate without applying it, use [`estimatephase`](@ref). It returns the phases with a
+The estimate is logged at debug level; set `ENV["JULIA_DEBUG"] = "NMRTools"` to see it.
+
+To see the estimate without applying it, use [`estimatephase`](@ref), which works on one dimension
+(the direct dimension unless another is given). It returns the phases with a
 residual (the weighted rms phase error of the lines used, in degrees), the number of line groups
 used, and the groups left out of the fit because their phase disagreed. A large residual, few
 groups, or a strong rejected group indicates an unreliable estimate:
@@ -231,7 +248,12 @@ and `exclude` where the fit is poor.
 
 For multidimensional data, `autophase(spec, dim)` estimates the correction from a single trace along
 `dim` and applies it to the whole dataset. The trace takes the first point of every other time
-dimension and sums over the remaining dimensions.
+dimension and sums over the remaining dimensions. Indirect dimensions are short, so apodize them
+before phasing: the truncation ripples of an unapodized dimension reach the edges of the spectrum
+and bias the edge observations by several degrees. Their traces can also be too weak to phase, in
+which case `autophase` without a dimension leaves that dimension unphased with a warning; its phase
+is usually known from the pulse sequence (often 0° or 90°, with a first-order phase of 0° or
+180°), so set it with [`phase`](@ref).
 
 ## Pole models
 

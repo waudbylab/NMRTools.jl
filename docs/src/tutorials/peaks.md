@@ -133,61 +133,15 @@ savepeaks("hsqc.list", pks)
 pks = loadpeaks("hsqc.list", spec)
 ```
 
-## Peak lists from BMRB assignments
+## Registering a peak list onto a spectrum
 
-`loadbmrb` downloads the assigned chemical shifts of a BMRB entry and assembles them into
-the peaks expected in a given experiment:
-
-```julia
-hsqc = loadbmrb(15000, H1, N15)          # ¹H,¹⁵N HSQC, side chains included
-nmrplot(hsqc; xlabel="¹H (ppm)", ylabel="¹⁵N (ppm)")
-
-loadbmrb(15000, H1, C13)                 # ¹H,¹³C HSQC
-```
-
-Called with just an entry ID (or the name of a local NMR-STAR file), `loadbmrb` returns the
-shifts themselves. Download them once and build several lists from them with `peaklist`,
-which takes the same dimension arguments:
-
-```julia
-shifts = loadbmrb(15000)
-hsqc = peaklist(shifts, "H", "N")        # backbone amide ¹H,¹⁵N HSQC
-```
-
-Dimensions are given in spectrum order, direct dimension first. Each argument names an atom,
-optionally with an offset to a neighbouring residue, so any triple-resonance correlation can
-be written down directly:
-
-```julia
-peaklist(shifts, "CO-1", "N")            # CON: C′ of residue i-1 with N of residue i
-peaklist(shifts, "H", "N", "CO-1")       # HNCO
-peaklist(shifts, "H", "N", "CA")         # HNCA, i peaks
-peaklist(shifts, "H", "N", "CA-1")       # HNCA, i-1 peaks
-```
-
-Passing nuclei instead of atom names gives every directly bonded X–H pair, which is what an
-HSQC actually shows. This includes side-chain NH and NH₂ groups for ¹⁵N, and every CH, CH₂
-and CH₃ group for ¹³C. Methyl and methylene protons with identical shifts give a single peak:
-
-```julia
-peaklist(shifts, H1, N15)                # ¹H,¹⁵N HSQC including side chains
-peaklist(shifts, H1, C13)                # ¹H,¹³C HSQC
-```
-
-A shift list is a `Vector{ChemicalShift}`, so residues can be selected with `filter` before
-building peaks, e.g. for the methyl region of an ILV-labelled sample:
-
-```julia
-ilv = filter(s -> s.residuename in ("ILE", "LEU", "VAL"), shifts)
-peaklist(ilv, H1, C13)
-```
-
-A list predicted from BMRB shifts rarely lines up exactly with your own spectrum, because
-of differences in referencing and conditions. `register!` finds the single offset that best
+A peak list made for one spectrum rarely lines up exactly with another, because of differences in
+referencing, temperature or sample conditions. This applies to a list carried over from an earlier
+spectrum of the same sample, and even more to one predicted from assigned chemical shifts (see
+[Assigned chemical shifts from the BMRB](@ref)). `register!` finds the single offset that best
 matches the list to the observed peaks and moves the list by it:
 
 ```julia
-pks = loadbmrb(15000, H1, N15)
 register!(pks, spec)                        # reports the offset applied
 register!(pks, spec; maxshift=(0.3, 2.0))   # limit the search, in ppm per dimension
 ```
@@ -197,8 +151,3 @@ much signal lies under the shifted peaks. Absolute intensities are used, so nega
 count as much as positive ones, and the score grows only logarithmically with intensity, so
 a single very strong peak cannot outweigh many weaker matches. `register` returns a moved
 copy instead. Only a uniform translation is applied; individual peaks are not moved.
-
-Peaks are labelled by residue and atom (`L23H-N`, `D5C-F6N`, `V9HG2-CG2`), so a predicted
-list can be overlaid on a spectrum with `nmrplot!`, or saved with `savepeaks` as the starting
-point for an analysis in NMRAnalysis.jl. Remember that BMRB shifts were measured under the
-deposited sample conditions and referencing, so expect systematic offsets.

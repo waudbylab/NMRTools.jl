@@ -93,6 +93,8 @@ Processing functions dispatch on dimension types — `TimeDimension`s are proces
 
 Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
 
+Dimension defaults: without a dimension argument, `apodize`, `zerofill`, `ft`, `autophase` and `autophase0` act on each Fourier (for phasing, frequency) dimension in turn with the same settings; `linearpredict` on the indirect dimensions; `solventfilter`, `estimatepoles` and `estimatephase` on the direct dimension. Multi-dimension `autophase` warns and skips a dimension with no lines. `real(spec)` is the purely real (`realest`) part; `imag(spec, dim)` the part imaginary in `dim` alone (`imag(spec)` only for 1D). Every processing function has a spectrum-first form and a curried form for `|>`.
+
 ## Style Conventions
 
 Follow Julia Base style throughout:

@@ -25,6 +25,9 @@ function _fourierdims(spec::NMRData)
     return [i for (i, d) in enumerate(dims(spec)) if !isnothing(metadata(d, :mcindex))]
 end
 
+"array-dimension indices of the Fourier dimensions that are already in the frequency domain"
+_frequencydims(spec::NMRData) = filter(di -> dims(spec, di) isa FrequencyDimension, _fourierdims(spec))
+
 "reshape a vector `v` so it broadcasts along array dimension `di` of an `nd`-dimensional array"
 _reshape_along(v, di, nd) = reshape(v, ntuple(i -> i == di ? length(v) : 1, nd))
 
@@ -497,21 +500,24 @@ end
 # extract ##########################################################################################
 
 """
+    extract(spec, dim, range)
+    extract(spec, dim1 => range1, dim2 => range2, ...)
     extract(dim, range)
     extract(dim1 => range1, dim2 => range2, ...)
 
-Return a pipeline-compatible closure that selects a region of a spectrum. `dim` is a dimension type
-(for example `F1Dim`) and `range` an interval (for example `6.0 .. 10.0`). The noise estimate (`:noise`) of the
-selected region is refreshed.
+Select a region of a spectrum. `dim` is a dimension type (for example `F1Dim`) and `range` an
+interval (for example `6.0 .. 10.0`). The noise estimate (`:noise`) of the selected region is
+refreshed. The forms without a spectrum return a function for use with `|>`.
 
 ```julia
 loadfid("1/ser") |> ft |> extract(F1Dim, 6.0 .. 10.0) |> phase(F1Dim, -50) |> real
+extract(spec, F1Dim => 6.0 .. 10.0, F2Dim => 105 .. 135)
 ```
 """
-extract(dim, range) = spec -> _withnoise(spec[dim(range)])
-function extract(pairs::Pair...)
-    return spec -> _withnoise(spec[(p.first(p.second) for p in pairs)...])
-end
+extract(spec::NMRData, dim, range) = _withnoise(spec[dim(range)])
+extract(spec::NMRData, pairs::Pair...) = _withnoise(spec[(p.first(p.second) for p in pairs)...])
+extract(dim, range) = spec -> extract(spec, dim, range)
+extract(pairs::Pair...) = spec -> extract(spec, pairs...)
 
 "copy of `spec` with its own metadata and a fresh noise estimate"
 _withnoise(spec) = estimatenoise(rebuild(spec; metadata=deepcopy(metadata(spec))))
@@ -521,18 +527,40 @@ _withnoise(spec) = estimatenoise(rebuild(spec; metadata=deepcopy(metadata(spec))
 """
     real(spec::NMRData)
 
-Extract the purely real component of a multicomplex spectrum (elementwise `realest`), returning an
-`NMRData` with `Float64` element type. This is the final step of a processing pipeline.
+The real spectrum: the purely real component of every point of a multicomplex spectrum (its
+`realest` part, real in every dimension), as an `NMRData` with `Float64` elements. This is
+the final step of a processing pipeline. For 1D data it is the usual real part.
+
+Note that this differs from broadcasting `real` over the elements, which follows
+MulticomplexNumbers in removing only the highest-order imaginary unit.
+
+See also `imag`.
 """
 Base.real(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=realest.(parent(spec)))
 
 """
+    imag(spec::NMRData, dim)
     imag(spec::NMRData)
 
-Return the imaginary part of a multicomplex spectrum: the coefficient of its highest-order imaginary
-unit.
+The imaginary spectrum in dimension `dim`: the component of every point that is imaginary in `dim`
+and real in every other dimension, as an `NMRData` with `Float64` elements. For a 2D spectrum,
+`imag(spec, 1)` and `imag(spec, 2)` are the parts TopSpin stores in `2ir` and `2ri` (with the
+conjugate sign of NMRTools' convention). The dimension can be omitted only for 1D data.
+
+See also `real`.
 """
-Base.imag(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=imag.(parent(spec)))
+function Base.imag(spec::NMRData{<:Multicomplex}, dim)
+    di = resolvedim(spec, dim)
+    mcindex = metadata(dims(spec, di), :mcindex)
+    isnothing(mcindex) &&
+        throw(NMRToolsError("dimension $di ($(typeof(dims(spec, di)))) has no imaginary unit"))
+    k = 1 + 2^(mcindex - 1)      # component index of the unit im_mcindex alone
+    return rebuild(spec; data=component.(parent(spec), k))
+end
+Base.imag(spec::NMRData{<:Multicomplex{T,1}}) where {T} = imag(spec, only(_fourierdims(spec)))
+function Base.imag(spec::NMRData{<:Multicomplex})
+    throw(ArgumentError("imag of a multidimensional spectrum needs a dimension: imag(spec, dim)"))
+end
 
 """
     abs(spec::NMRData)

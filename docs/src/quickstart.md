@@ -101,3 +101,14 @@ Similarly, a plain vector containing axis values can be obtained from this using
 ```@repl data
 data(spec, 1)
 ```
+
+## Next steps
+
+- [Working with NMR data](@ref) covers loading, indexing, referencing, metadata and saving in more depth.
+- [Processing raw data](@ref) shows how to turn raw `fid` and `ser` files into spectra, in one step with `autoprocess` or stage by stage:
+
+```julia
+spec = loadfid("myexperiment/1") |> autoprocess
+```
+
+- [Peaks and peak lists](@ref) covers peak picking and peak list files.

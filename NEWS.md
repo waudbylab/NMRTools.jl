@@ -46,9 +46,16 @@ change in a future release.
 - Processing functions, each with a curried form for use with `|>`: `apodize`, `zerofill`, `ft`
   (including the inverse transform), `phase`, `extract`, `frequencyshift`, `linearpredict` (forward
   and backward) and `solventfilter`. `ft` removes the digital filter's group delay with a linear
-  phase ramp, as TopSpin and NMRPipe do. `real`, `imag`, `abs` and `complex` convert the result.
-- Automatic phasing: `estimatepoles`, `estimatephase`, `autophase` and `autophase0`. The total
-  correction applied is recorded in each frequency dimension's `:phase` metadata.
+  phase ramp, as TopSpin and NMRPipe do. `extract` selects a region, as `extract(spec, F1Dim,
+  6.0 .. 10.0)` or in a pipeline as `extract(F1Dim, 6.0 .. 10.0)`.
+- `real(spec)` gives the purely real part of a multicomplex spectrum (real in every dimension), and
+  `imag(spec, dim)` the part imaginary in dimension `dim` alone (`imag(spec)` for 1D data);
+  `abs` and `complex` are also defined.
+- Automatic phasing: `estimatepoles`, `estimatephase`, `autophase` and `autophase0`. Without a
+  dimension argument, `autophase` and `autophase0` phase every frequency dimension in turn (a
+  dimension with too little signal is left unphased, with a warning). The total correction applied
+  is recorded in each frequency dimension's `:phase` metadata, and the estimate is logged at debug
+  level.
 - `autoprocess` chains solvent suppression, apodization, zero-filling, Fourier transformation and
   automatic phasing in one step, with per-dimension settings.
 - `Cos2Window` replaces `Cos²Window`, which remains as an alias. `CosWindow`, `Cos2Window` and

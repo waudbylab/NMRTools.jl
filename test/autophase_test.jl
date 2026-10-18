@@ -23,6 +23,31 @@ function synthetic_fid(lines; n=4096, sw=5000.0, bf=500.0e6, noise=0.0)
 end
 synthetic_spectrum(lines; kw...) = synthetic_fid(lines; kw...) |> zerofill |> ft
 
+# Synthetic 2D bicomplex FID: each line is (ν1, ν2, lw1, lw2, amplitude), in Hz from the carriers,
+# with im1 carrying the direct and im2 the indirect quadrature.
+function synthetic_fid2d(lines; n1=1024, n2=128, sw1=5000.0, sw2=2000.0, noise=0.0)
+    t1 = collect((0:(n1 - 1)) ./ sw1)
+    t2 = collect((0:(n2 - 1)) ./ sw2)
+    md(n, sw, bf, k, offset) = Dict{Symbol,Any}(:mcindex => k, :bf => bf, :sf => bf, :swhz => sw,
+                                                :swppm => 1e6 * sw / bf, :offsethz => 0.0,
+                                                :offsetppm => offset, :td => n, :tdzf => n,
+                                                :npoints => n, :region => missing,
+                                                :window => nothing, :pseudodim => false,
+                                                :units => "s")
+    x = [Multicomplex(noise * randn(), noise * randn(), noise * randn(), noise * randn())
+         for _ in t1, _ in t2]
+    for (ν1, ν2, lw1, lw2, a) in lines, j in eachindex(t2), i in eachindex(t1)
+        d = a * exp(-π * lw1 * t1[i] - π * lw2 * t2[j])
+        c1, s1 = cos(2π * ν1 * t1[i]), sin(2π * ν1 * t1[i])
+        c2, s2 = cos(2π * ν2 * t2[j]), sin(2π * ν2 * t2[j])
+        x[i, j] += Multicomplex(d * c1 * c2, d * s1 * c2, d * c1 * s2, d * s1 * s2)
+    end
+    x[1, :] ./= 2                                     # t = 0 points carry half weight
+    x[:, 1] ./= 2
+    return NMRData(x, (T1Dim(t1; metadata=md(n1, sw1, 500.0e6, 1, 4.7)),
+                       T2Dim(t2; metadata=md(n2, sw2, 50.0e6, 2, 118.0))))
+end
+
 const LINES = [(-2000.0, 4.0, 1.0), (-1300.0, 6.0, 0.8), (-600.0, 3.0, 1.2), (-100.0, 5.0, 0.6),
                (400.0, 4.0, 1.0), (900.0, 8.0, 0.9), (1500.0, 3.0, 0.7), (2100.0, 5.0, 1.1)]
 
@@ -91,7 +116,7 @@ end
     @test length(strong) == 1
     @test strong[1].shift ≈ 4.7 - 600 / 500 atol = 1e-3
     @test abs(strong[1].residual) > 60
-    @test_logs (:info,) (:warn, r"strong lines left out") autophase(spec3; order=0)
+    @test_logs (:warn, r"strong lines left out") autophase(spec3; order=0)
 
     # pivot: p0 reported at the pivot reproduces the same correction
     bad = phase(spec, 1, -50.0, 40.0)
@@ -128,6 +153,24 @@ end
     end
 end
 
+@testset "autophase: every dimension of a 2D spectrum" begin
+    lines2d = [(-1500.0, -600.0, 6.0, 15.0, 1.0), (-400.0, 300.0, 8.0, 20.0, 0.8),
+               (700.0, -100.0, 5.0, 15.0, 1.2), (1600.0, 650.0, 7.0, 25.0, 0.9)]
+    # apodized, as truncation ripples at the edges of an unapodized indirect dimension bias the
+    # edge observations by several degrees
+    spec = synthetic_fid2d(lines2d; noise=1e-3) |> apodize(Cos2Window()) |> zerofill |> ft
+    bad = phase(phase(spec, 1, 40.0), 2, -30.0)
+    fixed = autophase(bad; order=0)
+    wrap(x) = rad2deg(angle(cis(deg2rad(x))))
+    # the recorded totals include the deliberate errors, so they return to zero
+    @test abs(wrap(metadata(fixed, 1, :phase).p0)) < 3
+    @test abs(wrap(metadata(fixed, 2, :phase).p0)) < 3
+    @test parent(fixed) ≈ parent(autophase(autophase(bad, 1; order=0), 2; order=0))
+    @test parent(bad |> autophase(order=0)) ≈ parent(fixed)
+    # a single dimension only
+    @test metadata(autophase(bad, F1Dim; order=0), 2, :phase).p0 ≈ -30.0
+end
+
 @testset "autophase0: synthetic" begin
     spec = synthetic_spectrum(LINES; noise=1e-3)
     for p0 in (0.0, 37.0, -120.0, 150.0)
@@ -141,6 +184,8 @@ end
     # curried form
     @test real(bad |> autophase0) ≈ real(autophase0(bad))
     @test_throws ArgumentError autophase0(ft(spec; inverse=true))
+    @test_throws ArgumentError autophase0(ft(spec; inverse=true), 1)
+    @test_throws ArgumentError autophase(ft(spec; inverse=true))
 end
 
 @testset "phase: metadata and sign convention" begin
@@ -220,6 +265,12 @@ end
         s2d = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")))
         @test dims(s2d, 1) isa F1Dim && dims(s2d, 2) isa F2Dim
         @test !isnothing(metadata(s2d, 1, :phase))
+        # autophase without a dimension: the indirect trace of this dataset has no lines above
+        # the threshold, so that dimension is left unphased with a warning
+        unphased = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")); phase=nothing)
+        both = @test_logs (:warn, r"dimension 2 left unphased") autophase(unphased)
+        @test parent(both) ≈ parent(autophase(unphased, 1))
+        @test isnothing(metadata(both, 2, :phase))
         pseudo = autoprocess(loadfid(joinpath(testdata, "19f-cest-ts3")))
         @test dims(pseudo, 1) isa F1Dim
         @test size(pseudo, 2) == 101

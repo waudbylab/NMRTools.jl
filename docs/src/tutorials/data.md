@@ -61,15 +61,19 @@ spec2d = loadnmr("expt/111", allcomponents=true)
 
 Complex multidimensional data is represented using [MulticomplexNumbers.jl](https://waudbylab.org/MulticomplexNumbers.jl). This algebra provides a natural representation of the multiple real and imaginary components associated with NMR data ([Delsuc 1988](https://www.sciencedirect.com/science/article/pii/0022236488900364)), and facilitates phase correction and bookkeeping of individual real and imaginary components.
 
+A 2D point has four components, `rr + ir·im1 + ri·im2 + ii·im1·im2`, where `im1` belongs to the direct dimension and `im2` to the indirect one. They can be extracted with `component`, numbered in that order; `real(spec2d)` gives the purely real part `rr`:
+
 ```julia
 fig = Figure(size=(600, 600))
 nmrplot(fig[1,1:2], [real(spec1d), imag(spec1d)])  # 1D plot
 spec2d = spec2d[-0.5 .. 1.2, 81 .. 90] / 2
 nmrplot(fig[2,1], component.(spec2d, 1), title="component 1 (rr)")  # 2D plots
-nmrplot(fig[2,2], component.(spec2d, 2), title="component 2 (ri)")
-nmrplot(fig[3,1], component.(spec2d, 3), title="component 3 (ir)")
+nmrplot(fig[2,2], component.(spec2d, 2), title="component 2 (ir)")  # imaginary in the direct dimension
+nmrplot(fig[3,1], component.(spec2d, 3), title="component 3 (ri)")  # imaginary in the indirect dimension
 nmrplot(fig[3,2], component.(spec2d, 4), title="component 4 (ii)")
 ```
+
+Imaginary components are the complex conjugates of TopSpin's (`2ir`, `2ri`, …), following the NMRTools sign convention. For spectra processed in NMRTools, `imag(spec, dim)` gives the part that is imaginary in dimension `dim` alone.
 
 ![Multicomplex data](../assets/multicomplex.png)
 
@@ -119,28 +123,7 @@ savefig("plot-offset.svg"); nothing # hide
 
 The dimension can be specified as a dimension index (`1`, `2`, ...), a dimension type (`F1Dim`, `F2Dim`, ...), or a nucleus (`H1`, `N15`, ...).
 
-By default, `reference` also applies indirect referencing to all other frequency dimensions using IUPAC Xi ratios. This ensures that, for example, correcting the ¹H reference in an HSQC automatically corrects the ¹⁵N or ¹³C axis too:
-
-```julia
-# Reference 1H; 15N dimension is automatically updated via Xi ratios
-spec = reference(spec, H1, 4.72 => 4.70)
-
-# Disable indirect referencing if needed
-spec = reference(spec, H1, 4.72 => 4.70; indirect=false)
-```
-
-For aqueous samples, `reference` can determine the ¹H water chemical shift from the sample temperature and apply the correction automatically:
-
-```julia
-# Reference to water using temperature from spectrum metadata
-spec = reference(spec)
-
-# Or specify the temperature manually (in Kelvin)
-spec = reference(spec; temperature=298.15)
-```
-
-!!! note
-    `reference` updates the axis values and adjusts metadata (`:offsetppm`, `:offsethz`, `:sf`) to record the altered referencing. See [Chemical Shift Referencing](@ref) for full details of indirect referencing and Xi ratio tables.
+By default, `reference` also applies indirect referencing to the other frequency dimensions using IUPAC Xi ratios, so correcting the ¹H reference of an HSQC corrects its ¹⁵N or ¹³C axis too. For aqueous samples, `reference(spec)` references to the water signal using the sample temperature. See [Chemical Shift Referencing](@ref) for these options and the Xi ratio tables.
 
 
 ## Accessing metadata
@@ -166,3 +149,16 @@ metadata(spec2d, F2Dim, :label)
 spec2d[2, :bf]
 spec2d[F2Dim, :window]
 ```
+
+See the [Metadata overview](@ref) for more on metadata, including spectrometer channels, power levels, frequency lists and sample information.
+
+
+## Saving data
+
+Frequency-domain spectra can be written as Bruker processed data with [`savenmr`](@ref), and time-domain data as Bruker `fid` or `ser` files with [`savefid`](@ref), for example to view a spectrum processed in NMRTools in TopSpin:
+
+```julia
+savenmr("myexperiment/1", spec; procno=101)   # writes myexperiment/1/pdata/101
+```
+
+Peak lists are saved with [`savepeaks`](@ref) (see [Peaks and peak lists](peaks.md)).

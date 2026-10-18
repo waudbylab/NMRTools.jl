@@ -1,13 +1,15 @@
-# Metadata Overview
+# Metadata overview
 
 [`NMRData`](@ref) objects contain metadata on processing and acquisition parameters, populated automatically when loading a spectrum.
 
 ## Types of metadata
 
-Metadata is organized into two categories:
+Metadata is organised into two categories:
 
-1. **Spectrum metadata**: Information about the experiment as a whole (number of scans, receiver gain, pulse program, temperature, etc.)
-2. **Axis metadata**: Information specific to each dimension (carrier frequency, spectral width, window functions, etc.)
+1. **Spectrum metadata**: information about the experiment as a whole: number of scans, receiver gain, pulse programme, title, temperature, the noise level (calculated when the spectrum is loaded), acquisition parameters from the `acqus` file, and the contents of auxiliary files such as vclists and vdlists.
+2. **Axis metadata**: information specific to each dimension: number of points, the original time-domain size (before zero filling, linear prediction or extraction of a subregion), carrier frequency, spectral width, window function and phase correction.
+
+Metadata are stored in dictionaries keyed by symbols such as `:ns` or `:pulseprogram`. The standard keys are listed in the [Metadata](../reference/metadata.md) reference page.
 
 ## Quick start
 
@@ -19,7 +21,12 @@ using NMRTools
 # Load example spectrum
 spec = exampledata("2D_HN")
 
-# Access using the metadata function
+# The whole dictionary
+metadata(spec)
+```
+
+```@example overview
+# A single entry, using the metadata function
 metadata(spec, :ns)
 ```
 
@@ -40,6 +47,11 @@ spec[F2Dim, :label]
 spec[2, :swhz]
 ```
 
+```@example overview
+# All metadata for one axis
+metadata(spec, F1Dim)
+```
+
 ### Accessing acquisition parameters
 
 ```@example overview
@@ -51,6 +63,27 @@ acqus(spec, :te)
 # Access arrayed parameters
 acqus(spec, :p, 1)  # First pulse length
 ```
+
+Parameter names can be given as strings (case insensitive, e.g. `"TE"`) or as lowercase symbols (e.g. `:te`).
+
+!!! note
+    Arrayed parameters such as pulse lengths and delays are returned as dictionaries rather than lists, to avoid confusion between Bruker arrays, which are zero-based, and Julia arrays, which are one-based.
+
+### Spectrometer channels
+
+Frequency dimensions carry their own `:bf`, `:sf` and `:nucleus` metadata, but these only describe nuclei that were *detected*, i.e. that have an axis. To reach a nucleus that was manipulated but never detected, for example the carbon channel in a ¹³C-edited experiment read out on ¹H, use the spectrometer **channel** model.
+
+Channels describe the physical RF channels (`:f1`…`:f8`) independently of the detected dimensions. `channels(spec)` returns a dictionary of all channels, and `channels(spec, ...)` returns a single channel by label, by `Nucleus`, or by a string giving either:
+
+```@example overview
+channels(spec, :f1)        # by spectrometer channel label
+```
+
+```@example overview
+channels(spec, "13C")[:bf] # carbon base frequency, even with no carbon axis
+```
+
+Each channel dictionary has keys `:label`, `:nucleus`, `:bf` (base frequency, Hz), `:sfo` (carrier frequency, Hz), `:offsethz` and `:offsetppm`.
 
 ## Special metadata types
 
@@ -112,47 +145,6 @@ sample(spec, :sample, :label)
 
 See the [Sample metadata](samples.md) page for detailed documentation.
 
-## Standard metadata keys
-
-### Spectrum metadata symbols
-
-| Symbol           | Description                                |
-|:-----------------|:-------------------------------------------|
-| `:filename`      | Original filename or template              |
-| `:format`        | `:NMRPipe` or `:bruker`                    |
-| `:title`         | Contents of `pdata/1/title`                |
-| `:label`         | First line of title, used for captions     |
-| `:date`          | Experiment timestamp (completion time)     |
-| `:field`         | Field strength (in T)                      |
-| `:pulseprogram`  | Pulse program (PULPROG) from acqus file    |
-| `:ndim`          | Number of dimensions                       |
-| `:acqusfilename` | Path to associated acqus file              |
-| `:acqus`         | Dictionary of acqus data                   |
-| `:ns`            | Number of scans                            |
-| `:rg`            | Receiver gain                              |
-| `:noise`         | RMS noise level                            |
-| `:solvent`       | Solvent string, e.g. "H2O+D2O"             |
-| `:temperature`   | Temperature in K                           |
-| `:nuclei`        | Set of `Nucleus` values                    |
-
-### Axis metadata symbols
-
-| Symbol         | Description                                                           |
-|:---------------|:----------------------------------------------------------------------|
-| `:pseudodim`   | Flag indicating non-frequency domain data                             |
-| `:npoints`     | Final number of (real) data points in dimension (after extraction)    |
-| `:td`          | Number of complex points acquired                                     |
-| `:tdzf`        | Number of complex points when FT executed, including LP and ZF        |
-| `:bf`          | Base frequency, in Hz                                                |
-| `:sf`          | Carrier frequency, in Hz                                             |
-| `:offsethz`    | Carrier offset from bf, in Hz                                         |
-| `:offsetppm`   | Carrier offset from bf, in ppm                                        |
-| `:swhz`        | Spectrum width, in Hz                                                 |
-| `:swppm`       | Spectrum width, in ppm                                                |
-| `:region`      | Extracted region, expressed as a range in points, otherwise `missing` |
-| `:window`      | `WindowFunction` object indicating applied apodization                |
-| `:nucleus`     | `Nucleus` enum value for this dimension                               |
-
 ## Auxiliary files
 
 Files such as `vclist`, `vdlist`, and frequency lists are automatically imported when present:
@@ -176,6 +168,5 @@ NMRTools performs automatic unit conversion:
 - **[Power levels](power.md)**: Representation of powers and RF field strength calculations
 - **[Frequency lists](fqlists.md)**: Frequency list handling and conversions
 - **[Window functions](windows.md)**: Apodization functions and lineshape effects
-- **[Sample metadata](samples.md)**: Working with sample metadata and the nmr-sample-schema
-- **[Tutorial: Metadata](../tutorials/metadata.md)**: Step-by-step introduction to working with metadata
-- **[Reference: Metadata](../reference/metadata.md)**: API reference for metadata functions
+- **[Sample metadata](samples.md)**: Working with sample metadata and the NMRSamples schema
+- **[Reference: Metadata](../reference/metadata.md)**: metadata functions and the standard metadata keys

@@ -1,5 +1,7 @@
 # Utilities
 
+This page covers tools that work alongside the main data types: combining raw Bruker experiments, and importing assigned chemical shifts from the BMRB.
+
 ## Combining NMR experiments
 
 `sumexpts(INPUTFILES...; out=OUTPUT)` is a utility function provided by NMRTools that allows you to combine multiple Bruker NMR experiments with optional weighting factors.
@@ -163,3 +165,64 @@ julia -e 'using NMRTools; sumexpts(11, 12, out=999, weights=[1.0, -1.0])'
 ```
 
 This allows for easy integration with processing workflows and shell scripts.
+
+## Assigned chemical shifts from the BMRB
+
+`loadbmrb` downloads the assigned chemical shifts of a [BMRB](https://bmrb.io) entry and
+assembles them into the peaks expected in a given experiment, as a peak list of the kind described
+in [Peaks and peak lists](tutorials/peaks.md):
+
+```julia
+hsqc = loadbmrb(15000, H1, N15)          # ¹H,¹⁵N HSQC, side chains included
+nmrplot(hsqc; xlabel="¹H (ppm)", ylabel="¹⁵N (ppm)")
+
+loadbmrb(15000, H1, C13)                 # ¹H,¹³C HSQC
+```
+
+Called with just an entry ID (or the name of a local NMR-STAR file), `loadbmrb` returns the
+shifts themselves. Download them once and build several lists from them with `peaklist`,
+which takes the same dimension arguments:
+
+```julia
+shifts = loadbmrb(15000)
+hsqc = peaklist(shifts, "H", "N")        # backbone amide ¹H,¹⁵N HSQC
+```
+
+Dimensions are given in spectrum order, direct dimension first. Each argument names an atom,
+optionally with an offset to a neighbouring residue, so any triple-resonance correlation can
+be written down directly:
+
+```julia
+peaklist(shifts, "CO-1", "N")            # CON: C′ of residue i-1 with N of residue i
+peaklist(shifts, "H", "N", "CO-1")       # HNCO
+peaklist(shifts, "H", "N", "CA")         # HNCA, i peaks
+peaklist(shifts, "H", "N", "CA-1")       # HNCA, i-1 peaks
+```
+
+Passing nuclei instead of atom names gives every directly bonded X–H pair, which is what an
+HSQC actually shows. This includes side-chain NH and NH₂ groups for ¹⁵N, and every CH, CH₂
+and CH₃ group for ¹³C. Methyl and methylene protons with identical shifts give a single peak:
+
+```julia
+peaklist(shifts, H1, N15)                # ¹H,¹⁵N HSQC including side chains
+peaklist(shifts, H1, C13)                # ¹H,¹³C HSQC
+```
+
+A shift list is a `Vector{ChemicalShift}`, so residues can be selected with `filter` before
+building peaks, e.g. for the methyl region of an ILV-labelled sample:
+
+```julia
+ilv = filter(s -> s.residuename in ("ILE", "LEU", "VAL"), shifts)
+peaklist(ilv, H1, C13)
+```
+
+Peaks are labelled by residue and atom (`L23H-N`, `D5C-F6N`, `V9HG2-CG2`), so a predicted
+list can be overlaid on a spectrum with `nmrplot!`, or saved with `savepeaks` as the starting
+point for an analysis in NMRAnalysis.jl. BMRB shifts were measured under the deposited sample
+conditions and referencing, so expect systematic offsets; `register!` finds and removes the
+overall offset (see [Registering a peak list onto a spectrum](@ref)):
+
+```julia
+pks = loadbmrb(15000, H1, N15)
+register!(pks, spec)
+```

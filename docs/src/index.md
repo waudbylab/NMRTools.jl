@@ -1,12 +1,15 @@
 # NMRTools.jl
 
-NMRTools.jl is a Julia library for NMR spectroscopy data. It reads 1D, 2D, and higher-dimensional datasets and exposes them as named-dimension arrays with full metadata support.
+NMRTools.jl is a Julia library for NMR spectroscopy data. It reads and writes 1D, 2D and higher-dimensional datasets, processes raw time-domain data, and exposes spectra as named-dimension arrays with full metadata support. Quadrature is carried by multicomplex numbers, so each dimension of a multidimensional experiment has its own imaginary unit.
 
-- **Multi-format support**: Read Bruker, nmrPipe, and UCSF/Sparky formatted data
-- **Chemical shift indexing**: Array-like indexing with chemical shift values using `spec[8.0 .. 9.0]` syntax
-- **Plotting**: Publication-ready plots via Plots.jl recipes, with contour level and colour control
-- **Metadata**: Access acquisition parameters from Bruker `acqus` files; window functions, power levels, and frequency lists represented as typed objects
-- **DimensionalData.jl integration**: Named dimension arrays with selectors for frequency, time, and gradient dimensions
+- **Multi-format support**: read Bruker (processed and raw `fid`/`ser`), nmrPipe and UCSF/Sparky data; write Bruker processed data and raw FIDs
+- **Processing**: composable apodization, zero-filling, Fourier transform, phasing, linear prediction and solvent suppression, with automatic phasing and a one-step `autoprocess`
+- **Peaks**: N-dimensional peak picking, peak lists that are Tables.jl tables, registration of a peak list onto a spectrum, and NMRAnalysis.jl and Sparky peak list files
+- **Assignments**: import assigned chemical shifts from the BMRB and build peak lists from them
+- **Chemical shift indexing**: array-like indexing with chemical shift values using `spec[8.0 .. 9.0]` syntax
+- **Plotting**: publication-ready plots via Plots.jl recipes or Makie, with contour level and colour control
+- **Metadata**: acquisition parameters from Bruker `acqus` files, pulse programme annotations and sample information; window functions, power levels and frequency lists represented as typed objects
+- **DimensionalData.jl integration**: named dimension arrays with selectors for frequency, time and gradient dimensions
 
 ## Installation
 
@@ -25,7 +28,7 @@ spec = loadnmr("path/to/experiment/1")
 plot(spec)
 ```
 
-See the [Getting started](@ref) guide for more examples, or explore the tutorial pages for detailed workflows including relaxation analysis, diffusion experiments, and advanced plotting techniques.
+See the [Getting started](@ref) guide for more examples, the tutorials for loading, processing, plotting and peak picking, and the worked examples for complete relaxation and diffusion analyses.
 
 
 ## Related packages

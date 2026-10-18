@@ -92,6 +92,11 @@ end
     @test eltype(parent(r)) == Float64
     @test parent(r) ≈ realest.(parent(spec))
 
+    # imag: the component imaginary in the given dimension; 1D needs no dimension
+    @test parent(imag(spec)) ≈ imag.(parent(spec))
+    @test parent(imag(spec, 1)) ≈ parent(imag(spec))
+    @test eltype(parent(imag(spec))) == Float64
+
     @test eltype(parent(abs(spec))) == Float64
     @test eltype(parent(complex(spec))) <: Complex
     # complex conversion preserves the components
@@ -122,6 +127,9 @@ end
     sub = extract(F1Dim, mid .. hi)(f)
     @test sub isa NMRData
     @test size(sub, 1) < size(f, 1)
+    @test parent(extract(f, F1Dim, mid .. hi)) == parent(sub)
+    @test parent(extract(f, F1Dim => mid .. hi)) == parent(sub)
+    @test parent(f |> extract(F1Dim => mid .. hi)) == parent(sub)
 end
 
 @testset "processing: digital-filter group delay in ft" begin
@@ -138,4 +146,19 @@ end
     ref = NMRData(vcat(x[1:(n - g)], zeros(eltype(x), g)), (dims(base, 1),))
     @test parent(ft(fid)) ≈ parent(ft(ref))
     @test metadata(ft(fid), 1, :grpdly) == 0
+end
+
+@testset "processing: imag of 2D data" begin
+    testdata = joinpath(@__DIR__, "test-data", "15n-trosy-ts3")
+    if !isfile(joinpath(testdata, "ser"))
+        @test_skip "raw test data not available"
+    else
+        spec = loadfid(testdata) |> ft
+        m = parent(spec)
+        # components of a bicomplex number are (rr, ir, ri, ii): ir is imaginary in im1 only
+        @test parent(imag(spec, 1)) == component.(m, 2)
+        @test parent(imag(spec, F2Dim)) == component.(m, 3)
+        @test parent(real(spec)) == component.(m, 1)
+        @test_throws ArgumentError imag(spec)
+    end
 end

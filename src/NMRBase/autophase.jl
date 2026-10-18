@@ -350,10 +350,12 @@ end
 """
     autophase(spec, [dim]; kw...)
 
-Estimate the phase correction of dimension `dim` (default: the direct dimension) with
-[`estimatephase`](@ref) and apply it with [`phase`](@ref). The total correction applied is recorded in
-the dimension's `:phase` metadata. Keywords are passed to `estimatephase`, for example `order=0`
-for zero-order only, or `exclude=[4.6 .. 4.9]` to ignore water.
+Estimate the phase correction of dimension `dim` with [`estimatephase`](@ref) and apply it with
+[`phase`](@ref). Without `dim`, every frequency dimension is phased in turn, direct dimension first;
+a dimension in which no lines are found is left unphased, with a warning.
+The total correction applied is recorded in each dimension's `:phase` metadata, and the estimate is
+logged at debug level. Keywords are passed to `estimatephase`, for example `order=0` for zero-order
+only, or `exclude=[4.6 .. 4.9]` to ignore water; without `dim` they apply to every dimension.
 
 For multidimensional data the correction is estimated from a single trace along `dim` (see
 [`estimatepoles`](@ref)) and applied to the whole dataset.
@@ -362,10 +364,10 @@ For multidimensional data the correction is estimated from a single trace along 
 spec = loadfid("expt/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |> autophase |> real
 ```
 """
-function autophase(spec::NMRData, dim=1; kw...)
+function autophase(spec::NMRData, dim; kw...)
     est = estimatephase(spec, dim; kw...)
     ntotal = est.nlines + length(est.rejected)
-    @info "autophase: p0 = $(round(est.p0; digits=1))°, p1 = $(round(est.p1; digits=1))° " *
+    @debug "autophase: p0 = $(round(est.p0; digits=1))°, p1 = $(round(est.p1; digits=1))° " *
           "(residual $(round(est.residual; digits=1))° over $(est.nlines) of $ntotal line groups)"
     # warn about strong lines that could not be phased together with the rest
     strong = filter(r -> r.relsnr >= 0.02, est.rejected)
@@ -382,6 +384,28 @@ function autophase(spec::NMRData, dim=1; kw...)
     return phase(spec, dim, est.p0, est.p1; pivot=est.pivot)
 end
 
+function autophase(spec::NMRData; kw...)
+    fdims = _frequencydims(spec)
+    isempty(fdims) &&
+        throw(ArgumentError("autophase: no frequency dimensions to phase; Fourier transform first"))
+    length(fdims) == 1 && return autophase(spec, only(fdims); kw...)
+    # several dimensions: one without enough signal to phase (common for indirect dimensions) is
+    # left as it is, with a warning, as long as at least one dimension can be phased
+    out = spec
+    failures = NMRToolsError[]
+    for di in fdims
+        try
+            out = autophase(out, di; kw...)
+        catch err
+            err isa NMRToolsError || rethrow()
+            push!(failures, err)
+            @warn "autophase: dimension $di left unphased: $(err.message)"
+        end
+    end
+    length(failures) == length(fdims) && throw(first(failures))
+    return out
+end
+
 autophase(; kw...) = spec -> autophase(spec; kw...)
 autophase(dim; kw...) = spec -> autophase(spec, dim; kw...)
 function autophase(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
@@ -391,8 +415,8 @@ end
 """
     autophase0(spec, [dim]; exclude=())
 
-Correct the zero-order phase of dimension `dim` (default: the direct dimension) of a
-frequency-domain spectrum. `p0` is chosen so that the integral of the dispersion mode over the
+Correct the zero-order phase of dimension `dim` of a frequency-domain spectrum, or without `dim`
+of every frequency dimension in turn. `p0` is chosen so that the integral of the dispersion mode over the
 spectrum is zero and the integral of the absorption mode is positive: it is the phase of the integral
 of the complex spectrum, which equals the phase of the first point of the FID. Points in the
 chemical-shift intervals `exclude`, for example `[4.6 .. 4.9]`, are left out of the integral. No
@@ -405,7 +429,7 @@ dataset. The correction is recorded in the dimension's `:phase` metadata.
 
 See also [`autophase`](@ref), [`phase`](@ref).
 """
-function autophase0(spec::NMRData, dim=1; exclude=())
+function autophase0(spec::NMRData, dim; exclude=())
     di = resolvedim(spec, dim)
     d = dims(spec, di)
     d isa FrequencyDimension ||
@@ -416,8 +440,15 @@ function autophase0(spec::NMRData, dim=1; exclude=())
     s = _referencetrace(spec, di)
     keep = [!any(r -> x in r, exclude) for x in data(d)]
     p0 = rad2deg(angle(sum(s[keep])))
-    @info "autophase0: p0 = $(round(p0; digits=1))°"
+    @debug "autophase0: p0 = $(round(p0; digits=1))°"
     return phase(spec, di, p0, 0.0)
+end
+
+function autophase0(spec::NMRData; kw...)
+    fdims = _frequencydims(spec)
+    isempty(fdims) &&
+        throw(ArgumentError("autophase0: no frequency dimensions to phase; Fourier transform first"))
+    return foldl((s, di) -> autophase0(s, di; kw...), fdims; init=spec)
 end
 
 autophase0(; kw...) = spec -> autophase0(spec; kw...)
