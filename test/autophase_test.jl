@@ -1,5 +1,6 @@
 using NMRTools
 using MulticomplexNumbers
+using Random
 using Test
 
 # Synthetic 1D spectrum: a sum of Lorentzian lines (shift in Hz from the carrier, linewidth in Hz,
@@ -105,6 +106,23 @@ end
     @test_throws ArgumentError estimatephase(spec; order=2)
 end
 
+@testset "estimatephase: weak line beside a strong non-Lorentzian line" begin
+    # as in ¹⁹F spectra of a main and a minor species: the strong line has two overlapping
+    # components, and its tails must not bias the phase of the weak line
+    Random.seed!(1)
+    two = [(-800.0, 3.0, 1.0), (-797.0, 12.0, 0.4), (600.0, 5.0, 0.06)]
+    spec = synthetic_fid(two; noise=2e-4, sw=20000.0, bf=470e6, n=8192) |>
+           apodize(Cos2Window()) |> zerofill |> ft
+    for (p0, p1) in ((0.0, 0.0), (70.0, -40.0), (-150.0, 30.0), (100.0, 100.0))
+        est = estimatephase(phase(spec, 1, p0, p1))
+        # remaining phase error (mod 180°) at each line, as a fraction f from the first point
+        err(f) = abs(rad2deg(angle(cis(2 * deg2rad(est.p0 + p0 + f * (est.p1 + p1))))) / 2)
+        @test err(0.47) < 5
+        @test err(0.54) < 5
+        @test est.residual < 5
+    end
+end
+
 @testset "autophase0: synthetic" begin
     spec = synthetic_spectrum(LINES; noise=1e-3)
     for p0 in (0.0, 37.0, -120.0, 150.0)
@@ -185,12 +203,16 @@ end
     @test metadata(s2, 1, :window) isa ExponentialWindow
     @test metadata(autoprocess(bad; solvent=false, phase=nothing), 1, :phase) === nothing
     @test_throws ArgumentError autoprocess(bad; solvent=false, phase=:wrong)
+    # no lines to phase on: warn and leave the dimension unphased
+    noise = synthetic_fid([]; noise=1e-3)
+    s0 = @test_logs (:warn, r"left unphased") autoprocess(noise; solvent=false)
+    @test metadata(s0, 1, :phase) === nothing
 
     testdata = joinpath(@__DIR__, "test-data")
     if isfile(joinpath(testdata, "15n-trosy-ts3", "ser"))
         s2d = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")))
         @test dims(s2d, 1) isa F1Dim && dims(s2d, 2) isa F2Dim
-        @test !isnothing(metadata(s2d, 2, :phase))
+        @test !isnothing(metadata(s2d, 1, :phase))
         pseudo = autoprocess(loadfid(joinpath(testdata, "19f-cest-ts3")))
         @test dims(pseudo, 1) isa F1Dim
         @test size(pseudo, 2) == 101

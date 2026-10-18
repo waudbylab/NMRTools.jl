@@ -1,16 +1,19 @@
 # Automatic phase correction #######################################################################
 #
-# Lines are found with a pole model of the spectrum (`estimatepoles`); each pole's phase is the
-# argument of its complex amplitude. Individual pole phases are unreliable in two cases, so poles
-# are filtered and grouped first:
+# Lines are found with a pole model of the spectrum (`estimatepoles`), which gives their positions,
+# linewidths and signal-to-noise ratios. Poles are filtered and grouped first:
 #
 #   - Multiplets. J-evolution during echoes (for example excitation sculpting) gives the lines of a
 #     multiplet antiphase dispersive components, which cancel only in the sum over the multiplet.
-#     Poles closer than a coupling constant (plus their half-linewidths) are grouped, and the phase
-#     of the group's summed amplitude is used.
+#     Poles closer than a coupling constant (plus their half-linewidths) are grouped.
 #   - Broad poles that model baseline distortion or the tails of non-Lorentzian lines such as a
 #     radiation-damped water signal. Poles much broader than the typical linewidth are dropped when
 #     a narrower line lies within their linewidth; isolated broad poles are kept as genuine lines.
+#
+# Each group's phase is the argument of the spectrum's integral over a window around the group, less
+# a linear baseline. The phases of the poles themselves are not used: a weak line's pole can absorb
+# part of the dispersive tail of a strong neighbour, which shifts its phase by tens of degrees or more
+# while barely changing its position.
 #
 # The phase correction θ(f) = p0 + p1·f (f the fractional position from the first point) makes
 # every group absorptive: φᵣ − θ(fᵣ) ≡ 0 (mod π). The fit is a weighted circular regression on the
@@ -103,6 +106,41 @@ end
 "systematic phase uncertainty assumed for an edge observation (degrees)"
 const _EDGEFLOOR = 2.0
 
+"""
+    _groupintegralphases(s, groups, δ, bf) -> Vector{Float64}
+
+Phase of each line group measured from the spectrum: the integral of the complex trace `s` over a
+window centred on the group, extending four times its largest linewidth beyond its outer lines but
+no more than halfway to the neighbouring groups, less a straight complex baseline through the means
+of the window's outer points (which removes the tails of distant lines).
+"""
+function _groupintegralphases(s, groups, δ, bf)
+    n = length(s)
+    Δ = δ[2] - δ[1]
+    hzpt = abs(Δ) * bf * 1e-6
+    idx(x) = 1 + (x - δ[1]) / Δ
+    firsti = [idx(maximum(p.shift for p in g)) for g in groups]
+    lasti = [idx(minimum(p.shift for p in g)) for g in groups]
+    centre = [idx(_groupcentre(g)) for g in groups]
+    reach = [4 * maximum(p.linewidth for p in g) / hzpt for g in groups]
+    lo, hi = firsti .- reach, lasti .+ reach
+    for i in 1:(length(groups) - 1)
+        mid = (lasti[i] + firsti[i + 1]) / 2
+        hi[i] = min(hi[i], mid)
+        lo[i + 1] = max(lo[i + 1], mid)
+    end
+    return map(eachindex(groups)) do i
+        h = max(min(centre[i] - lo[i], hi[i] - centre[i]), 4.0)
+        r = max(1, round(Int, centre[i] - h)):min(n, round(Int, centre[i] + h))
+        m = max(2, length(r) ÷ 20)
+        a0, a1 = mean(view(s, r[1:m])), mean(view(s, r[(end - m + 1):end]))
+        x = (0:(length(r) - 1)) .- (m - 1) / 2
+        L = length(r) - m
+        base = a0 .+ (a1 - a0) .* x ./ L
+        return angle(sum(view(s, r) .- base))
+    end
+end
+
 "amplitude-weighted chemical shift of a group of poles"
 _groupcentre(g) = sum(abs(p.amplitude) * p.shift for p in g) / sum(abs(p.amplitude) for p in g)
 
@@ -153,10 +191,11 @@ the strongest group used, and `edges` lists the edge observations as
 `(edge, snr, residual, used)`. A large residual, a small number of groups, or a strong rejected group
 means the estimate should not be trusted. [`autophase`](@ref) warns when strong groups are rejected.
 
-Lines are found with [`estimatepoles`](@ref) and each line's phase is read from its complex
-amplitude. Poles within a coupling constant of each other are grouped and the phase of their summed
-amplitude used, because the lines of a multiplet can carry antiphase dispersive components that
-cancel only in the sum. Poles much broader than the typical linewidth are ignored when they overlap
+Lines are found with [`estimatepoles`](@ref). Poles within a coupling constant of each other are
+grouped, because the lines of a multiplet can carry antiphase dispersive components that cancel only
+in the sum. Each group's phase is the argument of the integral of the spectrum over a window around
+the group (up to four linewidths beyond its outer lines, and no more than halfway to the next group),
+less a linear baseline through the ends of the window. Poles much broader than the typical linewidth are ignored when they overlap
 a narrower line, since they then model its tails or the baseline. The correction is
 the weighted circular regression of group phase against position, taken modulo 180° so that negative
 peaks are not treated as phase errors. Groups with a residual above `maxresidual` degrees are
@@ -168,9 +207,12 @@ from the lines, while the imaginary part carries the dispersion tails of the str
 at which the real part of each edge region vanishes is used as a further observation, weighted by its
 signal-to-noise ratio. These are most informative for spectra with strong or broad signals, such as
 protein spectra with residual water. They are skipped when their signal-to-noise ratio is below
-`snr`, and used only if they agree with the fit to the line groups within three times the groups'
-scatter (and `maxresidual`), so that they refine the line-based estimate rather than override it. Observations are weighted by inverse variance, combining their signal-to-noise ratio with a
-systematic uncertainty: the scatter of the line groups about the fit, or 2° for an edge.
+`snr`, and used only if they agree with the fit to the line groups within three times the combined
+uncertainty of the groups' scatter and the edge's own 2° (and `maxresidual`), so that they refine
+the line-based estimate rather than override it. Observations are weighted by inverse variance,
+combining their signal-to-noise ratio with a systematic uncertainty: the scatter of the line groups
+about the fit (a scaled median absolute residual, so that a few noise groups do not inflate it), or
+2° for an edge.
 
 # Keywords
 - `order`: `1` fits `p0` and `p1`; `0` fits `p0` only, with the first-order phase fixed at `p1`.
@@ -219,7 +261,9 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
     δ = data(d)
     n = length(δ)
     a = [sum(p.amplitude for p in g) for g in groups]
-    φ = angle.(a)
+    # group phases from integrals of the spectrum: pole phases are less reliable, since a weak
+    # line's fitted pole can absorb the dispersive tail of a strong neighbour
+    φ = _groupintegralphases(_referencetrace(spec, di), groups, δ, metadata(d, :bf))
     # position: amplitude-weighted centre of the group, as a fraction from the first point
     f = [(_groupcentre(g) - δ[1]) / (δ[2] - δ[1]) / n for g in groups]
     # phase variance ∝ 1/SNR²; capped so that a few strong lines cannot dominate
@@ -244,11 +288,11 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
                        for i in eachindex(groupsnr)]
     # The prior on p1 is scaled by the variance of the phase residuals: weak when the lines agree
     # closely (well-determined fit), stronger when model errors make the phases scatter. Start from
-    # a scatter of 15° and update it from each fit. `candidates` are the observations allowed in.
-    function fit(candidates)
+    # a scatter `σ0` and update it from each fit. `candidates` are the observations allowed in.
+    function fit(candidates, σ0)
         inl = copy(candidates)
         p0r, p1r = 0.0, deg2rad(p1)
-        σ = deg2rad(15)                  # scatter of the line groups about the fit
+        σ = σ0                           # scatter of the line groups about the fit
         w = weights(σ)
         for iter in 1:8
             p1r = order == 0 ? deg2rad(p1) :
@@ -256,7 +300,9 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
             p0r = _bestp0(φ[inl], f[inl], w[inl], p1r)
             r = _halfwrap.(φ .- p0r .- p1r .* f)
             used = inl .& isline
-            σnew = any(used) ? max(sqrt(sum(r[used] .^ 2) / count(used)), deg2rad(1)) : σ
+            # robust scatter (scaled median absolute residual): a few noise groups with random
+            # phases inside `maxresidual` would otherwise hold it high, keeping their weight up
+            σnew = any(used) ? max(1.4826 * median(abs.(r[used])), deg2rad(1)) : σ
             newinl = candidates .& (abs.(r) .<= deg2rad(maxresidual))
             converged = (newinl == inl || !any(newinl)) && abs(σnew - σ) < deg2rad(0.5)
             σ = σnew
@@ -267,16 +313,18 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
         return p0r, p1r, inl, w, σ
     end
 
-    # Fit the line groups first. An edge joins only if it agrees with that fit within three times
-    # the scatter of the line groups (and `maxresidual`), so that the edges refine the line-based
-    # estimate but cannot override it. Edges are wrong when the baseline has an offset (for example from a
+    # Fit the line groups first, from a scatter of 15°. An edge joins only if it agrees with that fit
+    # within three times the combined uncertainty of the line groups and the edge floor (and
+    # `maxresidual`), so that the edges refine the line-based estimate but cannot override it. The
+    # refit starts from the scatter of the line groups: starting it from 15° again would give one
+    # edge (2° floor) the weight of dozens of lines. Edges are wrong when the baseline has an offset (for example from a
     # wrong first-point factor) or when a strong line has a genuinely different phase, since its
     # dispersion tail reaches the edges too.
-    p0r, p1r, inl, w, σlines = fit(isline)
+    p0r, p1r, inl, w, σlines = fit(isline, deg2rad(15))
     redge = _halfwrap.(φ .- p0r .- p1r .* f)
-    gate = min(deg2rad(maxresidual), 3σlines)
+    gate = min(deg2rad(maxresidual), 3 * hypot(σlines, deg2rad(_EDGEFLOOR)))
     goodedge = .!isline .& (abs.(redge) .<= gate)
-    any(goodedge) && ((p0r, p1r, inl, w, _) = fit(isline .| goodedge))
+    any(goodedge) && ((p0r, p1r, inl, w, _) = fit(isline .| goodedge, σlines))
 
     # resolve the 180° ambiguity: most line groups positive (edges carry no sign information)
     lines = inl .& isline

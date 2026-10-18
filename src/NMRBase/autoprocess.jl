@@ -41,6 +41,7 @@ The second form returns a function for use with `|>`. The steps, in order:
 2. Suppress the water signal in the direct dimension with [`solventfilter`](@ref).
 3. In each Fourier dimension: [`apodize`](@ref), [`zerofill`](@ref) and [`ft`](@ref).
 4. Phase each frequency dimension, direct dimension first, with [`autophase`](@ref) or given phases.
+   A dimension in which `autophase` finds no lines is left unphased, with a warning.
 
 The result is a `Multicomplex` spectrum, so it can be phased further; take `real` for the real
 spectrum. Non-Fourier dimensions (relaxation delays, offsets, …) are left unchanged.
@@ -102,7 +103,12 @@ function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:aut
     for di in _fourierdims(spec)
         p = _perdim(phase, di; default=:auto)
         if p === :auto
-            spec = autophase(spec, di)
+            try
+                spec = autophase(spec, di)
+            catch err
+                err isa NMRToolsError || rethrow()
+                @warn "autoprocess: dimension $di left unphased: $(err.message)"
+            end
         elseif p isa Real
             spec = NMRBase.phase(spec, di, p)
         elseif p isa Tuple
