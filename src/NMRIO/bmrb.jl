@@ -7,12 +7,16 @@
 const BMRB_URL = "https://bmrb.io/ftp/pub/bmrb/entry_directories/bmr%ID%/bmr%ID%_3.str"
 
 """
-    loadshifts(filename; list=nothing) -> Vector{ChemicalShift}
-    loadshifts(id::Integer; list=nothing) -> Vector{ChemicalShift}
+    loadbmrb(id::Integer; list=nothing) -> Vector{ChemicalShift}
+    loadbmrb(filename; list=nothing) -> Vector{ChemicalShift}
+    loadbmrb(id_or_filename, dims...; list=nothing) -> Vector{Peak{N}}
 
-Read the assigned chemical shifts from an NMR-STAR (v3) file, or download BMRB entry
-`id`. Use [`peaklist`](@ref NMRTools.NMRBase.peaklist) to turn them into the peaks expected
-in a given experiment.
+Download the assigned chemical shifts of BMRB entry `id`, or read them from a local
+NMR-STAR (v3) file.
+
+Given dimensions as well, the shifts are assembled straight into the peak list of an
+experiment, exactly as [`peaklist`](@ref NMRTools.NMRBase.peaklist) does: `H1, N15` for a
+¹⁵N HSQC, `H1, C13` for a ¹³C HSQC, or atom names such as `"H", "N", "CO-1"` for an HNCO.
 
 An entry may hold several shift lists, e.g. under different sample conditions. The first is
 used unless `list` selects another by its ID. Shifts of nuclei NMRTools does not know
@@ -20,20 +24,27 @@ about (such as ¹⁷O) are skipped.
 
 # Examples
 ```julia
-shifts = loadshifts(15000)                       # BMRB entry 15000
-shifts = loadshifts("bmr15000_3.str")            # a local NMR-STAR file
+loadbmrb(15000, H1, N15)                 # ¹⁵N HSQC peak list, side chains included
+loadbmrb(15000, H1, C13)                 # ¹³C HSQC peak list
+loadbmrb(15000, "H", "N")                # backbone amides only
+loadbmrb(15000, "CO-1", "N")             # CON
 
-hsqc = peaklist(shifts, "H", "N")
-nmrplot(hsqc)
+shifts = loadbmrb(15000)                 # the shifts themselves, to filter or reuse
+shifts = loadbmrb("bmr15000_3.str")      # a local NMR-STAR file
 ```
 """
-loadshifts(filename::AbstractString; kwargs...) = _readshifts(read(filename, String); kwargs...)
+loadbmrb(filename::AbstractString; kwargs...) = _readshifts(read(filename, String); kwargs...)
 
-function loadshifts(id::Integer; kwargs...)
+function loadbmrb(id::Integer; kwargs...)
     url = replace(BMRB_URL, "%ID%" => string(id))
     @info "Downloading BMRB entry $id"
     text = String(take!(Downloads.download(url, IOBuffer())))
     return _readshifts(text; kwargs...)
+end
+
+function loadbmrb(source::Union{Integer,AbstractString}, dim::Union{AbstractString,Nucleus},
+                  dims::Union{AbstractString,Nucleus}...; kwargs...)
+    return peaklist(loadbmrb(source; kwargs...), dim, dims...)
 end
 
 function _readshifts(text; list=nothing)

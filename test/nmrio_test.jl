@@ -624,7 +624,7 @@ end
 end
 
 @testset "NMRIO: assigned shifts (NMR-STAR)" begin
-    shifts = loadshifts(joinpath("test-data", "bmrb", "bmr15000_shifts.str"))
+    shifts = loadbmrb(joinpath("test-data", "bmrb", "bmr15000_shifts.str"))
     @test shifts isa Vector{ChemicalShift}
     @test length(shifts) == 340
     s = first(shifts)
@@ -675,8 +675,14 @@ end
 
     @test_throws ArgumentError peaklist(shifts, C13, N15)
     @test_throws ArgumentError peaklist(shifts, "C A")
-    @test_throws ArgumentError loadshifts(joinpath("test-data", "bmrb", "bmr15000_shifts.str");
+    @test_throws ArgumentError loadbmrb(joinpath("test-data", "bmrb", "bmr15000_shifts.str");
                                           list=2)
+
+    # shifts straight to a peak list
+    f = joinpath("test-data", "bmrb", "bmr15000_shifts.str")
+    @test loadbmrb(f, H1, N15) == nh
+    @test loadbmrb(f, "H", "N", "CO-1") == hnco
+    @test loadbmrb(f, C13) == c
 
     # the peak list can be saved for NMRAnalysis
     mktempdir() do dir

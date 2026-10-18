@@ -37,7 +37,7 @@ export FQList
 export withreference
 export sumexpts
 export loadpeaks, savepeaks
-export loadshifts
+export loadbmrb
 export scanexperiments
 export scansamples
 export findsample

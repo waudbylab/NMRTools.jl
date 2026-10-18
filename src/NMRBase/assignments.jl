@@ -14,7 +14,7 @@ One assigned chemical shift: an atom of a residue, its nucleus, and its shift.
 | `error`       | uncertainty (ppm), `NaN` if not reported                   |
 
 A shift list is a `Vector{ChemicalShift}`, read with
-[`loadshifts`](@ref NMRTools.NMRIO.loadshifts) and turned into the peaks expected in a given
+[`loadbmrb`](@ref NMRTools.NMRIO.loadbmrb) and turned into the peaks expected in a given
 experiment with [`peaklist`](@ref). Use `filter` to select residues before building peaks,
 e.g. `filter(s -> s.residuename in ("ILE", "LEU", "VAL"), shifts)`.
 """
@@ -40,7 +40,7 @@ Base.show(io::IO, s::ChemicalShift) = print(io, "ChemicalShift(", label(s), ", "
     peaklist(shifts, X) -> Vector{Peak{1}}
 
 The peaks expected in an `N`-dimensional experiment, assembled from a list of assigned
-chemical shifts (see [`loadshifts`](@ref NMRTools.NMRIO.loadshifts)). Dimensions are
+chemical shifts (see [`loadbmrb`](@ref NMRTools.NMRIO.loadbmrb)). Dimensions are
 given in the order of the spectrum, direct dimension first.
 
 **By atom name.** Each argument names an atom, optionally with a residue offset relative
@@ -61,7 +61,7 @@ Positions come from the shift list, while intensities and linewidths are `NaN`.
 
 # Examples
 ```julia
-shifts = loadshifts(15000)              # download BMRB entry 15000
+shifts = loadbmrb(15000)              # download BMRB entry 15000
 
 peaklist(shifts, "H", "N")              # backbone amide ¹H,¹⁵N HSQC
 peaklist(shifts, H1, N15)               # all NH groups, including side chains

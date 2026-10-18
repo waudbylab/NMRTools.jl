@@ -135,15 +135,23 @@ pks = loadpeaks("hsqc.list", spec)
 
 ## Peak lists from BMRB assignments
 
-`loadshifts` reads the assigned chemical shifts of a BMRB entry, downloading it by its ID,
-or from a local NMR-STAR file. `peaklist` then assembles them into the peaks expected in a
-given experiment:
+`loadbmrb` downloads the assigned chemical shifts of a BMRB entry and assembles them into
+the peaks expected in a given experiment:
 
 ```julia
-shifts = loadshifts(15000)               # download BMRB entry 15000
-
-hsqc = peaklist(shifts, "H", "N")        # backbone amide ¹H,¹⁵N HSQC
+hsqc = loadbmrb(15000, H1, N15)          # ¹H,¹⁵N HSQC, side chains included
 nmrplot(hsqc; xlabel="¹H (ppm)", ylabel="¹⁵N (ppm)")
+
+loadbmrb(15000, H1, C13)                 # ¹H,¹³C HSQC
+```
+
+Called with just an entry ID (or the name of a local NMR-STAR file), `loadbmrb` returns the
+shifts themselves. Download them once and build several lists from them with `peaklist`,
+which takes the same dimension arguments:
+
+```julia
+shifts = loadbmrb(15000)
+hsqc = peaklist(shifts, "H", "N")        # backbone amide ¹H,¹⁵N HSQC
 ```
 
 Dimensions are given in spectrum order, direct dimension first. Each argument names an atom,
