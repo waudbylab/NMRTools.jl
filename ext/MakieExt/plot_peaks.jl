@@ -69,8 +69,10 @@ function NMRTools.nmrplot(gp::Union{Makie.GridPosition,Makie.GridSubposition},
                           pks::AbstractVector{<:Peak{2}};
                           title="", xlabel="Chemical shift (ppm)",
                           ylabel="Chemical shift (ppm)", axis=NamedTuple(), kwargs...)
+    # labels sit to the lower-ppm side of each cross, so leave room for them there
     defaults = (; xreversed=true, yreversed=true, xlabel, ylabel, title,
-                xgridvisible=false, ygridvisible=false, xtickalign=1, ytickalign=1)
+                xgridvisible=false, ygridvisible=false, xtickalign=1, ytickalign=1,
+                xautolimitmargin=(0.12, 0.05), yautolimitmargin=(0.05, 0.08))
     ax = Makie.Axis(gp; merge(defaults, axis)...)
     plt = NMRTools.nmrplot!(ax, pks; kwargs...)
     return Makie.AxisPlot(ax, plt)
