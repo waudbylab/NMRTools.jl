@@ -689,6 +689,17 @@ end
     @test occursin("2-element Vector{Peak{2}}", repr("text/plain", pks))
 end
 
+@testset "NMRBase: findnearest" begin
+    pks = [Peak(8.0, 120.0), Peak(8.5, 110.0), Peak(7.0, 121.0)]
+    @test findnearest(pks, (8.4, 119.0)) == 1
+    # with ¹⁵N down-weighted, the ¹H shift dominates
+    @test findnearest(pks, (8.4, 112.0); scale=(1, 0.01)) == 2
+    @test findnearest(pks, (7.2, 116.0); scale=(1, 0.01)) == 3
+    @test isnothing(findnearest(Peak{2}[], (8.0, 120.0)))
+    @test findnearest([Peak(1.0), Peak(2.0)], 1.8) == 2
+    @test_throws DimensionMismatch findnearest(pks, 8.0)
+end
+
 @testset "NMRBase: Peak detection (1D)" begin
     spec = exampledata("1D_19F")
     pks = detectpeaks(spec)

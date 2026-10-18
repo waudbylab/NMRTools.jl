@@ -166,7 +166,7 @@ export ComplexLineshape
 # peaks and peak detection
 export Peak
 export intensity, linewidth
-export detectpeaks, findpeak
+export detectpeaks, findpeak, findnearest
 
 # phase-constrained least squares
 export pcls

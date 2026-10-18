@@ -28,8 +28,8 @@ pks = detectpeaks(spec)                   # Vector{Peak{2}}
 sort(pks; by=intensity, rev=true)
 ```
 
-See also [`detectpeaks`](@ref), [`findpeak`](@ref), [`ppm`](@ref), [`intensity`](@ref),
-[`linewidth`](@ref), [`loadpeaks`](@ref NMRTools.NMRIO.loadpeaks) and
+See also [`detectpeaks`](@ref), [`findpeak`](@ref), [`findnearest`](@ref), [`ppm`](@ref),
+[`intensity`](@ref), [`linewidth`](@ref), [`loadpeaks`](@ref NMRTools.NMRIO.loadpeaks) and
 [`savepeaks`](@ref NMRTools.NMRIO.savepeaks).
 """
 struct Peak{N}
@@ -226,6 +226,34 @@ function findpeak(spec::NMRData{T,N}, position; label="") where {T,N}
     s = y[I] < 0 ? -1 : 1
     I = _climb(s .* y, I)
     return Peak(_peakat(spec, y, I); label)
+end
+
+"""
+    findnearest(peaks, position; scale=1) -> Union{Int,Nothing}
+
+The index of the peak in `peaks` nearest to `position` (a tuple in ppm, or a number for
+1D peaks), or `nothing` if the list is empty. This is what selecting a peak with a mouse
+click means; the index can be passed straight to `deleteat!` or used to replace the peak.
+
+`scale` weights the dimensions before distances are compared, as a tuple or a single
+number, since a ppm of ¹⁵N is not a ppm of ¹H. A typical choice for an ¹H,¹⁵N spectrum is
+`scale=(1, 0.2)`; a GUI can pass the inverse of the visible range in each dimension so that
+distances are measured as they appear on screen.
+
+# Examples
+```julia
+i = findnearest(pks, (8.2, 120.0); scale=(1, 0.2))
+deleteat!(pks, i)
+```
+"""
+function findnearest(pks::AbstractVector{<:Peak{N}}, position; scale=1) where {N}
+    isempty(pks) && return nothing
+    δ = Tuple(position)
+    w = scale isa Real ? ntuple(_ -> scale, N) : Tuple(scale)
+    length(δ) == N == length(w) ||
+        throw(DimensionMismatch("$N-dimensional peaks need a position and scale with $N coordinates"))
+    distance(p) = sum(abs2, (ppm(p) .- δ) .* w)
+    return argmin(distance.(pks))
 end
 
 function _checkfrequencydims(spec, fname)
