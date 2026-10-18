@@ -3,6 +3,8 @@ using MulticomplexNumbers
 using Random
 using Test
 
+Random.seed!(1234)    # the synthetic spectra below add random noise
+
 # Synthetic 1D spectrum: a sum of Lorentzian lines (shift in Hz from the carrier, linewidth in Hz,
 # complex amplitude), Fourier transformed with the standard pipeline.
 function synthetic_fid(lines; n=4096, sw=5000.0, bf=500.0e6, noise=0.0)
@@ -83,9 +85,12 @@ end
     spec3 = synthetic_spectrum(oddlines; noise=1e-3)
     est = estimatephase(spec3; order=0)
     @test abs(rad2deg(angle(cis(deg2rad(est.p0))))) < 3
-    @test length(est.rejected) == 1
-    @test est.rejected[1].shift ≈ 4.7 - 600 / 500 atol = 1e-3
-    @test abs(est.rejected[1].residual) > 60
+    # weak groups dominated by noise may also be left out; the strong odd line must be the only
+    # strong one (the relsnr cut-off is the one autophase uses for its warning)
+    strong = filter(r -> r.relsnr >= 0.02, est.rejected)
+    @test length(strong) == 1
+    @test strong[1].shift ≈ 4.7 - 600 / 500 atol = 1e-3
+    @test abs(strong[1].residual) > 60
     @test_logs (:info,) (:warn, r"strong lines left out") autophase(spec3; order=0)
 
     # pivot: p0 reported at the pivot reproduces the same correction
