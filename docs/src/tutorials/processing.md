@@ -108,7 +108,7 @@ spec = loadfid("myexperiment/1") |>
        zerofill |>
        ft |>
        phase(F1Dim, 128.5) |>
-       real
+       realest
 ```
 
 | Function | Acts on | Effect |
@@ -121,7 +121,7 @@ spec = loadfid("myexperiment/1") |>
 | [`phase`](@ref) | either | zero- and first-order phase correction |
 | [`autophase`](@ref) | frequency domain | estimate and apply a phase correction |
 | [`extract`](@ref) | either | select a region, e.g. `extract(F1Dim, 6.0 .. 10.0)` |
-| `real` | either | the purely real part, giving `Float64` data |
+| `realest` | either | the purely real part, giving `Float64` data |
 
 Without a dimension argument, `apodize`, `zerofill`, `ft` and `autophase` act on each Fourier
 dimension in turn (for `autophase`, each frequency dimension), applying the same settings to every
@@ -134,16 +134,17 @@ spec = loadfid("hsqc/1") |>
        apodize(T1Dim, Cos2Window()) |> apodize(T2Dim, Cos2Window()) |>
        zerofill |> ft |>
        phase(F1Dim, -87.5) |> phase(F2Dim, 0.0, 180.0) |>
-       real
+       realest
 ```
 
 Each function also accepts a `Dict` of spectra and processes every entry. Without a spectrum
 argument, each returns a function for use with `|>`, as in the examples above.
 
-`real(spec)` gives the purely real part of every point, real in every dimension. For a 2D spectrum,
-`imag(spec, F1Dim)` gives the part that is imaginary in the direct dimension only, and
-`imag(spec, F2Dim)` the part imaginary in the indirect dimension only; for 1D data `imag(spec)` is
-enough.
+`realest(spec)` gives the purely real part of every point, real in every dimension. `real` and
+`imag` act elementwise as in MulticomplexNumbers, taking the coefficients of the highest-order
+imaginary unit: for 2D data `real(spec)` and `imag(spec)` are the parts real and imaginary in the
+indirect dimension, each still complex in the direct dimension. Individual components are available
+with `component`.
 
 ### Phase conventions
 
@@ -171,7 +172,7 @@ to every frequency dimension in turn unless a dimension is given:
 
 ```julia
 spec = loadfid("myexperiment/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |>
-       autophase |> real
+       autophase |> realest
 metadata(spec, F1Dim, :phase)    # (p0 = 141.3, p1 = -4.2)
 
 hsqc = loadfid("hsqc/1") |> apodize(Cos2Window()) |> zerofill |> ft |>
@@ -248,12 +249,17 @@ and `exclude` where the fit is poor.
 
 For multidimensional data, `autophase(spec, dim)` estimates the correction from a single trace along
 `dim` and applies it to the whole dataset. The trace takes the first point of every other time
-dimension and sums over the remaining dimensions. Indirect dimensions are short, so apodize them
-before phasing: the truncation ripples of an unapodized dimension reach the edges of the spectrum
-and bias the edge observations by several degrees. Their traces can also be too weak to phase, in
-which case `autophase` without a dimension leaves that dimension unphased with a warning; its phase
-is usually known from the pulse sequence (often 0° or 90°, with a first-order phase of 0° or
-180°), so set it with [`phase`](@ref).
+dimension, and sums every other frequency dimension over the points that carry signal. Apodize
+indirect dimensions before phasing: the truncation ripples of an unapodized dimension reach the
+edges of the spectrum and bias the edge observations by several degrees. A dimension with no lines
+in its trace is left unphased by `autophase` without a dimension, with a warning.
+
+!!! warning "Multidimensional phasing is less reliable"
+    Collapsing a 2D spectrum to one trace per dimension crowds many cross peaks into a few
+    overlapping line groups, and the estimate rests on those. On a ¹⁵N TROSY with well over a
+    hundred resolved cross peaks, the estimates differed from the correct phases by tens of
+    degrees. Check the result, and set phases known from the pulse sequence (indirect dimensions
+    are often 0° or 90°, with a first-order phase of 0° or 180°) with [`phase`](@ref).
 
 ## Pole models
 
@@ -278,7 +284,7 @@ spec = loadfid("hsqc/1") |>
        apodize(T1Dim) |> zerofill(T1Dim) |> ft(T1Dim) |>
        linearpredict(T2Dim) |>
        apodize(T2Dim) |> zerofill(T2Dim) |> ft(T2Dim) |>
-       real
+       realest
 ```
 
 `linearpredict(spec, dim; replace=n)` replaces the first `n` points by backward prediction instead.

@@ -169,6 +169,11 @@ end
     @test parent(bad |> autophase(order=0)) ≈ parent(fixed)
     # a single dimension only
     @test metadata(autophase(bad, F1Dim; order=0), 2, :phase).p0 ≈ -30.0
+    # nothing to phase in any dimension: each is reported, then an error
+    noise2d = synthetic_fid2d([]; noise=1e-3) |> zerofill |> ft
+    @test_logs (:warn, r"dimension 1 left unphased") (:warn, r"dimension 2 left unphased") begin
+        @test_throws NMRToolsError autophase(noise2d)
+    end
 end
 
 @testset "autophase0: synthetic" begin
@@ -265,12 +270,13 @@ end
         s2d = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")))
         @test dims(s2d, 1) isa F1Dim && dims(s2d, 2) isa F2Dim
         @test !isnothing(metadata(s2d, 1, :phase))
-        # autophase without a dimension: the indirect trace of this dataset has no lines above
-        # the threshold, so that dimension is left unphased with a warning
+        # autophase without a dimension phases each frequency dimension in turn; the indirect
+        # trace is summed over the direct-dimension points that carry signal, so it has enough
+        # signal to phase
         unphased = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")); phase=nothing)
-        both = @test_logs (:warn, r"dimension 2 left unphased") autophase(unphased)
-        @test parent(both) ≈ parent(autophase(unphased, 1))
-        @test isnothing(metadata(both, 2, :phase))
+        both = autophase(unphased)
+        @test !isnothing(metadata(both, 1, :phase)) && !isnothing(metadata(both, 2, :phase))
+        @test parent(both) ≈ parent(autophase(autophase(unphased, 1), 2))
         pseudo = autoprocess(loadfid(joinpath(testdata, "19f-cest-ts3")))
         @test dims(pseudo, 1) isa F1Dim
         @test size(pseudo, 2) == 101

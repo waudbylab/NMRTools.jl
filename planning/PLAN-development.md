@@ -6,7 +6,7 @@
 
 2. **Julian idioms.** Extend `Base` and standard library functions where appropriate (`real`, `complex`, `abs`, `fft!`). Public function names are lowercase without underscores, following Julia Base convention (`loadfid`, `apodize`, `zerofill`, `lineshape`). Types are CamelCase. Underscore-prefixed names are internal only. Use Julia standard exception types where applicable; reserve custom exceptions for domain-specific errors.
 
-3. **Multicomplex numbers are the data representation.** `im1` is the conventional complex unit. Element types never change during processing — only `real(spec)` at the end of a pipeline strips imaginary components. There is no mixing with Julia's built-in `Complex`; use `complex(spec)` to convert a first-order multicomplex to `Complex` when needed.
+3. **Multicomplex numbers are the data representation.** `im1` is the conventional complex unit. Element types never change during processing — only `realest(spec)` at the end of a pipeline strips imaginary components. There is no mixing with Julia's built-in `Complex`; use `complex(spec)` to convert a first-order multicomplex to `Complex` when needed.
 
 4. **`:mcindex` metadata links dimensions to imaginary units.** Set once by `loadfid`, never modified, carried through all operations. Every processing function reads `:mcindex` from the target dimension's metadata to determine which imaginary unit to operate on.
 
@@ -119,14 +119,14 @@ loadfid("1/ser") |>
     apodize(T1Dim) |> zerofill(T1Dim) |> ft(T1Dim) |>
     extract(F1Dim, 6.0 .. 10.0) |>
     ist(T2Dim; iterations=200) |>
-    phase(F1Dim, -50) |> phase(F2Dim, 0) |> real
+    phase(F1Dim, -50) |> phase(F2Dim, 0) |> realest
 
 # 3D NUS HNCO — joint reconstruction of both indirect dimensions
 loadfid("1/ser") |>
     apodize(T1Dim) |> zerofill(T1Dim) |> ft(T1Dim) |>
     extract(F1Dim, 6.0 .. 10.0) |>
     ist(T2Dim, T3Dim; iterations=300) |>
-    phase(F1Dim, -50) |> phase(F2Dim, 0) |> phase(F3Dim, 0) |> real
+    phase(F1Dim, -50) |> phase(F2Dim, 0) |> phase(F3Dim, 0) |> realest
 ```
 
 #### Tests

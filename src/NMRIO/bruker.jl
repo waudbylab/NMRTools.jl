@@ -1,14 +1,26 @@
 """
+    _pdatafiles(ndim)
+
+Names of the pdata files of an `ndim`-dimensional spectrum, in the order of the multicomplex
+components: file `k` (counting from 0) has an `i` for each set bit of `k`, the direct dimension
+first, so `2ir` is the coefficient of `im1`.
+"""
+function _pdatafiles(ndim::Integer)
+    return [string(ndim, join(isodd(k >> (d - 1)) ? 'i' : 'r' for d in 1:ndim))
+            for k in 0:(2^ndim - 1)]
+end
+
+"""
     loadpdata(filename, allcomponents=false)
 
 Load processed Bruker NMR data from a pdata folder.
 
 # Arguments
 - `filename`: Path to a pdata directory or a file within it
-- `allcomponents`: If `true`, returns complex (1D) or multicomplex (2D) data with all
-  components. For 2D data, returns `Multicomplex` numbers `2rr + 2ir*im1 + 2ri*im2 + 2ii*im1*im2`
-  (TopSpin's `2ir` is imaginary in the direct dimension, `2ri` in the indirect one). Default is
-  `false` (returns real data only).
+- `allcomponents`: If `true`, returns `Multicomplex` data with all components, one imaginary unit
+  per frequency dimension (`im1` for the direct dimension), for example
+  `2rr + 2ir*im1 + 2ri*im2 + 2ii*im1*im2` for 2D data (TopSpin's `2ir` is imaginary in the direct
+  dimension, `2ri` in the indirect one). Default is `false` (returns real data only).
 
 Imaginary components are conjugated relative to TopSpin's files, so that loaded data follow the
 same convention as spectra produced by [`ft`](@ref NMRTools.NMRBase.ft): TopSpin's `PHC0`/`PHC1`
@@ -29,18 +41,16 @@ function loadpdata(filename, allcomponents=false)
     datafiles = []
     if isfile(joinpath(pdir, "1r"))
         ndim = 1
-        datafiles = ["1r", "1i"]
     elseif isfile(joinpath(pdir, "2rr"))
         ndim = 2
-        datafiles = ["2rr", "2ir", "2ri", "2ii"]    # coefficients of 1, im1, im2, im1·im2
     elseif isfile(joinpath(pdir, "3rrr"))
         ndim = 3
-        datafiles = ["3rrr", "3rri", "3rir", "3rii", "3irr", "3iri", "3iir", "3iii"]
     else
         throw(NMRToolsError("can't load bruker data, pdata directory $pdir does not contain binary data files of supported dimensions (1D, 2D, 3D)"))
     end
     ndim > 0 ||
         throw(NMRToolsError("can't load bruker data, pdata directory $pdir does not contain binary data files (1r/2rr/3rrr etc.)"))
+    datafiles = _pdatafiles(ndim)
 
     # 2b. only include the realest component unless requested
     if !allcomponents
@@ -178,28 +188,18 @@ function loadpdata(filename, allcomponents=false)
     dat = map(datafile -> readpdatabinary(datafile, shape, submatrix, dtype, endian),
               datafiles)
 
-    # 9. combine into real/complex/multicomplex output
-    if !allcomponents
+    # 9. combine into real or multicomplex output. Pseudo-dimensions have no imaginary files, so the
+    #    files present are the components over the frequency dimensions, in the same order.
+    if length(dat) == 1
+        allcomponents &&
+            @warn "unable to find imaginary data for import of $filename - returning real values only"
         y = first(dat)
-    elseif ndim == 1
-        if length(dat) == 1
-            @warn "unable to find imaginary data for import of $filename - returning real values only"
-            y = dat
-        else
-            y = dat[1] - 1im .* dat[2]          # conjugate: NMRTools convention
-        end
     else
-        if length(dat) == 1
-            @warn "unable to find imaginary data for import of $filename - returning real values only"
-            y = dat
-        elseif length(dat) == 2
-            # only two components - return complex data regardless of what particular files are present
-            # (see https://rdrr.io/github/ssokolen/rnmrfit/man/read_processed_2d.html for similar approach)
-            y = dat[1] - 1im .* dat[2]
-        else
-            # 4 components for 2D bicomplex, conjugated in both units: rr − ir*im1 − ri*im2 + ii*im1*im2
-            y = Multicomplex.(dat[1], -dat[2], -dat[3], dat[4])
-        end
+        ispow2(length(dat)) ||
+            throw(NMRToolsError("incomplete set of imaginary data files for $filename"))
+        # conjugate in every imaginary unit (NMRTools convention): the sign alternates with the
+        # number of imaginary units in each component
+        y = Multicomplex.((iseven(count_ones(k - 1)) ? d : -d for (k, d) in enumerate(dat))...)
     end
 
     # 10. scale

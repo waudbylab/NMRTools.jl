@@ -61,7 +61,7 @@ spec2d = loadnmr("expt/111", allcomponents=true)
 
 Complex multidimensional data is represented using [MulticomplexNumbers.jl](https://waudbylab.org/MulticomplexNumbers.jl). This algebra provides a natural representation of the multiple real and imaginary components associated with NMR data ([Delsuc 1988](https://www.sciencedirect.com/science/article/pii/0022236488900364)), and facilitates phase correction and bookkeeping of individual real and imaginary components.
 
-A 2D point has four components, `rr + ir·im1 + ri·im2 + ii·im1·im2`, where `im1` belongs to the direct dimension and `im2` to the indirect one. They can be extracted with `component`, numbered in that order; `real(spec2d)` gives the purely real part `rr`:
+A 2D point has four components, `rr + ir·im1 + ri·im2 + ii·im1·im2`, where `im1` belongs to the direct dimension and `im2` to the indirect one. They can be extracted with `component`, numbered in that order; `realest(spec2d)` gives the purely real part `rr`:
 
 ```julia
 fig = Figure(size=(600, 600))
@@ -73,7 +73,7 @@ nmrplot(fig[3,1], component.(spec2d, 3), title="component 3 (ri)")  # imaginary 
 nmrplot(fig[3,2], component.(spec2d, 4), title="component 4 (ii)")
 ```
 
-Imaginary components are the complex conjugates of TopSpin's (`2ir`, `2ri`, …), following the NMRTools sign convention. For spectra processed in NMRTools, `imag(spec, dim)` gives the part that is imaginary in dimension `dim` alone.
+Imaginary components are the complex conjugates of TopSpin's (`2ir`, `2ri`, …), following the NMRTools sign convention.
 
 ![Multicomplex data](../assets/multicomplex.png)
 

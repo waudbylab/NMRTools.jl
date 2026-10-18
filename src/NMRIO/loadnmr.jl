@@ -69,6 +69,7 @@ function loadnmr(filename; experimentfolder=nothing, allcomponents=false)
         # unknown format
         throw(NMRToolsError("unknown file format for loadnmr\nfilename = " * filename))
     end
+    _setmcindex!(spectrum)
 
     # 4. merge in acqus metadata
     merge!(metadata(spectrum), aqdic)
@@ -134,4 +135,20 @@ Load the full NMR spectrum for an experiment previously discovered by [`scanexpe
 """
 function loadnmr(expt::NMRExperiment; pdatadir::Int=1, allcomponents::Bool=false)
     return loadnmr(joinpath(expt.path, "pdata", string(pdatadir)); allcomponents)
+end
+
+"""
+    _setmcindex!(spec)
+
+Link each frequency dimension of a loaded spectrum to its imaginary unit (`:mcindex`), in order:
+`im1` for the direct dimension, `im2` for the next frequency dimension, and so on, matching the
+components of data loaded with `allcomponents=true` and spectra produced by `ft`.
+"""
+function _setmcindex!(spec)
+    k = 0
+    for d in dims(spec)
+        d isa FrequencyDimension || continue
+        metadata(d)[:mcindex] = (k += 1)
+    end
+    return spec
 end

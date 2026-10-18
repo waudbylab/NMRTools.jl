@@ -265,7 +265,10 @@ end
 
     # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
     dat2 = loadnmr(artifact"1D_19F"; allcomponents=true)
-    @test dat2[100] == 4920.725646972656 + 17351.53515625im
+    @test dat2[100] == Multicomplex(4920.725646972656, 17351.53515625)
+    @test metadata(dat2, 1, :mcindex) == 1
+    # loaded data can be phased like processed data
+    @test realest(phase(phase(dat2, 1, 30.0), 1, -30.0)) ≈ realest(dat2)
 end
 
 @testset "NMRIO: 2D HN (Bruker pdata)" begin
@@ -383,6 +386,8 @@ end
     @test parent(datMC) isa Matrix{<:Multicomplex}
     @test order(datMC[1, 1]) == 2  # bicomplex
     @test realest(datMC[1, 100]) == dat[1, 100]  # real-real component matches real-only import
+    @test metadata(datMC, 1, :mcindex) == 1 && metadata(datMC, 2, :mcindex) == 2
+    @test metadata(dat, 2, :mcindex) == 2         # set for real-only data too
 end
 
 @testset "NMRIO: pseudo-2D (Bruker pdata)" begin
@@ -392,10 +397,11 @@ end
     @test size(dat) == (2048, 10)
 
     @test parent(dat) isa Matrix{Float64}
-    @test parent(datC) isa Matrix{ComplexF64}
+    @test parent(datC) isa Matrix{Multicomplex{Float64,1,2}}
 
     @test dat[2, 3] == -32.08953857421875
-    @test datC[2, 3] == -32.08953857421875 - 87.19561767578125im
+    @test datC[2, 3] == Multicomplex(-32.08953857421875, -87.19561767578125)
+    @test metadata(datC, 1, :mcindex) == 1 && isnothing(metadata(datC, 2, :mcindex))
 
     @test dat[:title] == "15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G = 5-95%"
 

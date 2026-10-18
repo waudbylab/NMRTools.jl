@@ -43,22 +43,51 @@ end
 
 Complex trace along array dimension `di` of `spec`, in the imaginary unit given by that dimension's
 `:mcindex`. Other imaginary units take their real component. Other dimensions are reduced so that
-every signal contributes: a time dimension contributes its first point, any other dimension is
-summed (for a frequency dimension the sum is proportional to its first time point).
+every signal contributes: a time dimension contributes its first point, a frequency dimension is
+summed over the points that carry signal (see [`_signalindices`](@ref)), and any other dimension is
+summed.
+
+A frequency dimension is not summed over all its points: that sum is its first time point, which
+is dominated by the solvent and baseline rather than the cross peaks, and it adds the noise of every
+point while signal comes from only a few.
 """
 function _referencetrace(spec::NMRData, di::Integer)
     A = parent(spec)
     mcindex = metadata(dims(spec, di), :mcindex)
     N = MulticomplexNumbers.order(first(A))
     Ac = copy(A)
-    w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # N-1 component axes, then data axes
-    v = w[ntuple(i -> i <= N - 1 ? 1 : Colon(), ndims(w))...]
-    v = collect(ComplexF64, v)
+    # the complex view wraps Ac's memory without referencing Ac, so Ac must be kept alive while
+    # the view is read
+    v = GC.@preserve Ac begin
+        w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # N-1 component axes, then data
+        collect(ComplexF64, w[ntuple(i -> i <= N - 1 ? 1 : Colon(), ndims(w))...])
+    end
     for (j, d) in enumerate(dims(spec))
         j == di && continue
-        v = d isa TimeDimension ? selectdim(v, j, 1:1) : sum(v; dims=j)
+        v = if d isa TimeDimension
+            selectdim(v, j, 1:1)
+        elseif d isa FrequencyDimension
+            sum(selectdim(v, j, _signalindices(v, j)); dims=j)
+        else
+            sum(v; dims=j)
+        end
     end
     return vec(collect(v))
+end
+
+"""
+    _signalindices(v, j; factor=3) -> Vector{Int}
+
+Indices along dimension `j` of the array `v` at which the largest magnitude over the other
+dimensions exceeds `factor` times its median. Most points of a frequency dimension carry only
+noise, so the median measures the noise maximum and the selected points are those with peaks.
+All indices are returned if none qualify.
+"""
+function _signalindices(v::AbstractArray, j::Integer; factor::Real=3)
+    others = Tuple(setdiff(1:ndims(v), j))
+    m = vec(maximum(abs, v; dims=others))
+    keep = findall(>(factor * median(m)), m)
+    return isempty(keep) ? collect(eachindex(m)) : keep
 end
 
 """
@@ -104,7 +133,8 @@ band only, to avoid edge artefacts; bands wrap around the ends of the spectrum, 
 Bands with no signal above the threshold are skipped.
 
 For multidimensional data, the trace along `dim` takes the first point of every other time
-dimension and sums over the remaining dimensions.
+dimension, sums every other frequency dimension over the points that carry signal, and sums any
+remaining dimensions.
 
 # Keywords
 - `bandwidth`: band size in points. `:auto` uses `n ÷ 32` (a power of two between 256 and 4096) for

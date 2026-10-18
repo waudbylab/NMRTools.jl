@@ -38,7 +38,7 @@ NMRTools.jl is a Julia library for NMR spectroscopy data. It encodes the structu
 
 ### Critical metadata: `:mcindex`
 
-Every `TimeDimension` and `FrequencyDimension` has an `:mcindex` metadata entry that links the dimension to its imaginary unit in the multicomplex representation. This is set once by `loadfid` and never modified:
+Every `TimeDimension` and `FrequencyDimension` has an `:mcindex` metadata entry that links the dimension to its imaginary unit in the multicomplex representation. This is set once, by `loadfid` for time-domain data or `loadnmr` for frequency-domain data (frequency dimensions numbered in order), and never modified:
 
 | Dimension | `:mcindex` | Imaginary unit |
 |---|---|---|
@@ -52,7 +52,7 @@ Processing functions (`ft`, `phase`, `apodize`) read `:mcindex` from the target 
 
 ### Data representation
 
-The element type of `NMRData` is `Multicomplex{Float64,N,C}` throughout the entire processing pipeline — from `loadfid` through apodization, zero-filling, Fourier transform, and phase correction. The element type never changes during processing. Only `real(spec)` at the very end extracts the real part and converts to `Float64`.
+The element type of `NMRData` is `Multicomplex{Float64,N,C}` throughout the entire processing pipeline — from `loadfid` through apodization, zero-filling, Fourier transform, and phase correction. The element type never changes during processing. Only `realest(spec)` at the very end extracts the purely real part and converts to `Float64`. `real` and `imag` are not overridden: they act elementwise as in MulticomplexNumbers (strip the highest-order unit).
 
 Even 1D data uses `Multicomplex{Float64,1,2}` (first-order, isomorphic to Complex but using `im1` not `im`). This keeps the type system uniform. Use `complex(spec)` for explicit conversion to Julia `Complex` when needed.
 
@@ -72,7 +72,9 @@ Writing Bruker data:
 - **`savefid(path, fid)`**: time-domain data → raw `fid`/`ser`, undoing everything `loadfid` did (first-point scaling, group delay, quadrature recombination, axis order); `loadfid(savefid(...))` round-trips
 - Both copy parameter files from the source experiment (`:experimentfolder` metadata) or generate minimal ones
 
-Sign convention: NMRTools spectra are the complex conjugate of TopSpin's in every imaginary unit (real parts agree). `phase` uses TopSpin's sign, so `PHC0`/`PHC1` values carry over directly. `loadnmr(...; allcomponents=true)` and `savenmr` conjugate imaginary components when reading/writing pdata.
+Sign convention: NMRTools spectra are the complex conjugate of TopSpin's in every imaginary unit (real parts agree). `phase` uses TopSpin's sign, so `PHC0`/`PHC1` values carry over directly. `loadnmr(...; allcomponents=true)` and `savenmr` conjugate imaginary components when reading/writing pdata; `allcomponents=true` gives `Multicomplex` data for every dimensionality (never Julia `Complex`).
+
+`MulticomplexNumbers.unsafe_ascomplex!` wraps an array's memory without keeping the array alive: always use it inside `GC.@preserve` on that array.
 
 ### Annotation system (under development)
 
@@ -84,7 +86,7 @@ Target API uses `|>` piping with composable functions:
 
 ```julia
 loadfid("1/ser") |> apodize |> zerofill |> ft |>
-    phase(F1Dim, -50) |> phase(F2Dim, 0) |> real
+    phase(F1Dim, -50) |> phase(F2Dim, 0) |> realest
 ```
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
@@ -93,7 +95,7 @@ Processing functions dispatch on dimension types — `TimeDimension`s are proces
 
 Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
 
-Dimension defaults: without a dimension argument, `apodize`, `zerofill`, `ft`, `autophase` and `autophase0` act on each Fourier (for phasing, frequency) dimension in turn with the same settings; `linearpredict` on the indirect dimensions; `solventfilter`, `estimatepoles` and `estimatephase` on the direct dimension. Multi-dimension `autophase` warns and skips a dimension with no lines. `real(spec)` is the purely real (`realest`) part; `imag(spec, dim)` the part imaginary in `dim` alone (`imag(spec)` only for 1D). Every processing function has a spectrum-first form and a curried form for `|>`.
+Dimension defaults: without a dimension argument, `apodize`, `zerofill`, `ft`, `autophase` and `autophase0` act on each Fourier (for phasing, frequency) dimension in turn with the same settings; `linearpredict` on the indirect dimensions; `solventfilter`, `estimatepoles` and `estimatephase` on the direct dimension. Multi-dimension `autophase` warns and skips a dimension with no lines. Every processing function has a spectrum-first form and a curried form for `|>`, except `extract`, which is curried only (index with chemical shift selectors otherwise).
 
 ## Style Conventions
 

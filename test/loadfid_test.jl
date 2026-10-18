@@ -68,7 +68,7 @@ end
         @test_skip "raw test data not available"
     else
         dat = loadfid(joinpath(dir, "ser"))
-        spec = dat |> apodize |> zerofill |> ft |> real
+        spec = dat |> apodize |> zerofill |> ft |> realest
         @test dims(spec, 1) isa FrequencyDimension
         @test dims(spec, 2) isa FrequencyDimension
         @test eltype(parent(spec)) == Float64

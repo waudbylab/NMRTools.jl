@@ -86,16 +86,16 @@ end
     @test parent(p(f)) ≈ parent(phase(f, F1Dim, 90.0))
 end
 
-@testset "processing: real/imag/abs/complex" begin
+@testset "processing: realest/real/imag/abs/complex" begin
     spec = synthetic_fid()
-    r = real(spec)
+    r = realest(spec)
+    @test r isa NMRData
     @test eltype(parent(r)) == Float64
     @test parent(r) ≈ realest.(parent(spec))
-
-    # imag: the component imaginary in the given dimension; 1D needs no dimension
+    # real and imag act elementwise, as in MulticomplexNumbers; for 1D real agrees with realest
+    @test parent(real(spec)) ≈ parent(r)
     @test parent(imag(spec)) ≈ imag.(parent(spec))
-    @test parent(imag(spec, 1)) ≈ parent(imag(spec))
-    @test eltype(parent(imag(spec))) == Float64
+    @test imag(spec) isa NMRData
 
     @test eltype(parent(abs(spec))) == Float64
     @test eltype(parent(complex(spec))) <: Complex
@@ -105,7 +105,7 @@ end
 
 @testset "processing: pipeline and collections" begin
     spec = synthetic_fid()
-    out = spec |> apodize |> zerofill |> ft |> real
+    out = spec |> apodize |> zerofill |> ft |> realest
     @test eltype(parent(out)) == Float64
     @test dims(out, 1) isa FrequencyDimension
     @test size(out) == (64,)
@@ -127,8 +127,7 @@ end
     sub = extract(F1Dim, mid .. hi)(f)
     @test sub isa NMRData
     @test size(sub, 1) < size(f, 1)
-    @test parent(extract(f, F1Dim, mid .. hi)) == parent(sub)
-    @test parent(extract(f, F1Dim => mid .. hi)) == parent(sub)
+    @test parent(sub) == parent(f[F1Dim(mid .. hi)])
     @test parent(f |> extract(F1Dim => mid .. hi)) == parent(sub)
 end
 
@@ -148,17 +147,18 @@ end
     @test metadata(ft(fid), 1, :grpdly) == 0
 end
 
-@testset "processing: imag of 2D data" begin
+@testset "processing: realest/real/imag of 2D data" begin
     testdata = joinpath(@__DIR__, "test-data", "15n-trosy-ts3")
     if !isfile(joinpath(testdata, "ser"))
         @test_skip "raw test data not available"
     else
         spec = loadfid(testdata) |> ft
         m = parent(spec)
-        # components of a bicomplex number are (rr, ir, ri, ii): ir is imaginary in im1 only
-        @test parent(imag(spec, 1)) == component.(m, 2)
-        @test parent(imag(spec, F2Dim)) == component.(m, 3)
-        @test parent(real(spec)) == component.(m, 1)
-        @test_throws ArgumentError imag(spec)
+        # components of a bicomplex number are (rr, ir, ri, ii); real and imag strip im2
+        @test parent(realest(spec)) == component.(m, 1)
+        @test parent(real(spec)) == real.(m)
+        @test parent(imag(spec)) == imag.(m)
+        @test eltype(parent(real(spec))) <: Multicomplex{Float64,1}
+        @test realest(real(spec)) == realest(spec)
     end
 end

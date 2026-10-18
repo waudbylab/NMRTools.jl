@@ -3,7 +3,7 @@
 # `loadfid` reads raw Bruker fid/ser files into time-domain `NMRData` whose element type is
 # `Multicomplex`. Quadrature recombination, digital-filter removal and first-point scaling are all
 # performed here so that the returned object is a clean time-domain signal ready for the processing
-# pipeline (`apodize |> zerofill |> ft |> phase |> real`).
+# pipeline (`apodize |> zerofill |> ft |> phase |> realest`).
 #
 # Handles 1D, 2D and 3D data with any mix of phase-sensitive (States, States-TPPI, echo/anti-echo)
 # and pseudo (non-phase-sensitive) indirect dimensions. The multicomplex order equals the number of
@@ -63,7 +63,7 @@ Annotations ([`annotate`](@ref)) and sample metadata ([`addsampleinfo`](@ref)) a
 # Examples
 ```julia
 fid = loadfid("myexperiment/1")
-spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> real
+spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> realest
 ```
 
 See also [`autoprocess`](@ref NMRTools.NMRBase.autoprocess), [`savefid`](@ref).

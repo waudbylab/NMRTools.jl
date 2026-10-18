@@ -124,12 +124,14 @@ so that `_mcfft!(inverse=true)` inverts `_mcfft!`.
 """
 function _mcfft!(A::AbstractArray{<:Multicomplex{T,N,C}}, unit::Integer, di;
                  inverse=false) where {T,N,C}
-    w = MulticomplexNumbers.unsafe_ascomplex!(A, unit)
     d = di .+ (N - 1)   # the complex reinterpretation prepends (N-1) collapsed dimensions
-    try
-        inverse ? FFTW.ifft!(w, d) : FFTW.fft!(w, d)
-    finally
-        MulticomplexNumbers.unsafe_fromcomplex!(A, unit)
+    GC.@preserve A begin    # the complex view does not keep A alive by itself
+        w = MulticomplexNumbers.unsafe_ascomplex!(A, unit)
+        try
+            inverse ? FFTW.ifft!(w, d) : FFTW.fft!(w, d)
+        finally
+            MulticomplexNumbers.unsafe_fromcomplex!(A, unit)
+        end
     end
     return A
 end
@@ -414,7 +416,7 @@ is refreshed.
 
 # Examples
 ```julia
-spec |> phase(F1Dim, 128.5) |> real
+spec |> phase(F1Dim, 128.5) |> realest
 phase(spec, F1Dim, 40.0, -20.0; pivot=4.7)
 ```
 
@@ -500,24 +502,25 @@ end
 # extract ##########################################################################################
 
 """
-    extract(spec, dim, range)
-    extract(spec, dim1 => range1, dim2 => range2, ...)
     extract(dim, range)
     extract(dim1 => range1, dim2 => range2, ...)
 
-Select a region of a spectrum. `dim` is a dimension type (for example `F1Dim`) and `range` an
-interval (for example `6.0 .. 10.0`). The noise estimate (`:noise`) of the selected region is
-refreshed. The forms without a spectrum return a function for use with `|>`.
+Return a function that selects a region of a spectrum, for use with `|>`. `dim` is a dimension
+type (for example `F1Dim`) and `range` an interval (for example `6.0 .. 10.0`). The noise estimate
+(`:noise`) of the selected region is refreshed.
+
+Outside a pipeline, index the spectrum directly with a chemical shift selector, as
+`spec[F1Dim(6.0 .. 10.0)]` or `spec[6.0 .. 10.0, :]`.
 
 ```julia
-loadfid("1/ser") |> ft |> extract(F1Dim, 6.0 .. 10.0) |> phase(F1Dim, -50) |> real
-extract(spec, F1Dim => 6.0 .. 10.0, F2Dim => 105 .. 135)
+loadfid("1/ser") |> ft |> extract(F1Dim, 6.0 .. 10.0) |> phase(F1Dim, -50) |> realest
+loadfid("2/ser") |> ft |> extract(F1Dim => 6.0 .. 10.0, F2Dim => 105 .. 135)
 ```
 """
-extract(spec::NMRData, dim, range) = _withnoise(spec[dim(range)])
-extract(spec::NMRData, pairs::Pair...) = _withnoise(spec[(p.first(p.second) for p in pairs)...])
-extract(dim, range) = spec -> extract(spec, dim, range)
-extract(pairs::Pair...) = spec -> extract(spec, pairs...)
+extract(dim, range) = spec -> _withnoise(spec[dim(range)])
+function extract(pairs::Pair...)
+    return spec -> _withnoise(spec[(p.first(p.second) for p in pairs)...])
+end
 
 "copy of `spec` with its own metadata and a fresh noise estimate"
 _withnoise(spec) = estimatenoise(rebuild(spec; metadata=deepcopy(metadata(spec))))
@@ -525,42 +528,17 @@ _withnoise(spec) = estimatenoise(rebuild(spec; metadata=deepcopy(metadata(spec))
 # element-type conversions #########################################################################
 
 """
-    real(spec::NMRData)
+    realest(spec::NMRData)
 
-The real spectrum: the purely real component of every point of a multicomplex spectrum (its
-`realest` part, real in every dimension), as an `NMRData` with `Float64` elements. This is
-the final step of a processing pipeline. For 1D data it is the usual real part.
+The real spectrum: the purely real component of every point of a multicomplex spectrum, real in
+every dimension, as an `NMRData` with `Float64` elements. This is the final step of a processing
+pipeline.
 
-Note that this differs from broadcasting `real` over the elements, which follows
-MulticomplexNumbers in removing only the highest-order imaginary unit.
-
-See also `imag`.
+`real` and `imag` act elementwise as defined by MulticomplexNumbers: they take the coefficients of
+the highest-order imaginary unit, so for 2D data `real(spec)` is still complex in the direct
+dimension. For 1D data `real` and `realest` agree.
 """
-Base.real(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=realest.(parent(spec)))
-
-"""
-    imag(spec::NMRData, dim)
-    imag(spec::NMRData)
-
-The imaginary spectrum in dimension `dim`: the component of every point that is imaginary in `dim`
-and real in every other dimension, as an `NMRData` with `Float64` elements. For a 2D spectrum,
-`imag(spec, 1)` and `imag(spec, 2)` are the parts TopSpin stores in `2ir` and `2ri` (with the
-conjugate sign of NMRTools' convention). The dimension can be omitted only for 1D data.
-
-See also `real`.
-"""
-function Base.imag(spec::NMRData{<:Multicomplex}, dim)
-    di = resolvedim(spec, dim)
-    mcindex = metadata(dims(spec, di), :mcindex)
-    isnothing(mcindex) &&
-        throw(NMRToolsError("dimension $di ($(typeof(dims(spec, di)))) has no imaginary unit"))
-    k = 1 + 2^(mcindex - 1)      # component index of the unit im_mcindex alone
-    return rebuild(spec; data=component.(parent(spec), k))
-end
-Base.imag(spec::NMRData{<:Multicomplex{T,1}}) where {T} = imag(spec, only(_fourierdims(spec)))
-function Base.imag(spec::NMRData{<:Multicomplex})
-    throw(ArgumentError("imag of a multidimensional spectrum needs a dimension: imag(spec, dim)"))
-end
+MulticomplexNumbers.realest(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=realest.(parent(spec)))
 
 """
     abs(spec::NMRData)

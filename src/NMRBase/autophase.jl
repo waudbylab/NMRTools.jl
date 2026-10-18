@@ -361,7 +361,7 @@ For multidimensional data the correction is estimated from a single trace along 
 [`estimatepoles`](@ref)) and applied to the whole dataset.
 
 ```julia
-spec = loadfid("expt/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |> autophase |> real
+spec = loadfid("expt/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |> autophase |> realest
 ```
 """
 function autophase(spec::NMRData, dim; kw...)

@@ -81,12 +81,16 @@ end
             @test collect(data(dims(spec2, 2))) ≈ collect(data(dims(spec, 2)))
             scale = maximum(abs, realest.(parent(spec)))
             @test maximum(abs.(parent(spec2) .- parent(spec))) < 1e-6 * scale
+            # the loaded spectrum knows its imaginary units, so it can be phased like the original
+            @test [metadata(spec2, k, :mcindex) for k in 1:2] == [1, 2]
+            @test maximum(abs.(parent(phase(spec2, 2, 25.0)) .- parent(phase(spec, 2, 25.0)))) <
+                  1e-6 * scale
             @test loadjdx(joinpath(pdir, "procs"))[:phc0] ≈ 30.0
 
             # real part only, into a second procno
-            savenmr(dir, real(spec); procno=2)
+            savenmr(dir, realest(spec); procno=2)
             @test !isfile(joinpath(dir, "pdata", "2", "2ii"))
-            @test data(loadnmr(joinpath(dir, "pdata", "2"))) ≈ data(real(spec)) rtol = 1e-6
+            @test data(loadnmr(joinpath(dir, "pdata", "2"))) ≈ data(realest(spec)) rtol = 1e-6
         end
         @test_throws ArgumentError savenmr(tempname(), loadfid(src))
     end

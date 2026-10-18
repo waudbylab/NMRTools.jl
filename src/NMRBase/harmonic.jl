@@ -381,11 +381,13 @@ function _maptransform(A::AbstractArray{<:Multicomplex{T,N,C}}, di::Integer, mci
                        matkernel) where {T,N,C}
     D = ndims(A)
     Ac = copy(A)
-    w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # transform axis at di+(N-1)
     tax = di + (N - 1)
-    nd = ndims(w)
-    perm = pushfirst!(deleteat!(collect(1:nd), tax), tax)    # move transform axis to the front
-    wp = permutedims(w, perm)
+    # the complex view wraps Ac's memory without referencing Ac: keep Ac alive while it is read
+    wp, perm = GC.@preserve Ac begin
+        w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # transform axis at di+(N-1)
+        perm = pushfirst!(deleteat!(collect(1:ndims(w)), tax), tax)  # transform axis to the front
+        permutedims(w, perm), perm
+    end
     L = size(wp, 1)
     rest = size(wp)[2:end]
     mat = reshape(wp, L, :)
@@ -396,9 +398,11 @@ function _maptransform(A::AbstractArray{<:Multicomplex{T,N,C}}, di::Integer, mci
 
     outsize = ntuple(i -> i == di ? L2 : size(A, i), D)
     Aout = zeros(Multicomplex{T,N,C}, outsize)
-    wov = MulticomplexNumbers.unsafe_ascomplex!(Aout, mcindex)
-    wov .= wnew
-    MulticomplexNumbers.unsafe_fromcomplex!(Aout, mcindex)
+    GC.@preserve Aout begin
+        wov = MulticomplexNumbers.unsafe_ascomplex!(Aout, mcindex)
+        wov .= wnew
+        MulticomplexNumbers.unsafe_fromcomplex!(Aout, mcindex)
+    end
     return Aout
 end
 

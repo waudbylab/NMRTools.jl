@@ -11,11 +11,18 @@ listed first.
 - **`loadnmr(...; allcomponents=true)` returns different numbers for the same files.** Imaginary
   components are now conjugated relative to TopSpin's files, and for 2D data the `2ir` and `2ri`
   files have swapped places: `2ir` is now the coefficient of `im1` (the direct dimension) and `2ri`
-  that of `im2`. The element type is unchanged, so existing code will run without error but give
-  different results. This follows the sign convention used throughout NMRTools: spectra are the
-  complex conjugate of TopSpin's in every imaginary unit (real parts agree), so TopSpin's `PHC0` and
-  `PHC1` can be passed straight to `phase`. Real data (the default, `allcomponents=false`) are
-  unaffected.
+  that of `im2`. For 2D data the element type is unchanged, so existing code will run without error
+  but give different results. This follows the sign convention used throughout NMRTools: spectra
+  are the complex conjugate of TopSpin's in every imaginary unit (real parts agree), so TopSpin's
+  `PHC0` and `PHC1` can be passed straight to `phase`. Real data (the default,
+  `allcomponents=false`) are unaffected.
+- **1D and pseudo-2D complex data are `Multicomplex`.** `loadnmr(...; allcomponents=true)` returns
+  `Multicomplex{Float64,1,2}` elements (imaginary unit `im1`) instead of Julia `ComplexF64`, as for
+  every other NMRTools spectrum; use `complex(spec)` to convert. 3D data with all components now
+  give tricomplex numbers; previously only four of the eight component files were used.
+- **Loaded spectra record their imaginary units.** `loadnmr` sets the `:mcindex` of each frequency
+  dimension (`1` for the direct dimension, `2` for the next, …), so loaded spectra can be phased,
+  Fourier transformed back and processed like spectra produced by `ft`.
 - **Peaks.** `SimplePeak` and `AbstractPeak` are replaced by `Peak{N}`, holding a position in ppm,
   an intensity, a linewidth in Hz for each dimension and a label. `detectpeaks` returns a
   `Vector{Peak{N}}` and now works in any number of frequency dimensions.
@@ -46,11 +53,11 @@ change in a future release.
 - Processing functions, each with a curried form for use with `|>`: `apodize`, `zerofill`, `ft`
   (including the inverse transform), `phase`, `extract`, `frequencyshift`, `linearpredict` (forward
   and backward) and `solventfilter`. `ft` removes the digital filter's group delay with a linear
-  phase ramp, as TopSpin and NMRPipe do. `extract` selects a region, as `extract(spec, F1Dim,
-  6.0 .. 10.0)` or in a pipeline as `extract(F1Dim, 6.0 .. 10.0)`.
-- `real(spec)` gives the purely real part of a multicomplex spectrum (real in every dimension), and
-  `imag(spec, dim)` the part imaginary in dimension `dim` alone (`imag(spec)` for 1D data);
-  `abs` and `complex` are also defined.
+  phase ramp, as TopSpin and NMRPipe do. `extract(F1Dim, 6.0 .. 10.0)` selects a region within a
+  pipeline.
+- `realest(spec)` gives the purely real spectrum, real in every dimension, and ends a processing
+  pipeline. `real` and `imag` act elementwise as defined by MulticomplexNumbers (removing the
+  highest-order imaginary unit); `abs` and `complex` are also defined.
 - Automatic phasing: `estimatepoles`, `estimatephase`, `autophase` and `autophase0`. Without a
   dimension argument, `autophase` and `autophase0` phase every frequency dimension in turn (a
   dimension with too little signal is left unphased, with a warning). The total correction applied

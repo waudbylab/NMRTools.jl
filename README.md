@@ -55,7 +55,7 @@ Process raw data, either in one step or with explicit control of each stage:
 spec = loadfid("path/to/experiment") |> autoprocess
 
 spec = loadfid("path/to/hsqc") |> apodize(Cos2Window()) |> zerofill |> ft |>
-       phase(F1Dim, -50) |> phase(F2Dim, 0) |> real
+       phase(F1Dim, -50) |> phase(F2Dim, 0) |> realest
 ```
 
 Pick peaks and save them for analysis in NMRAnalysis.jl:

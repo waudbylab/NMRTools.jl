@@ -16,7 +16,7 @@ loadfid("1/ser") |>
     apodize |> zerofill |> ft |>
     phase(F1Dim, …) |> phase(F2Dim, …) |>
     baselinecorrect |>            # frequency domain
-    real
+    realest
 ```
 
 ## Shared infrastructure
