@@ -26,6 +26,7 @@ include("scan.jl")
 include("ucsf.jl")
 include("exampledata.jl")
 include("sumexpts.jl")
+include("peaklists.jl")
 
 export loadnmr
 export loadmetadata
@@ -33,6 +34,7 @@ export loadjdx
 export FQList
 export withreference
 export sumexpts
+export loadpeaks, savepeaks
 export scanexperiments
 export scansamples
 export findsample

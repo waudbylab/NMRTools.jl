@@ -663,15 +663,99 @@ end
     @test ref_hz_direct ≈ ref_hz_pulse
 end
 
+@testset "NMRBase: Peak type" begin
+    p = Peak(8.2, 120.5; label="G10")
+    @test p isa Peak{2}
+    @test ppm(p) == (8.2, 120.5)
+    @test ppm(p, 2) == 120.5
+    @test label(p) == "G10"
+    @test isnan(intensity(p))
+    @test all(isnan, linewidth(p))
+    @test ndims(p) == 2
+
+    q = Peak(p; label="G10N", intensity=2.0)
+    @test label(q) == "G10N" && intensity(q) == 2.0 && ppm(q) == ppm(p)
+    @test Peak(p) == p
+    @test Peak((4.7,); linewidth=(1.5,)) == Peak(4.7; linewidth=(1.5,))
+    @test_throws DimensionMismatch Peak(8.2, 120.5; linewidth=(1.0,))
+
+    pks = [Peak(8.2, 120.5; label="A"), Peak(7.1, 115.0; intensity=3.0)]
+    cols = NMRTools.NMRBase.Tables.columns(pks)
+    @test cols.label == ["A", ""]
+    @test cols.x == [8.2, 7.1]
+    @test cols.y == [120.5, 115.0]
+    @test isequal(cols.intensity, [NaN, 3.0])
+    @test haskey(cols, :lwx) && haskey(cols, :lwy)
+    @test occursin("2-element Vector{Peak{2}}", repr("text/plain", pks))
+end
+
 @testset "NMRBase: Peak detection (1D)" begin
     spec = exampledata("1D_19F")
     pks = detectpeaks(spec)
+    @test pks isa Vector{Peak{1}}
     @test length(pks) == 1
-    @test pks[1].δ ≈ -123.69808278240923
-    @test pks[1].intensity ≈ 23737.674377441406
-    @test pks[1].δfwhm ≈ 0.0626986378531874
-    @test length(detectpeaks(spec; snr_threshold=0.1)) == 65
-    @test length(detectpeaks(spec; snr_threshold=100)) == 0
+    @test label(pks[1]) == "X1"
+    @test ppm(pks[1], 1) ≈ -123.698 atol = 0.005
+    @test intensity(pks[1]) > 0
+    @test 1 < linewidth(pks[1], 1) < 100   # Hz
+    @test length(detectpeaks(spec; snr=0.1)) > length(pks)
+    @test isempty(detectpeaks(spec; snr=1e6))
+    @test isempty(detectpeaks(spec; sign=:negative))
+    @test_throws ArgumentError detectpeaks(spec; sign=:up)
+
+    # an absolute threshold is the same as snr × noise
+    @test detectpeaks(spec; threshold=10 * spec[:noise]) == pks
+
+    # findpeak climbs to the same maximum from nearby
+    p = findpeak(spec, ppm(pks[1], 1) + 0.02; label="F")
+    @test ppm(p, 1) ≈ ppm(pks[1], 1)
+    @test label(p) == "F"
+
+    # pseudo-2D data must be sliced first
+    @test_throws ArgumentError detectpeaks(exampledata("pseudo2D_XSTE"))
+end
+
+@testset "NMRBase: Peak detection (synthetic Lorentzian)" begin
+    spec = exampledata("1D_19F")
+    ax = dims(spec, F1Dim)
+    ν = hz(ax)
+    for (δ0, fwhm) in ((-123.7, 20.0), (-124.3, 50.0))
+        ν0 = hz(δ0, ax)
+        y = @. 1e6 / (1 + ((ν - ν0) / (fwhm / 2))^2)
+        synth = NMRData(y, dims(spec); metadata=deepcopy(metadata(spec)))
+        synth[:noise] = 1.0
+        pks = detectpeaks(synth)
+        @test length(pks) == 1
+        @test ppm(pks[1], 1) ≈ δ0 atol = 1e-4
+        @test intensity(pks[1]) ≈ 1e6 rtol = 0.02
+        @test linewidth(pks[1], 1) ≈ fwhm rtol = 0.05
+        @test findpeak(synth, δ0 + 0.1) == Peak(pks[1]; label="")
+
+        neg = NMRData(-y, dims(spec); metadata=deepcopy(metadata(spec)))
+        neg[:noise] = 1.0
+        @test intensity(only(detectpeaks(neg))) ≈ -1e6 rtol = 0.02
+        @test isempty(detectpeaks(neg; sign=:positive))
+    end
+end
+
+@testset "NMRBase: Peak detection (2D)" begin
+    spec = exampledata("2D_HN")
+    pks = detectpeaks(spec; sign=:positive)
+    @test pks isa Vector{Peak{2}}
+    @test length(pks) > 10
+    @test issorted(intensity.(pks); rev=true)
+    @test all(p -> intensity(p) > 10 * spec[:noise], pks)
+    xr, yr = extrema(data(dims(spec, 1))), extrema(data(dims(spec, 2)))
+    @test all(p -> xr[1] ≤ ppm(p, 1) ≤ xr[2] && yr[1] ≤ ppm(p, 2) ≤ yr[2], pks)
+    @test all(p -> all(lw -> isnan(lw) || 0 < lw < 500, linewidth(p)), pks)
+    @test length(unique(label.(pks))) == length(pks)
+
+    # findpeak from slightly off the strongest peak returns it
+    p1 = pks[1]
+    p = findpeak(spec, ppm(p1) .+ (0.01, 0.1))
+    @test ppm(p) == ppm(p1)
+    @test intensity(p) == intensity(p1)
+    @test_throws DimensionMismatch findpeak(spec, (8.0,))
 end
 
 @testset "NMRBase: Metadata independence after slicing (issue #25)" begin

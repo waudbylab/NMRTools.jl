@@ -19,7 +19,7 @@ using Dates: Dates, DateTime, Date, unix2datetime
 using LinearAlgebra
 using MulticomplexNumbers
 using Optim
-using Peaks
+import Tables
 using SimpleTraits
 using SpecialFunctions
 using Statistics
@@ -164,8 +164,9 @@ export RealLineshape
 export ComplexLineshape
 
 # peaks and peak detection
-export AbstractPeak, SimplePeak
-export detectpeaks
+export Peak
+export intensity, linewidth
+export detectpeaks, findpeak
 
 # phase-constrained least squares
 export pcls

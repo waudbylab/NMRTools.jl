@@ -551,3 +551,74 @@ end
     @test length(found) == 1
     @test found[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
 end
+@testset "NMRIO: peak lists" begin
+    spec = exampledata("2D_HN")
+    pks = detectpeaks(spec; sign=:positive)[1:5]
+    pks[2] = Peak(pks[2]; label="G10")
+
+    mktempdir() do dir
+        # NMRAnalysis.jl peaklist.csv round trip
+        f = joinpath(dir, "out", "peaklist.csv")
+        @test savepeaks(f, pks) == f
+        lines = readlines(f)
+        @test startswith(lines[1], "#")
+        @test lines[2] == "label,plane,x (ppm),y (ppm),lwx (Hz),lwy (Hz),intensity"
+        @test startswith(lines[4], "G10,,")
+        @test loadpeaks(f) == pks
+        @test loadpeaks(f, spec) == pks
+        @test_throws DimensionMismatch loadpeaks(f, exampledata("1D_19F"))
+
+        # unlabelled peaks are written as X1, X2, ...
+        savepeaks(f, [Peak(8.0, 120.0), Peak(7.0, 110.0; label="A")])
+        @test label.(loadpeaks(f)) == ["X1", "A"]
+        @test_throws ArgumentError savepeaks(f, [Peak(8.0, 120.0; label="A,B")])
+        @test_throws ArgumentError savepeaks(f, [Peak(8.0, 1.0; label="A"),
+                                                 Peak(7.0, 1.0; label="A")])
+
+        # a 1D list
+        f1 = joinpath(dir, "peaks1d.csv")
+        p1 = detectpeaks(exampledata("1D_19F"))
+        savepeaks(f1, p1)
+        @test loadpeaks(f1) == p1
+
+        # a hand-made list without a header
+        fh = joinpath(dir, "hand.txt")
+        write(fh, "# my peaks\nA 8.1 121.0\nB 7.5 118.2\n")
+        hand = loadpeaks(fh)
+        @test hand == [Peak(8.1, 121.0; label="A"), Peak(7.5, 118.2; label="B")]
+
+        # a list written by NMRAnalysis.jl, with tracked positions and radius columns
+        fn = joinpath(dir, "nmranalysis.csv")
+        write(fn, """
+              # NMRAnalysis.jl 0.4.3
+              # X radius / ppm: 0.03
+              label,plane,x (ppm),y (ppm),xradius (ppm),yradius (ppm)
+              L23N,,8.5,122.1,0.03,0.3
+              G10,1,8.1,110.2,0.03,0.3
+              G10,2,8.12,110.4,0.03,0.3
+              """)
+        nmra = @test_logs (:warn,) loadpeaks(fn)
+        @test label.(nmra) == ["L23N", "G10"]
+        @test ppm(nmra[2]) == (8.1, 110.2)
+        @test isnan(intensity(nmra[1]))
+
+        # Sparky: written with the indirect dimension first, read back in NMRTools order
+        fs = joinpath(dir, "hsqc.list")
+        savepeaks(fs, pks)
+        sl = readlines(fs)
+        @test split(sl[1]) == ["Assignment", "w1", "w2", "Data", "Height"]
+        @test parse(Float64, split(sl[4])[2]) ≈ ppm(pks[2], 2) atol = 1e-3
+        sp = loadpeaks(fs)
+        @test label.(sp) == label.(pks)
+        @test all(isapprox.(ppm.(sp, 1), ppm.(pks, 1); atol=1e-3))
+        @test all(isapprox.(ppm.(sp, 2), ppm.(pks, 2); atol=1e-3))
+
+        # a Sparky list written the other way round is detected against the spectrum
+        fsw = joinpath(dir, "swapped.list")
+        write(fsw, "Assignment w1 w2\n\n" *
+                   join(["?-? $(ppm(p, 1)) $(ppm(p, 2))" for p in pks], "\n"))
+        sw = @test_logs (:info,) loadpeaks(fsw, spec)
+        @test ppm.(sw, 1) ≈ ppm.(pks, 1)
+        @test all(isempty, label.(sw))
+    end
+end

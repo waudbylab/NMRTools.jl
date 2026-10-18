@@ -4,7 +4,7 @@ using NMRTools
 using NMRTools: NMRData, AbstractNMRData, NMRDimension, FrequencyDimension,
                 NonFrequencyDimension
 using NMRTools: data, dims, refdims, refdims_title, label, scale, units,
-                reorder, ForwardOrdered
+                reorder, ForwardOrdered, Peak, ppm
 using MulticomplexNumbers: Multicomplex, realest
 using Statistics: quantile
 using Makie
@@ -15,6 +15,7 @@ include("MakieExt/plot_1d.jl")
 include("MakieExt/plot_2d.jl")
 include("MakieExt/plot_pseudo2d.jl")
 include("MakieExt/plot_3d.jl")
+include("MakieExt/plot_peaks.jl")
 
 # Convenience: forward `nmrplot!(fig_like, spec)` to the underlying axis so
 # the typical workflow `fig = nmrplot(spec); nmrplot!(fig, spec/2)` just
