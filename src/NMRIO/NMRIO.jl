@@ -5,6 +5,7 @@ import ..NMRBase: NMRSample, NMRExperiment
 using Artifacts
 using ArtifactUtils
 using Dates
+using Downloads
 using LazyArtifacts
 using JSON
 using MulticomplexNumbers
@@ -28,6 +29,8 @@ include("scan.jl")
 include("ucsf.jl")
 include("exampledata.jl")
 include("sumexpts.jl")
+include("peaklists.jl")
+include("bmrb.jl")
 
 export loadnmr
 export loadfid
@@ -37,6 +40,8 @@ export loadjdx
 export FQList
 export withreference
 export sumexpts
+export loadpeaks, savepeaks
+export loadbmrb
 export scanexperiments
 export scansamples
 export findsample

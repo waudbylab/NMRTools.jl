@@ -379,3 +379,27 @@ end
     @test ax.limits[] !== nothing
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/pseudo2D_XSTE_xlim.png"
 end
+
+@testset "MakieExt: peak overlays" begin
+    spec1 = exampledata("1D_19F")
+    fig, ax, _ = nmrplot(spec1)
+    plt = nmrplot!(detectpeaks(spec1))
+    @test plt isa Makie.VLines
+    @test any(p -> p isa Makie.Text, ax.scene.plots)
+
+    spec2 = exampledata("2D_HN")
+    fig, ax, _ = nmrplot(spec2)
+    pks = detectpeaks(spec2; sign=:positive)
+    plt = nmrplot!(ax, pks; color=:blue)
+    @test plt isa Makie.Scatter
+    @test length(plt[1][]) == length(pks)
+    @test nmrplot!(fig, pks; labels=false) isa Makie.Scatter
+
+    # a peak list on its own, without a spectrum
+    fap = nmrplot(pks; xlabel="1H (ppm)")
+    @test fap isa Makie.FigureAxisPlot
+    @test fap.axis.xlabel[] == "1H (ppm)"
+    @test fap.axis.xreversed[] && fap.axis.yreversed[]
+    @test nmrplot(detectpeaks(spec1)) isa Makie.FigureAxisPlot
+    @test nmrplot(Peak{2}[]) isa Makie.FigureAxisPlot
+end

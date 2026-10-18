@@ -20,7 +20,7 @@ using FFTW
 using LinearAlgebra
 using MulticomplexNumbers
 using Optim
-using Peaks
+import Tables
 using SimpleTraits
 using SpecialFunctions
 using Statistics
@@ -60,6 +60,7 @@ include("poles.jl")
 include("autophase.jl")
 include("autoprocess.jl")
 include("peaks.jl")
+include("assignments.jl")
 include("pcls.jl")
 include("reference.jl")
 
@@ -184,8 +185,14 @@ export RealLineshape
 export ComplexLineshape
 
 # peaks and peak detection
-export AbstractPeak, SimplePeak
-export detectpeaks
+export Peak
+export intensity, linewidth
+export detectpeaks, findpeak, findnearest
+export register!, register
+
+# assigned chemical shifts
+export ChemicalShift
+export peaklist
 
 # phase-constrained least squares
 export pcls

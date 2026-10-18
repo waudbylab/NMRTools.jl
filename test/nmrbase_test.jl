@@ -663,15 +663,160 @@ end
     @test ref_hz_direct ≈ ref_hz_pulse
 end
 
+@testset "NMRBase: Peak type" begin
+    p = Peak(8.2, 120.5; label="G10")
+    @test p isa Peak{2}
+    @test ppm(p) == (8.2, 120.5)
+    @test ppm(p, 2) == 120.5
+    @test label(p) == "G10"
+    @test isnan(intensity(p))
+    @test all(isnan, linewidth(p))
+    @test ndims(p) == 2
+
+    q = Peak(p; label="G10N", intensity=2.0)
+    @test label(q) == "G10N" && intensity(q) == 2.0 && ppm(q) == ppm(p)
+    @test Peak(p) == p
+    @test Peak((4.7,); linewidth=(1.5,)) == Peak(4.7; linewidth=(1.5,))
+    @test_throws DimensionMismatch Peak(8.2, 120.5; linewidth=(1.0,))
+
+    pks = [Peak(8.2, 120.5; label="A"), Peak(7.1, 115.0; intensity=3.0)]
+    cols = NMRTools.NMRBase.Tables.columns(pks)
+    @test cols.label == ["A", ""]
+    @test cols.x == [8.2, 7.1]
+    @test cols.y == [120.5, 115.0]
+    @test isequal(cols.intensity, [NaN, 3.0])
+    @test haskey(cols, :lwx) && haskey(cols, :lwy)
+    @test occursin("2-element Vector{Peak{2}}", repr("text/plain", pks))
+end
+
+@testset "NMRBase: findnearest" begin
+    pks = [Peak(8.0, 120.0), Peak(8.5, 110.0), Peak(7.0, 121.0)]
+    @test findnearest(pks, (8.4, 119.0)) == 1
+    # with ¹⁵N down-weighted, the ¹H shift dominates
+    @test findnearest(pks, (8.4, 112.0); scale=(1, 0.01)) == 2
+    @test findnearest(pks, (7.2, 116.0); scale=(1, 0.01)) == 3
+    @test isnothing(findnearest(Peak{2}[], (8.0, 120.0)))
+    @test findnearest([Peak(1.0), Peak(2.0)], 1.8) == 2
+    @test_throws DimensionMismatch findnearest(pks, 8.0)
+end
+
 @testset "NMRBase: Peak detection (1D)" begin
     spec = exampledata("1D_19F")
     pks = detectpeaks(spec)
+    @test pks isa Vector{Peak{1}}
     @test length(pks) == 1
-    @test pks[1].δ ≈ -123.69808278240923
-    @test pks[1].intensity ≈ 23737.674377441406
-    @test pks[1].δfwhm ≈ 0.0626986378531874
-    @test length(detectpeaks(spec; snr_threshold=0.1)) == 65
-    @test length(detectpeaks(spec; snr_threshold=100)) == 0
+    @test label(pks[1]) == "X1"
+    @test ppm(pks[1], 1) ≈ -123.698 atol = 0.005
+    @test intensity(pks[1]) > 0
+    @test 1 < linewidth(pks[1], 1) < 100   # Hz
+    @test length(detectpeaks(spec; snr=0.1)) > length(pks)
+    @test isempty(detectpeaks(spec; snr=1e6))
+    @test isempty(detectpeaks(spec; sign=:negative))
+    @test_throws ArgumentError detectpeaks(spec; sign=:up)
+
+    # an absolute threshold is the same as snr × noise
+    @test detectpeaks(spec; threshold=10 * spec[:noise]) == pks
+
+    # findpeak climbs to the same maximum from nearby
+    p = findpeak(spec, ppm(pks[1], 1) + 0.02; label="F")
+    @test ppm(p, 1) ≈ ppm(pks[1], 1)
+    @test label(p) == "F"
+
+    # pseudo-2D data must be sliced first
+    @test_throws ArgumentError detectpeaks(exampledata("pseudo2D_XSTE"))
+end
+
+@testset "NMRBase: Peak detection (synthetic Lorentzian)" begin
+    spec = exampledata("1D_19F")
+    ax = dims(spec, F1Dim)
+    ν = hz(ax)
+    for (δ0, fwhm) in ((-123.7, 20.0), (-121.0, 50.0))
+        ν0 = hz(δ0, ax)
+        y = @. 1e6 / (1 + ((ν - ν0) / (fwhm / 2))^2)
+        synth = NMRData(y, dims(spec); metadata=deepcopy(metadata(spec)))
+        synth[:noise] = 1.0
+        pks = detectpeaks(synth)
+        @test length(pks) == 1
+        @test ppm(pks[1], 1) ≈ δ0 atol = 1e-4
+        @test intensity(pks[1]) ≈ 1e6 rtol = 0.02
+        @test linewidth(pks[1], 1) ≈ fwhm rtol = 0.05
+        @test findpeak(synth, δ0 + 0.1) == Peak(pks[1]; label="")
+
+        neg = NMRData(-y, dims(spec); metadata=deepcopy(metadata(spec)))
+        neg[:noise] = 1.0
+        @test intensity(only(detectpeaks(neg))) ≈ -1e6 rtol = 0.02
+        @test isempty(detectpeaks(neg; sign=:positive))
+    end
+end
+
+@testset "NMRBase: Peak detection (2D)" begin
+    spec = exampledata("2D_HN")
+    pks = detectpeaks(spec; sign=:positive)
+    @test pks isa Vector{Peak{2}}
+    @test length(pks) > 10
+    @test issorted(intensity.(pks); rev=true)
+    @test all(p -> intensity(p) > 10 * spec[:noise], pks)
+    xr, yr = extrema(data(dims(spec, 1))), extrema(data(dims(spec, 2)))
+    @test all(p -> xr[1] ≤ ppm(p, 1) ≤ xr[2] && yr[1] ≤ ppm(p, 2) ≤ yr[2], pks)
+    @test all(p -> all(lw -> isnan(lw) || 0 < lw < 500, linewidth(p)), pks)
+    @test length(unique(label.(pks))) == length(pks)
+
+    # findpeak from slightly off the strongest peak returns it
+    p1 = pks[1]
+    p = findpeak(spec, ppm(p1) .+ (0.01, 0.1))
+    @test ppm(p) == ppm(p1)
+    @test intensity(p) == intensity(p1)
+    @test_throws DimensionMismatch findpeak(spec, (8.0,))
+end
+
+@testset "NMRBase: register!" begin
+    spec = exampledata("2D_HN")
+    step = abs.((data(dims(spec, 1))[2] - data(dims(spec, 1))[1],
+                 data(dims(spec, 2))[2] - data(dims(spec, 2))[1]))
+    pks = detectpeaks(spec; sign=:positive)[1:40]
+    offset = (0.12, -1.3)
+    moved = [Peak(p; position=ppm(p) .+ offset) for p in pks]
+
+    # the non-mutating form leaves the list alone
+    back = register(moved, spec)
+    @test ppm(moved[1]) == ppm(pks[1]) .+ offset
+    @test all(i -> all(abs.(ppm(back[i]) .- ppm(pks[i])) .≤ step), eachindex(pks))
+
+    # register! moves the list in place and returns it
+    @test register!(moved, spec) === moved
+    @test moved == back
+
+    # a dimension can be held fixed
+    held = register([Peak(p; position=ppm(p) .+ (0.12, 0.0)) for p in pks], spec;
+                    maxshift=(0.3, 0))
+    @test all(i -> ppm(held[i], 2) == ppm(pks[i], 2), eachindex(pks))
+    @test all(i -> abs(ppm(held[i], 1) - ppm(pks[i], 1)) ≤ step[1], eachindex(pks))
+
+    # an offset beyond maxshift cannot be found
+    far = register([Peak(p; position=ppm(p) .+ (0.12, 0.0)) for p in pks], spec;
+                   maxshift=0.05)
+    @test abs(ppm(far[1], 1) - ppm(pks[1], 1)) > 0.05
+
+    # negative peaks count as much as positive ones, and one huge peak elsewhere
+    # does not outweigh several weaker matches
+    spec1 = exampledata("1D_19F")
+    ax = dims(spec1, F1Dim)
+    ν = hz(ax)
+    function lorentz(δ, h)
+        ν0 = hz(δ, ax)
+        return @. h / (1 + ((ν - ν0) / 10)^2)
+    end
+    # a peak 100 times stronger, which an offset of +0.6 ppm would land the first peak on
+    y = lorentz(-120.5, -1e4) .+ lorentz(-121.5, -1e4) .+ lorentz(-122.5, -1e4) .+
+        lorentz(-119.7, 1e6)
+    synth = NMRData(y, dims(spec1); metadata=deepcopy(metadata(spec1)))
+    synth[:noise] = 10.0
+    predicted = [Peak(δ + 0.2) for δ in (-120.5, -121.5, -122.5)]
+    register!(predicted, synth; maxshift=1.0)
+    @test all(isapprox.(ppm.(predicted, 1), [-120.5, -121.5, -122.5]; atol=0.005))
+
+    @test isempty(register!(Peak{2}[], spec))
+    @test_throws DimensionMismatch register(pks, spec; maxshift=(0.1, 0.1, 0.1))
 end
 
 @testset "NMRBase: Metadata independence after slicing (issue #25)" begin
