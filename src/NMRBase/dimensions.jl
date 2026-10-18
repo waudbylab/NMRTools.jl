@@ -115,15 +115,15 @@ function NMRdimmacro(typ, supertype, name::String=string(typ))
                 # @show newlookup = DimensionalData.Dimensions._format(tmpdim, axes(tmpdim,1))
                 # return $typ{typeof(newlookup)}(newlookup)
             end
-            function $typ(val::T) where {T<:DimensionalData.Dimensions.LookupArrays.LookupArray}
+            function $typ(val::T) where {T<:DimensionalData.Lookups.Lookup}
                 # HACK - this would better be replaced with a call to DD.format in the function above
                 # e.g.
-                # DimensionalData.Dimensions.format(DimensionalData.LookupArrays.val(axH), DimensionalData.LookupArrays.basetypeof(axH), Base.OneTo(11))
+                # DimensionalData.Dimensions.format(DimensionalData.Lookups.val(axH), DimensionalData.Lookups.basetypeof(axH), Base.OneTo(11))
                 return $typ{T}(val)
             end
             $typ() = $typ(:)
             Dimensions.name(::Type{<:$typ}) = $(QuoteNode(Symbol(name)))
-            Dimensions.key2dim(::Val{$(QuoteNode(typ))}) = $typ()
+            Dimensions.name2dim(::Val{$(QuoteNode(typ))}) = $typ()
         end)
 end
 

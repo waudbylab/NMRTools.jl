@@ -1,6 +1,6 @@
 # default constructor: dictionary of Symbol => Any #################################################
 
-# struct NMRMetadata <: DimensionalData.Dimensions.LookupArrays.AbstractMetadata
+# struct NMRMetadata <: DimensionalData.Lookups.AbstractMetadata
 # Metadata() = Metadata(Dict{Symbol,Any}())
 
 # getters ##########################################################################################
