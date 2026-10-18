@@ -186,7 +186,12 @@ pks = detectpeaks(spec; threshold=1e6)      # an absolute threshold
 See also [`findpeak`](@ref), [`Peak`](@ref).
 """
 function detectpeaks(spec::NMRData{T,N}; snr=10, threshold=nothing,
-                     sign=:both) where {T,N}
+                     sign=:both, snr_threshold=nothing) where {T,N}
+    if !isnothing(snr_threshold)
+        Base.depwarn("`detectpeaks(spec; snr_threshold)` is deprecated, use `snr` instead.",
+                     :detectpeaks)
+        snr = snr_threshold
+    end
     _checkfrequencydims(spec, "detectpeaks")
     sign in (:both, :positive, :negative) ||
         throw(ArgumentError("sign must be :both, :positive or :negative, got $(repr(sign))"))

@@ -46,6 +46,16 @@
             foo = annotations(spec, "cest.offset")
             foo = spec[:, 1]
             foo = detectpeaks(spec[:, 1])
+
+            # raw 1D data: the processing pipeline and automatic processing
+            fid = loadfid(joinpath(testdata, "samples", "2"))
+            spec = fid |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |> phase(F1Dim, 10.0)
+            foo = real(spec)
+            foo = autoprocess(fid)
+
+            # raw 2D data (bicomplex)
+            fid = loadfid(joinpath(testdata, "15n-trosy-ts3"))
+            foo = fid |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F2Dim, 0.0, 0.0) |> real
         end
     end
 end

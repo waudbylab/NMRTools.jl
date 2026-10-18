@@ -711,6 +711,8 @@ end
     @test 1 < linewidth(pks[1], 1) < 100   # Hz
     @test length(detectpeaks(spec; snr=0.1)) > length(pks)
     @test isempty(detectpeaks(spec; snr=1e6))
+    # deprecated keyword from v0.2
+    @test isempty(@test_deprecated detectpeaks(spec; snr_threshold=1e6))
     @test isempty(detectpeaks(spec; sign=:negative))
     @test_throws ArgumentError detectpeaks(spec; sign=:up)
 

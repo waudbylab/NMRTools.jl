@@ -1,78 +1,68 @@
-# NMRTools.jl GitHub Issues
+# NMRTools.jl outstanding issues
 
-Issues grouped by milestone, roughly in dependency order within each group.
+Work remaining after v0.3.0, grouped by milestone and roughly in dependency order within each group.
+The completed milestones (MulticomplexNumbers `ifft!`, raw time-domain loading, the processing
+pipeline and Bruker write support) have been removed. See `PLAN-development.md` for the designs.
 
 
-## Milestone: Test Coverage
+## Milestone: Test coverage
 
-**8. Tests for sumexpts**
+**Tests for sumexpts**
 File I/O, weighted summation, metadata updates.
 
-**9. Tests for remaining window functions**
+**Tests for remaining window functions**
 All `apod` methods: `GaussWindow`, `GeneralGaussWindow`, `LorentzToGaussWindow`, `GeneralSineWindow`.
 
-**10. Edge case tests for format readers**
+**Edge case tests for format readers**
 Malformed acqus, missing parameters, unusual dimensionalities.
 
-
-## Milestone: MulticomplexNumbers.jl
-
-**17. Add ifft! to FFTW extension**
-`ifft!(A, unit)` and `ifft!(A, unit, dims)`. Mirror `fft!` pattern. Required for inverse FT and IST.
+**Test loadbmrb against the live BMRB** (GitHub #78)
 
 
-## Milestone: Raw Time-Domain Loading
+## Milestone: Raw time-domain loading
 
-**18. Implement loadfid**
-Extend `getformat` for fid/ser. Return `Multicomplex` element type. Set `:mcindex` per dimension. Automatic quadrature recombination (States/States-TPPI/echo-anti-echo from FnMODE or annotations). Automatic digital filter removal (opt-out). First-point scaling (default 0.5, overridable). NUS detection. Call `annotate`/`addsampleinfo`.
+**NUS detection and schedule loading**
+Detect NUS from `FnTYPE` or a `nuslist` file, place acquired FIDs in a zero-filled grid, record
+`:nus` and `:nuslist` metadata.
 
-**19. Digital filter lookup table**
-DECIM/DSPFVS to group delay for legacy spectrometers. Write from scratch citing Westler and Abildgaard.
+**4D data**
+Extend `loadfid`, `savefid` and `savenmr` beyond 3D.
 
-**20. Tests for loadfid**
-1D fid, 2D ser with each quadrature scheme, pseudo-2D, digital filter vs TopSpin reference, NUS detection, round-trip vs `loadpdata`.
-
-
-## Milestone: Processing Pipeline
-
-**21. Implement apodize**
-`apodize(spec, [dim]; window=:default, inverse=false)`. Operates on `TimeDimension`s. Curried form. Wraps existing `WindowFunction`/`apod`.
-
-**22. Implement zerofill**
-`zerofill(spec, [dim]; factor=2)`. Operates on `TimeDimension`s. Curried form.
-
-**23. Implement ft**
-`ft(spec, [dim]; inverse=false)`. Reads `:mcindex`, calls `fft!`/`ifft!`, applies fftshift, builds new dimension with chemical shift axis. No-argument form processes all time dimensions in order.
-
-**24. Implement phase**
-`phase(spec, dim, p0, p1=0; pivot=nothing)`. Reads `:mcindex` for imaginary unit. Works in time or frequency domain. Curried form.
-
-**25. Implement extract**
-`extract(dim, range)` returns closure for piping. Support multiple dimensions via pairs.
-
-**26. Extend Base.real, abs, imag, complex for NMRData**
-`real` applies `realest`, rebuilds as `Float64`. `complex` converts first-order multicomplex.
-
-**27. Collection mapping for processing functions**
-Accept `AbstractDict{Symbol, <:NMRData}`, map over values.
-
-**28. Tests for processing pipeline**
-Round-trip vs `loadpdata`. Phase 360 identity. FT inverse identity. Extract equivalence. Type conversions.
+**Legacy digital filter lookup table**
+`(DSPFVS, DECIM)` to group delay for data without `GRPDLY`. Write from scratch citing Westler and
+Abildgaard.
 
 
-## Milestone: Write Support
+## Milestone: Write support
 
-**29. Implement savenmr with format inference**
-`savenmr(filename, spec; format=nothing)`. Infer from extension: `.ft1`/`.ft2`/`.ft3` for nmrPipe, `.nmr`/`.jld2` for JLD2, pdata path for Bruker. Optional `format` keyword override.
+**Format inference in savenmr**
+`savenmr(path, spec; format=nothing)` infers the format from the extension: `.ft1`/`.ft2`/`.ft3` for
+nmrPipe, `.nmr`/`.jld2` for JLD2, otherwise Bruker pdata as now.
 
-**30. nmrPipe write**
+**nmrPipe write**
 Populate header from metadata, write Float32. Support 1D, 2D, 3D.
 
-**31. JLD2 serialisation**
+**JLD2 serialisation**
 Save/load NMRData. Schema version for compatibility. Extend `getformat`.
 
-**32. Bruker pdata write (lower priority)**
-Use existing `reordersubmatrix(reverse=true)`. Generate procs from metadata.
+**Tests for write support**
+nmrPipe round trip. JLD2 round trip.
 
-**33. Tests for write support**
-nmrPipe round-trip. JLD2 round-trip. Bruker pdata round-trip if implemented.
+
+## Milestone: NUS reconstruction
+
+**IST**
+`ist(spec, dims...; iterations, threshold)` with a curried form, replacing
+`apodize |> zerofill |> ft` for NUS dimensions.
+
+
+## Milestone: Plots extension
+
+**Pseudo-2D recipe defaults**
+Reconsider the `:path3d` waterfall default; remove or fix the unused `usegradient` attribute.
+
+
+## Milestone: Code hygiene
+
+**Silent catch in NMRBase/metadata.jl**
+Add at least a `@debug` with the exception, as the error-handling conventions require.

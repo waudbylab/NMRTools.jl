@@ -7,5 +7,5 @@ authors:
     given-names: "Christopher Andrew"
     orcid: "https://orcid.org/0000-0001-7810-3753"
 title: "NMRTools.jl"
-version: v0.0.2
-date-released: 2021-10-20
+version: v0.3.0
+date-released: 2026-10-18

@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        julia-version: ['1.9', '1.10', '1.11', '1.12']
+        julia-version: ['1.10', '1.11', '1.12']
         julia-arch: [x64]
         os: [ubuntu-latest]
         # os: [ubuntu-latest, windows-latest, macOS-latest]
@@ -30,9 +30,6 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           annotate: true
-          # Disable force_latest_compatible_version on Julia 1.9
-          # Keep it enabled for later Julia versions
-          force_latest_compatible_version: ${{ matrix.julia-version == '1.9' && 'false' || 'auto' }}
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v4
         with:

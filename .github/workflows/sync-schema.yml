@@ -21,7 +21,12 @@ jobs:
       - name: Get latest schema release
         id: schema-release
         run: |
-          LATEST_TAG=$(curl -s https://api.github.com/repos/nmr-samples/schema/releases/latest | jq -r .tag_name)
+          LATEST_TAG=$(curl -sfL https://api.github.com/repos/NMRSamples/schema/releases/latest | jq -r .tag_name)
+          # a failed lookup gives "null" or nothing: stop rather than open a PR that breaks VERSION
+          if [[ ! "$LATEST_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Could not determine the latest schema release (got '$LATEST_TAG')"
+            exit 1
+          fi
           echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "Latest schema version: $LATEST_TAG"
       
@@ -42,8 +47,8 @@ jobs:
           # Remove existing schemas directory if it exists
           rm -rf src/sample-schemas
           
-          # Clone the schema repository
-          git clone https://github.com/nmr-samples/schema.git src/sample-schemas
+          # Clone the tagged release, not the default branch
+          git clone --depth 1 --branch ${{ steps.schema-release.outputs.latest_tag }} https://github.com/NMRSamples/schema.git src/sample-schemas
           
           # Remove the .git directory (we don't need the schema repo's git history)
           rm -rf src/sample-schemas/.git
@@ -60,7 +65,7 @@ jobs:
           delete-branch: true
           title: "Update schemas to ${{ steps.schema-release.outputs.latest_tag }}"
           body: |
-            Automated schema update from [nmr-sample-schema](https://github.com/nmr-samples/schema).
+            Automated schema update from [NMRSamples schema](https://github.com/NMRSamples/schema).
             
             New version: ${{ steps.schema-release.outputs.latest_tag }}
             Previous version: ${{ steps.current-version.outputs.current_version }}
@@ -69,4 +74,4 @@ jobs:
             
             Please review the changes and test compatibility before merging.
             
-            Schema release: https://github.com/nmr-samples/schema/releases/tag/${{ steps.schema-release.outputs.latest_tag }}
+            Schema release: https://github.com/NMRSamples/schema/releases/tag/${{ steps.schema-release.outputs.latest_tag }}

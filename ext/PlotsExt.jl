@@ -39,6 +39,40 @@ end
 _realdata(A::AbstractNMRData) = data(A)
 _realdata(A::AbstractNMRData{<:Multicomplex}) = realest.(data(A))
 
+function _checknormalize(normalize)
+    normalize isa Bool || normalize isa AbstractNMRData ||
+        throw(ArgumentError("normalize must be true, false or a reference spectrum"))
+    return nothing
+end
+
+"""
+    _scaling(A, normalize)
+
+Divisor applied to the intensities of `A` when plotting: `scale(A)` (scans × receiver gain ×
+concentration) when normalising, so that spectra recorded under different conditions can be
+compared, and 1 otherwise.
+"""
+function _scaling(A, normalize)
+    _checknormalize(normalize)
+    return normalize === false ? 1 : scale(A)
+end
+
+"""
+    _contourbase(A, normalize, ref=A)
+
+Base contour level of `A`, in its raw intensity units; contours are drawn at multiples of this.
+Without normalisation it is the noise of `A`. With normalisation it is the noise of the reference
+spectrum (`normalize` itself if a spectrum is given, otherwise `ref`) converted to the intensity
+scale of `A`, so equal contour levels mean equal normalised intensity across spectra. For a single
+spectrum that is its own reference the two coincide.
+"""
+function _contourbase(A, normalize, ref=A)
+    _checknormalize(normalize)
+    normalize === false && return A[:noise]
+    refspec = normalize isa AbstractNMRData ? normalize : ref
+    return refspec[:noise] * scale(A) / scale(refspec)
+end
+
 # 1D plot (frequency)
 @recipe function f(A::NMRData{T,1,Tuple{D}}; normalize=true) where {T,D<:FrequencyDimension}
     Afwd = reorder(A, ForwardOrdered) # make sure data axes are in forwards order
@@ -64,7 +98,7 @@ _realdata(A::AbstractNMRData{<:Multicomplex}) = realest.(data(A))
     yshowaxis --> false
     yticks --> nothing
 
-    scaling = (normalize !== false) ? scale(Afwd) : 1
+    scaling = _scaling(Afwd, normalize)
 
     delete!(plotattributes, :normalize)
     return data(x), _realdata(Afwd) ./ scaling
@@ -114,7 +148,7 @@ end
     grid --> false
     frame --> :box
 
-    scaling = (normalize !== false) ? scale(Afwd) : 1
+    scaling = _scaling(Afwd, normalize)
     delete!(plotattributes, :normalize)
     return data(x), _realdata(Afwd) ./ scaling
 end
@@ -141,7 +175,7 @@ end
     voffset = 0
     if vstack isa Bool
         if vstack
-            vdelta = maximum([maximum(abs.(A)) / ((normalize !== false) ? scale(A) : 1)
+            vdelta = maximum([maximum(abs.(A)) / _scaling(A, normalize)
                               for A in v]) / length(v)
             ordering = :back
         else
@@ -149,7 +183,7 @@ end
             ordering = :front
         end
     elseif vstack isa Number
-        vdelta = maximum([maximum(abs.(A)) / ((normalize !== false) ? scale(A) : 1)
+        vdelta = maximum([maximum(abs.(A)) / _scaling(A, normalize)
                           for A in v]) / length(v) * vstack
         ordering = :back
     else
@@ -164,7 +198,7 @@ end
     # end
 
     for (i, A) in enumerate(v)
-        scaling = (normalize !== false) ? scale(A) : 1
+        scaling = _scaling(A, normalize)
         @series begin
             seriestype --> :path
             markershape --> :none
@@ -216,16 +250,7 @@ end
     normalize = get(plotattributes, :normalize, true)
     delete!(plotattributes, :normalize)
 
-    if normalize == false
-        σ = dfwd[:noise]
-    elseif normalize == true
-        σ = dfwd[:noise]
-    elseif isa(normalize, AbstractNMRData)
-        refspec = normalize
-        σ = refspec[:noise] * scale(dfwd) / scale(refspec)
-    else
-        throw(ArgumentError("normalize must be true, false or a reference spectrum"))
-    end
+    σ = _contourbase(dfwd, normalize)
 
     stype = get(plotattributes, :seriestype, nothing)
     if stype ∈ [:heatmap, :wireframe]
@@ -309,15 +334,7 @@ end
     normalize = get(plotattributes, :normalize, true)
     delete!(plotattributes, :normalize)
 
-    if normalize == false
-        scaling = 1
-    elseif normalize == true
-        scaling = scale(z)
-    elseif isa(normalize, AbstractNMRData)
-        scaling = scale(z)
-    else
-        throw(ArgumentError("normalize must be true, false or a reference spectrum"))
-    end
+    scaling = _scaling(z, normalize)
 
     stype = get(plotattributes, :seriestype, nothing)
     if stype ∈ [:heatmap, :wireframe]
@@ -434,10 +451,8 @@ end
     normalize = get(plotattributes, :normalize, true)
     delete!(plotattributes, :normalize)
 
-    # scaling calculations:
-    # normalisation:
-    # - if false, clev = 5 * noise(d) * scale(d) / scale(d) = 5 * noise(d), z = d
-    # - if true or refspec, clev = 5 * noise(refspec) * scale(d) / scale(refspec), z = d
+    # contour levels follow each spectrum's own noise (normalize=false), or the noise of the first
+    # spectrum or a given reference converted to each spectrum's scale
 
     for (i, d) in enumerate(v)
         dfwd = reorder(d, ForwardOrdered) # make sure data axes are in forwards order
@@ -445,17 +460,7 @@ end
         poscolor_c = poscolors[i]
         negcolor_c = negcolors[i]
 
-        if normalize == false
-            σ = dfwd[:noise]
-        elseif normalize == true
-            refspec = first(v)
-            σ = refspec[:noise] * scale(dfwd) / scale(refspec)
-        elseif isa(normalize, AbstractNMRData)
-            refspec = normalize
-            σ = refspec[:noise] * scale(dfwd) / scale(refspec)
-        else
-            throw(ArgumentError("normalize must be true, false or a reference spectrum"))
-        end
+        σ = _contourbase(dfwd, normalize, first(v))
 
         @series begin
             levels --> 5σ .* contourlevels()
@@ -516,15 +521,7 @@ end
         end
         x, y = dims(z)
 
-        scaling = if normalize == false
-            1
-        elseif normalize == true
-            scale(z)
-        elseif isa(normalize, AbstractNMRData)
-            scale(normalize)
-        else
-            throw(ArgumentError("normalize must be true, false or a reference spectrum"))
-        end
+        scaling = _scaling(z, normalize)
 
         zreal = _realdata(z)
         xones = ones(length(x))
