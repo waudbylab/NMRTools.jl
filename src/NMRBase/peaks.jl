@@ -382,3 +382,106 @@ function _halfwidth(y, x, i, h)
     isnan(hi) && return 2abs(x0 - lo)
     return abs(hi - lo)
 end
+
+# ---- registration ---------------------------------------------------------------------
+
+"""
+    register!(peaks, spec; maxshift=nothing) -> peaks
+    register(peaks, spec; maxshift=nothing) -> Vector{Peak{N}}
+
+Translate a peak list onto a spectrum: find the single offset, applied to every peak, that
+best matches the list to the signals observed in `spec`, and move the peaks by it.
+`register` returns a moved copy and leaves `peaks` unchanged. The offset found is reported
+with `@info`.
+
+This corrects for referencing differences, e.g. between a list predicted from BMRB shifts
+(see [`loadbmrb`](@ref NMRTools.NMRIO.loadbmrb)) and a spectrum recorded under different
+conditions. It does not move peaks individually.
+
+The match is scored as ``\\sum_i \\log(1 + |S(\\delta_i + \\Delta)| / \\sigma)``: the absolute
+intensity of the spectrum ``S`` at each shifted peak position, so that negative peaks
+count as much as positive ones, in units of the noise ``\\sigma``. The logarithm gives
+diminishing returns for very intense signals, so that many peaks landing on signal outweigh
+one peak landing on a huge one. To tolerate small disagreements between individual peaks,
+each point of the spectrum takes the largest absolute intensity among its immediate
+neighbours.
+
+Every whole-point offset within `maxshift` is tried, so the match is global rather than the
+nearest local optimum, and the best is then refined to a fraction of a point. `maxshift` is
+the largest offset considered in each dimension in ppm, as a tuple or a single number, and
+defaults to 10% of the spectral width. Set it to `0` in a dimension to hold that dimension
+fixed.
+
+# Examples
+```julia
+pks = loadbmrb(15000, H1, N15)
+register!(pks, spec)                        # shift the BMRB list onto the HSQC
+register!(pks, spec; maxshift=(0.3, 2.0))   # search at most ±0.3 ppm ¹H, ±2 ppm ¹⁵N
+register!(pks, spec; maxshift=(0.3, 0))     # shift ¹H only
+```
+"""
+function register!(pks::AbstractVector{<:Peak{N}}, spec::NMRData{T,N};
+                   maxshift=nothing) where {T,N}
+    _checkfrequencydims(spec, "register!")
+    isempty(pks) && return pks
+    Δ = _registeroffset(pks, spec, maxshift)
+    @info "Peak list shifted by $(join(_fmt.(Δ), ", ")) ppm"
+    for i in eachindex(pks)
+        pks[i] = Peak(pks[i]; position=ppm(pks[i]) .+ Δ)
+    end
+    return pks
+end
+
+register(pks::AbstractVector{<:Peak}, spec::NMRData; kwargs...) =
+    register!(copy(pks), spec; kwargs...)
+
+function _registeroffset(pks::AbstractVector{<:Peak{N}}, spec, maxshift) where {N}
+    x = [data(dims(spec, n)) for n in 1:N]
+    step = [Float64(x[n][2] - x[n][1]) for n in 1:N]
+    width = [abs(Float64(last(x[n]) - first(x[n]))) for n in 1:N]
+    limit = isnothing(maxshift) ? 0.1 .* width :
+            maxshift isa Real ? fill(Float64(maxshift), N) : collect(Float64, maxshift)
+    length(limit) == N ||
+        throw(DimensionMismatch("maxshift needs $N values for a $N-dimensional spectrum"))
+    K = round.(Int, limit ./ abs.(step))
+
+    w = log1p.(_dilate(abs.(_peakdata(spec))) ./ _noise(spec))
+    # each peak's nearest grid point
+    base = [CartesianIndex(ntuple(n -> round(Int, (ppm(p, n) - x[n][1]) / step[n]) + 1, N))
+            for p in pks]
+    score(k) = sum(I -> checkbounds(Bool, w, I + k) ? w[I + k] : 0.0, base)
+
+    best, kbest = -Inf, CartesianIndex(ntuple(_ -> 0, N))
+    for k in CartesianIndices(ntuple(n -> (-K[n]):K[n], N))
+        s = score(k)
+        # on a tie, prefer the smaller offset
+        if s > best || (s == best && sum(abs2, Tuple(k)) < sum(abs2, Tuple(kbest)))
+            best, kbest = s, k
+        end
+    end
+
+    # refine each dimension to a fraction of a point with a parabola through the neighbours
+    return ntuple(N) do n
+        e = CartesianIndex(ntuple(m -> m == n ? 1 : 0, N))
+        a, b, c = score(kbest - e), best, score(kbest + e)
+        denom = a - 2b + c
+        f = K[n] > 0 && denom < 0 ? clamp(0.5 * (a - c) / denom, -0.5, 0.5) : 0.0
+        return (kbest[n] + f) * step[n] + 0.0   # + 0.0 turns -0.0 into 0.0
+    end
+end
+
+# The largest value among each point and its immediate neighbours.
+function _dilate(a::AbstractArray{<:Real,N}) where {N}
+    R = CartesianIndices(a)
+    box = CartesianIndices(ntuple(_ -> -1:1, N))
+    out = similar(a)
+    for I in R
+        m = a[I]
+        for d in box
+            J = I + d
+            J in R && (m = max(m, a[J]))
+        end
+        out[I] = m
+    end
+    return out
+end

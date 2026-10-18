@@ -769,6 +769,56 @@ end
     @test_throws DimensionMismatch findpeak(spec, (8.0,))
 end
 
+@testset "NMRBase: register!" begin
+    spec = exampledata("2D_HN")
+    step = abs.((data(dims(spec, 1))[2] - data(dims(spec, 1))[1],
+                 data(dims(spec, 2))[2] - data(dims(spec, 2))[1]))
+    pks = detectpeaks(spec; sign=:positive)[1:40]
+    offset = (0.12, -1.3)
+    moved = [Peak(p; position=ppm(p) .+ offset) for p in pks]
+
+    # the non-mutating form leaves the list alone
+    back = register(moved, spec)
+    @test ppm(moved[1]) == ppm(pks[1]) .+ offset
+    @test all(i -> all(abs.(ppm(back[i]) .- ppm(pks[i])) .≤ step), eachindex(pks))
+
+    # register! moves the list in place and returns it
+    @test register!(moved, spec) === moved
+    @test moved == back
+
+    # a dimension can be held fixed
+    held = register([Peak(p; position=ppm(p) .+ (0.12, 0.0)) for p in pks], spec;
+                    maxshift=(0.3, 0))
+    @test all(i -> ppm(held[i], 2) == ppm(pks[i], 2), eachindex(pks))
+    @test all(i -> abs(ppm(held[i], 1) - ppm(pks[i], 1)) ≤ step[1], eachindex(pks))
+
+    # an offset beyond maxshift cannot be found
+    far = register([Peak(p; position=ppm(p) .+ (0.12, 0.0)) for p in pks], spec;
+                   maxshift=0.05)
+    @test abs(ppm(far[1], 1) - ppm(pks[1], 1)) > 0.05
+
+    # negative peaks count as much as positive ones, and one huge peak elsewhere
+    # does not outweigh several weaker matches
+    spec1 = exampledata("1D_19F")
+    ax = dims(spec1, F1Dim)
+    ν = hz(ax)
+    function lorentz(δ, h)
+        ν0 = hz(δ, ax)
+        return @. h / (1 + ((ν - ν0) / 10)^2)
+    end
+    # a peak 100 times stronger, which an offset of +0.6 ppm would land the first peak on
+    y = lorentz(-120.5, -1e4) .+ lorentz(-121.5, -1e4) .+ lorentz(-122.5, -1e4) .+
+        lorentz(-119.7, 1e6)
+    synth = NMRData(y, dims(spec1); metadata=deepcopy(metadata(spec1)))
+    synth[:noise] = 10.0
+    predicted = [Peak(δ + 0.2) for δ in (-120.5, -121.5, -122.5)]
+    register!(predicted, synth; maxshift=1.0)
+    @test all(isapprox.(ppm.(predicted, 1), [-120.5, -121.5, -122.5]; atol=0.005))
+
+    @test isempty(register!(Peak{2}[], spec))
+    @test_throws DimensionMismatch register(pks, spec; maxshift=(0.1, 0.1, 0.1))
+end
+
 @testset "NMRBase: Metadata independence after slicing (issue #25)" begin
     # Test that sliced NMRData has independent metadata from the original
     # See GitHub issue #25: https://github.com/waudbylab/NMRTools.jl/issues/25

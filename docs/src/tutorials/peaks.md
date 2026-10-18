@@ -182,6 +182,22 @@ ilv = filter(s -> s.residuename in ("ILE", "LEU", "VAL"), shifts)
 peaklist(ilv, H1, C13)
 ```
 
+A list predicted from BMRB shifts rarely lines up exactly with your own spectrum, because
+of differences in referencing and conditions. `register!` finds the single offset that best
+matches the list to the observed peaks and moves the list by it:
+
+```julia
+pks = loadbmrb(15000, H1, N15)
+register!(pks, spec)                        # reports the offset applied
+register!(pks, spec; maxshift=(0.3, 2.0))   # limit the search, in ppm per dimension
+```
+
+Every offset within `maxshift` (by default 10% of the spectral width) is tried, scoring how
+much signal lies under the shifted peaks. Absolute intensities are used, so negative peaks
+count as much as positive ones, and the score grows only logarithmically with intensity, so
+a single very strong peak cannot outweigh many weaker matches. `register` returns a moved
+copy instead. Only a uniform translation is applied; individual peaks are not moved.
+
 Peaks are labelled by residue and atom (`L23H-N`, `D5C-F6N`, `V9HG2-CG2`), so a predicted
 list can be overlaid on a spectrum with `nmrplot!`, or saved with `savepeaks` as the starting
 point for an analysis in NMRAnalysis.jl. Remember that BMRB shifts were measured under the

@@ -168,6 +168,7 @@ export ComplexLineshape
 export Peak
 export intensity, linewidth
 export detectpeaks, findpeak, findnearest
+export register!, register
 
 # assigned chemical shifts
 export ChemicalShift
