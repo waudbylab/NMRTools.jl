@@ -7,6 +7,7 @@ DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 makedocs(;
          modules=[NMRTools],
          format=Documenter.HTML(; prettyurls=(get(ENV, "CI", nothing) == "true"),
+                                canonical="https://waudbylab.org/NMRTools.jl/stable/",
                                 # all API reference is on one page (api.md)
                                 size_threshold_warn=300 * 2^10,
                                 size_threshold=500 * 2^10),

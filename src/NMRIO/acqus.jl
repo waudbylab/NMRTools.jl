@@ -607,7 +607,7 @@ function parsefqlist(lines)
         unit = :Hz
         relative = true
     else
-        firstline = popfirst!(lines)
+        firstline = strip(popfirst!(lines))
         if firstline == "p"
             unit = :ppm
             relative = true
@@ -627,7 +627,7 @@ function parsefqlist(lines)
             unit = :ppm
             relative = true
         else
-            @debug "Unable to parse format of fqlist"
+            @warn "Unable to parse format of fqlist: unrecognised header line" firstline
             return lines
         end
     end
@@ -636,7 +636,8 @@ function parsefqlist(lines)
     xf = tryparse.(Float64, lines)
 
     if any(xf .== nothing)
-        @debug "Unable to parse format of fqlist"
+        badlines = lines[xf .== nothing]
+        @warn "Unable to parse format of fqlist: non-numeric entries" badlines
         return lines
     end
 
