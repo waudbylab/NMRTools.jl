@@ -166,7 +166,9 @@ in every dimension whose height exceeds `threshold`, which by default is `snr` t
 noise level (estimated with [`estimatenoise`](@ref) if it has not been already). Positions
 and heights are refined to better than the digital resolution by parabolic interpolation,
 and linewidths are estimated from the half-height crossings in each dimension (`NaN` where
-an overlapping peak or the edge of the spectrum gets in the way).
+an overlapping peak or the edge of the spectrum gets in the way). Heights are measured from
+the baseline, taken as the median of the spectrum, so a small offset does not produce
+spurious peaks; the reported intensities are heights above that baseline.
 
 `sign` may be `:both`, `:positive` or `:negative`. Peaks are returned strongest first and
 are labelled `X1`, `X2`, … to match NMRAnalysis.jl.
@@ -195,9 +197,9 @@ function detectpeaks(spec::NMRData{T,N}; snr=10, threshold=nothing,
     sign in (:both, :positive) && append!(candidates, _localmaxima(y, t))
     sign in (:both, :negative) && append!(candidates, _localmaxima(-y, t))
 
-    pks = [_peakat(spec, y, I) for I in candidates]
+    pks = Peak{N}[_peakat(spec, y, I) for I in candidates]
     sort!(pks; by=p -> abs(intensity(p)), rev=true)
-    return [Peak(p; label="X$i") for (i, p) in enumerate(pks)]
+    return Peak{N}[Peak(p; label="X$i") for (i, p) in enumerate(pks)]
 end
 
 """
@@ -264,7 +266,13 @@ function _checkfrequencydims(spec, fname)
     return nothing
 end
 
-_peakdata(spec) = _realpart.(data(spec))
+# Real data measured from the baseline, taken as the median of the spectrum, since most
+# points of a spectrum are noise. Spectra commonly sit on a small offset, and measuring
+# heights from zero would turn it into a forest of spurious peaks.
+function _peakdata(spec)
+    y = _realpart.(data(spec))
+    return y .- median(y)
+end
 _realpart(x::Real) = Float64(x)
 _realpart(x::Complex) = Float64(real(x))
 _realpart(x::Multicomplex) = Float64(realest(x))
@@ -343,7 +351,7 @@ function _peakat(spec::NMRData{T,N}, y, I::CartesianIndex{N}) where {T,N}
         end
         position[n] = δ
         lw[n] = _halfwidth(s .* view(y, ntuple(k -> k == n ? Colon() : I[k], N)...), x, i,
-                           s * v * ratio) * ax[:bf]
+                           s * v * ratio) * ax[:bf] * 1e-6
     end
     return Peak(Tuple(position); intensity=v * ratio, linewidth=Tuple(lw))
 end

@@ -200,7 +200,7 @@ end
 # ranges each way round; a tie keeps the convention.
 function _sparkyreversed(entries, spec)
     isnothing(spec) && return true
-    ranges = [extrema(data(d)) for d in dims(spec)]
+    ranges = [extrema(ppm(d)) for d in dims(spec)]
     inside(w) = length(w) == length(ranges) &&
                 all(r[1] ≤ v ≤ r[2] for (v, r) in zip(w, ranges))
     nrev = count(e -> inside(reverse(e[2])), entries)

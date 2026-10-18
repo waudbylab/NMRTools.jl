@@ -730,7 +730,7 @@ end
     spec = exampledata("1D_19F")
     ax = dims(spec, F1Dim)
     ν = hz(ax)
-    for (δ0, fwhm) in ((-123.7, 20.0), (-124.3, 50.0))
+    for (δ0, fwhm) in ((-123.7, 20.0), (-121.0, 50.0))
         ν0 = hz(δ0, ax)
         y = @. 1e6 / (1 + ((ν - ν0) / (fwhm / 2))^2)
         synth = NMRData(y, dims(spec); metadata=deepcopy(metadata(spec)))
