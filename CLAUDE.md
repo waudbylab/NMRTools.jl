@@ -34,7 +34,7 @@ NMRTools.jl is a Julia library for NMR spectroscopy data. It encodes the structu
 - **`NMRData <: AbstractDimArray`**: main data container. Wraps arrays with named dimensions and metadata. Built on DimensionalData.jl.
 - **`Multicomplex{T,N,C}`**: element type for NMR data. From MulticomplexNumbers.jl. A 2D experiment has `Multicomplex{Float64,2,4}` elements (bicomplex, 4 components). `im1` is the conventional complex unit — never use Julia's `im`.
 - **Dimension hierarchy**: `FrequencyDimension` (F1Dim–F4Dim), `TimeDimension` (T1Dim–T4Dim, TrelaxDim, TkinDim), `GradientDimension` (G1Dim–G4Dim), `UnknownDimension` (X1Dim–X4Dim), `OffsetDimension` (OffsetDim), `FieldDimension` (SpinlockDim)
-- **`WindowFunction`** subtypes: `ExponentialWindow`, `CosWindow`, `Cos²Window`, `SineWindow`, `GaussWindow`, `LorentzToGaussWindow`, `NullWindow`, `UnknownWindow`
+- **`WindowFunction`** subtypes: `ExponentialWindow`, `CosWindow`, `Cos2Window`, `SineWindow`, `GaussWindow`, `LorentzToGaussWindow`, `NullWindow`, `UnknownWindow`
 
 ### Critical metadata: `:mcindex`
 
@@ -65,6 +65,14 @@ Even 1D data uses `Multicomplex{Float64,1,2}` (first-order, isomorphic to Comple
 
 Reading time-domain data (under development):
 - **Bruker raw** (fid/ser): `loadfid("experiment/1")` — under development
+- Digital filter: `loadfid` keeps the `GRPDLY` build-up points on a time axis starting at `-GRPDLY` dwells and records `:grpdly`; `ft` removes the delay with a linear phase ramp after the FFT (as TopSpin/NMRPipe — matches TopSpin 1r to ~1e-8). Dropping the points instead gives the edge "smile". `apodize` leaves t < 0 unwindowed; `linearpredict` works from t = 0. Baseopt (`DIGMOD = 3`): t = 0 point not scaled. `DSPFVS` outside 10–23 (e.g. 0 after TopSpin's `cryoproc1d`, which rewrites the FID with its start removed): no delay, warn.
+
+Writing Bruker data:
+- **`savenmr(path, spec; procno=1)`**: frequency-domain data → `pdata/<procno>/1r`, `2rr`, … (int32 + NC_proc)
+- **`savefid(path, fid)`**: time-domain data → raw `fid`/`ser`, undoing everything `loadfid` did (first-point scaling, group delay, quadrature recombination, axis order); `loadfid(savefid(...))` round-trips
+- Both copy parameter files from the source experiment (`:experimentfolder` metadata) or generate minimal ones
+
+Sign convention: NMRTools spectra are the complex conjugate of TopSpin's in every imaginary unit (real parts agree). `phase` uses TopSpin's sign, so `PHC0`/`PHC1` values carry over directly. `loadnmr(...; allcomponents=true)` and `savenmr` conjugate imaginary components when reading/writing pdata.
 
 ### Annotation system (under development)
 
@@ -80,6 +88,10 @@ loadfid("1/ser") |> apodize |> zerofill |> ft |>
 ```
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
+
+`autoprocess(fid; window, zerofill, solvent, phase, rebuild)` chains solvent filter (¹H in H₂O), apodize (`Cos2Window` default), zerofill, ft and autophase for 1D/2D; per-dimension settings via `Dict`. `loadfid` scales raw data by `2^NC` so intensities match TopSpin. `phase`, `extract` and `ft` refresh `:noise`. `Cos2Window` (alias `Cos²Window`).
+
+Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
 
 ## Style Conventions
 

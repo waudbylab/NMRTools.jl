@@ -123,7 +123,7 @@ Available window functions are:
 - `ExponentialWindow(lb, tmax)`: line broadening specified in Hz
 - `SineWindow(offset, endpoint, power, tmax)`: a supertype encompassing some special cases
     - `CosWindow(tmax)`: apodization by a pure half-cosine window
-    - `Cos²Window(tmax)`: apodization by a pure half-cosine-squared window
+    - `Cos2Window(tmax)`: apodization by a pure half-cosine-squared window
     - `GeneralSineWindow(offset, endpoint, power, tmax)`: other general cases
 - `GaussWindow(expHz, gaussHz, center, tmax)`: a supertype encompassing some special cases
     - `LorentzToGaussWindow(expHz, gaussHz, tmax)`

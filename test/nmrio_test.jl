@@ -263,9 +263,9 @@ end
     @test dat[1, :swppm] == 29.95804208728246
     @test dat[1, :pseudodim] == false
 
-    # load complex spectrum
+    # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
     dat2 = loadnmr(artifact"1D_19F"; allcomponents=true)
-    @test dat2[100] == 4920.725646972656 - 17351.53515625im
+    @test dat2[100] == 4920.725646972656 + 17351.53515625im
 end
 
 @testset "NMRIO: 2D HN (Bruker pdata)" begin
@@ -356,7 +356,7 @@ end
     @test dat[1, :tdzf] == 4096
     @test dat[1, :region] == 600:1815
     @test dat[1, :offsetppm] ≈ 4.696770344069996
-    @test dat[1, :window] == Cos²Window(0.09461759999999972)
+    @test dat[1, :window] == Cos2Window(0.09461759999999972)
     @test dat[1, :swhz] == 10822.510822510854
     @test dat[1, :swppm] ≈ 18.03150753500642
     @test dat[1, :pseudodim] == false
@@ -395,7 +395,7 @@ end
     @test parent(datC) isa Matrix{ComplexF64}
 
     @test dat[2, 3] == -32.08953857421875
-    @test datC[2, 3] == -32.08953857421875 + 87.19561767578125im
+    @test datC[2, 3] == -32.08953857421875 - 87.19561767578125im
 
     @test dat[:title] == "15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G = 5-95%"
 
@@ -403,7 +403,7 @@ end
 
     @test dims(dat, 1) isa F1Dim
     @test dims(dat, 2) isa X2Dim
-    @test dat[1, :window] == Cos²Window(0.0512)
+    @test dat[1, :window] == Cos2Window(0.0512)
     @test dat[1, :pseudodim] == false
     @test dat[2, :pseudodim] == true
 end
@@ -443,7 +443,7 @@ end
     @test dims(spec, 2)[1] == 68.7403353437212
     @test dims(spec, 3)[end] == 107.75223308061521
     @test spec[10, 11, 12] == 99473.6875
-    @test spec[1, :window] == Cos²Window(0.09261055758378933)
+    @test spec[1, :window] == Cos2Window(0.09261055758378933)
     @test spec[2, :window] == CosWindow(0.057541115456864404)
     @test spec[3, :window] == CosWindow(0.03894846805778692)
     @test maximum(spec) / spec[:noise] == 492.00351859142154

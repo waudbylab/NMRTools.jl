@@ -16,6 +16,7 @@ const DDarraydocs = joinpath(DDdocs, "#DimensionalData.AbstractDimensionalArray"
 # const DDtidocs = joinpath(DDdocs, "#DimensionalData.Ti")
 
 using Dates: Dates, DateTime, Date, unix2datetime
+using FFTW
 using LinearAlgebra
 using MulticomplexNumbers
 using Optim
@@ -52,6 +53,12 @@ include("nmrdata.jl")
 include("windows.jl")
 include("metadata.jl")
 include("noise.jl")
+include("processing.jl")
+include("harmonic.jl")
+include("solvent.jl")
+include("poles.jl")
+include("autophase.jl")
+include("autoprocess.jl")
 include("peaks.jl")
 include("assignments.jl")
 include("pcls.jl")
@@ -105,6 +112,19 @@ export scale
 export estimatenoise
 export decimate
 
+# Processing pipeline
+export apodize
+export zerofill
+export ft
+export phase
+export extract
+export frequencyshift
+export linearpredict
+export solventfilter
+export Pole, estimatepoles
+export estimatephase, autophase, autophase0
+export autoprocess
+
 # Dimensions
 export NMRDimension
 export FrequencyDimension
@@ -154,7 +174,7 @@ export NullWindow
 export UnknownWindow
 export ExponentialWindow
 export SineWindow
-export GeneralSineWindow, CosWindow, Cos²Window
+export GeneralSineWindow, CosWindow, Cos2Window, Cos²Window
 export GaussWindow
 export GeneralGaussWindow, LorentzToGaussWindow
 export lineshape

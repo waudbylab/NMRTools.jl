@@ -1,0 +1,124 @@
+# Automatic processing #############################################################################
+
+# dimension number of a dimension type, for per-dimension settings given by type
+const _DIMNUMBER = Dict{Type,Int}(T1Dim => 1, F1Dim => 1, T2Dim => 2, F2Dim => 2,
+                                  T3Dim => 3, F3Dim => 3, T4Dim => 4, F4Dim => 4)
+
+"""
+    _perdim(setting, di)
+
+The value of a processing setting for array dimension `di`: `setting` itself, or, if it is a
+dictionary, its entry for `di` keyed by dimension number or dimension type (`T1Dim` and `F1Dim` both
+mean dimension 1). Returns `default` when a dictionary has no entry.
+"""
+function _perdim(setting, di; default=nothing)
+    setting isa AbstractDict || return setting
+    for (k, v) in setting
+        (k isa Integer ? k : get(_DIMNUMBER, k, 0)) == di && return v
+    end
+    return default
+end
+
+"whether to apply solvent suppression: `solvent` is `true`, a shift, or `:auto` for ¹H in H₂O"
+function _usesolventfilter(spec, solvent)
+    solvent === :auto || return solvent !== false && !isnothing(solvent)
+    sv = metadata(spec, :solvent)
+    isnothing(sv) && return false
+    nuc = metadata(dims(spec, 1), :nucleus)
+    return occursin("h2o", lowercase(string(sv))) && nuc == H1
+end
+
+"""
+    autoprocess(fid; window=Cos2Window(), zerofill=2, solvent=:auto, phase=:auto, rebuild=false)
+    autoprocess(; kw...)
+
+Process time-domain data from [`loadfid`](@ref NMRTools.NMRIO.loadfid) into a spectrum in one step.
+The second form returns a function for use with `|>`. The steps, in order:
+
+1. With `rebuild=true`, rebuild points missing at the start of a FID that begins after t = 0 (as
+   `loadfid` reports for data modified by TopSpin's `cryoproc1d`), by backward
+   [`linearpredict`](@ref).
+2. Suppress the water signal in the direct dimension with [`solventfilter`](@ref).
+3. In each Fourier dimension: [`apodize`](@ref), [`zerofill`](@ref) and [`ft`](@ref).
+4. Phase each frequency dimension, direct dimension first, with [`autophase`](@ref) or given phases.
+   A dimension in which `autophase` finds no lines is left unphased, with a warning.
+
+The result is a `Multicomplex` spectrum, so it can be phased further; take `real` for the real
+spectrum. Non-Fourier dimensions (relaxation delays, offsets, …) are left unchanged.
+
+# Keywords
+- `window`: window function, for example `ExponentialWindow(2.0)` or
+  `GeneralSineWindow(0.33, 1, 2)`.
+- `zerofill`: zero-filling factor (`1` for none).
+- `solvent`: `:auto` suppresses water in ¹H spectra whose solvent contains H₂O; `true` suppresses a
+  signal at the carrier, a number suppresses one at that chemical shift (ppm), and `false` skips
+  suppression.
+- `phase`: `:auto` runs `autophase`; a tuple `(p0, p1)`, or a single `p0`, applies those phases
+  (degrees); `nothing` skips phasing.
+- `rebuild`: rebuild points missing after t = 0 by backward linear prediction. Missing points leave
+  a ripple around strong lines; rebuilding them removes it, but can add a broad baseline distortion
+  when the FID contains fast-decaying signals, so it is off by default.
+
+`window`, `zerofill` and `phase` can also be given per dimension as a dictionary keyed by dimension
+number or type (`T1Dim` and `F1Dim` both mean the first dimension). Dimensions missing from a
+dictionary get the default.
+
+# Examples
+```julia
+spec = loadfid("expt/1") |> autoprocess
+spec = loadfid("expt/1") |> autoprocess(window=ExponentialWindow(1.0), solvent=false)
+spec = autoprocess(loadfid("hsqc/1"); window=Dict(T1Dim => Cos2Window(), T2Dim => Cos2Window()),
+                   phase=Dict(F2Dim => (0.0, 0.0)))
+```
+
+See also [`autophase`](@ref), [`apodize`](@ref), [`zerofill`](@ref), [`ft`](@ref).
+"""
+function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:auto, phase=:auto,
+                     rebuild::Bool=false)
+    spec = fid
+    # 1. rebuild points missing after t = 0
+    gap = -_groupdelaypoints(dims(spec, 1))
+    if rebuild && gap > 0
+        n = size(spec, 1)
+        spec = linearpredict(spec, 1; direction=:backward, npoints=n + round(Int, gap))
+    end
+
+    # 2. solvent suppression in the direct dimension
+    if _usesolventfilter(spec, solvent)
+        spec = solvent isa Real && !(solvent isa Bool) ? solventfilter(spec, 1; shift=solvent) :
+               solventfilter(spec, 1)
+    end
+
+    # 3. window, zero-fill and transform each Fourier dimension
+    for di in _fourierdims(spec)
+        dims(spec, di) isa TimeDimension || continue
+        w = _perdim(window, di; default=Cos2Window())
+        isnothing(w) || (spec = apodize(spec, di, w))
+        zf = _perdim(zerofill, di; default=2)
+        zf > 1 && (spec = NMRBase.zerofill(spec, di; factor=zf))
+        spec = ft(spec, di)
+    end
+
+    # 4. phase, direct dimension first
+    for di in _fourierdims(spec)
+        p = _perdim(phase, di; default=:auto)
+        if p === :auto
+            try
+                spec = autophase(spec, di)
+            catch err
+                err isa NMRToolsError || rethrow()
+                @warn "autoprocess: dimension $di left unphased: $(err.message)"
+            end
+        elseif p isa Real
+            spec = NMRBase.phase(spec, di, p)
+        elseif p isa Tuple
+            spec = NMRBase.phase(spec, di, p...)
+        elseif !isnothing(p)
+            throw(ArgumentError("autoprocess: phase must be :auto, a number, a tuple (p0, p1) " *
+                                "or nothing, got $p"))
+        end
+    end
+    return spec
+end
+
+autoprocess(; kw...) = fid -> autoprocess(fid; kw...)

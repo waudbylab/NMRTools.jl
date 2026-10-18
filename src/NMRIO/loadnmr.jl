@@ -51,6 +51,9 @@ function loadnmr(filename; experimentfolder=nothing, allcomponents=false)
     # 1. get format
     format, filename = getformat(filename)
 
+    # raw time-domain data is handled by the dedicated loadfid entry point
+    format == :bruker_fid && return loadfid(filename)
+
     # 2. get acqus metadata
     # TODO - this assumes we're dealing with Bruker data…
     aqdic = getacqusmetadata(format, filename, experimentfolder)
@@ -92,7 +95,8 @@ end
 """
     getformat(filename)
 
-Take an input filename and return either :ucsf, :nmrpipe, :pdata (bruker processed), or :unknown after checking
+Take an input filename and return either :ucsf, :nmrpipe, :pdata (bruker processed),
+:bruker_fid (raw fid/ser, handled by [`loadfid`](@ref)), or :unknown after checking
 whether the filename matches any known format.
 """
 function getformat(filename)
@@ -103,6 +107,10 @@ function getformat(filename)
     # NMRPipe: match XXX.ft, test.ft1, test.ft2, test.ft3, test.ft4, test001.ft1, test0001.ft3, ...
     ispipe = occursin(r"[a-zA-Z0-9]+(\%0[34]d)?\.ft[1234]?$", filename)
     ispipe && return :nmrpipe, filename
+
+    # Bruker raw time-domain data: a path ending in /fid or /ser
+    israwfid = occursin(r"/(fid|ser)$", filename)
+    israwfid && return :bruker_fid, filename
 
     # Bruker: match pdata/1, 123/pdata/101, 1/pdata/23/, etc...
     # NB. This relies on identifying the pdata folder, so would fail if the working directory is already the pdata
