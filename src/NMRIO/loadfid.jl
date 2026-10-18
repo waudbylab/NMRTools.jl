@@ -206,15 +206,20 @@ function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
 
     # Digital-filter group delay (direct dimension only). The lead-in stays in the data at negative
     # times; `ft` removes the delay. First-point scaling acts on the t = 0 point.
-    grpdly = removefilter ? _groupdelay(acqusdic) : 0.0
+    grpdly = removefilter ? _groupdelay(acqusdic, get(md, :experimentfolder, nothing)) : 0.0
     # In baseopt data the t = 0 point already carries its half weight, so by default it is not
-    # scaled again; other dimensions and data use 0.5.
-    if isnothing(firstpoint) && grpdly > 0 && _isbaseopt(acqusdic)
+    # scaled again; other dimensions and data use 0.5. If the FID starts after t = 0 (negative
+    # delay: a modified FID), there is no t = 0 point to scale.
+    if grpdly < 0
+        firstpoint = merge(Dict{Type,Float64}(T2Dim => _firstpointfactor(T2Dim, firstpoint),
+                                              T3Dim => _firstpointfactor(T3Dim, firstpoint)),
+                           Dict{Type,Float64}(T1Dim => 1.0))
+    elseif isnothing(firstpoint) && grpdly > 0 && _isbaseopt(acqusdic)
         firstpoint = Dict{Type,Float64}(T1Dim => 1.0)
     end
     fourieraxes = [k for k in 1:ndim if !isnothing(mcindex[k])]
     fpfactors = _scalefirstpoint!(y, [k => _TDIMS[mcindex[k]] for k in fourieraxes], firstpoint;
-                                  firstindex=Dict(1 => round(Int, grpdly) + 1))
+                                  firstindex=Dict(1 => max(round(Int, grpdly), 0) + 1))
 
     # reorder axes so Fourier dimensions come first (in acquisition order) and pseudo-dimensions
     # last, matching the dimension ordering used by loadnmr/loadpdata (e.g. the [1,3,2] permute when
@@ -290,12 +295,25 @@ parameters:
 - `DSPFVS` 10–19 (older data): the delay should be looked up from `DECIM` and `DSPFVS`. This is not
   implemented; `GRPDLY` is used if valid, otherwise no delay is applied, with a warning.
 - `DSPFVS` outside 10–23: not a firmware version Bruker defines. TopSpin's `cryoproc1d`, for example,
-  sets `DSPFVS = 0` after removing the start of the FID itself. No delay is applied, with a warning.
+  sets `DSPFVS = 0` after rewriting the FID with its start removed: the filter build-up and some
+  points after time zero. The number of points removed is found by comparing `TD` in `acqu` (the
+  original) and `acqus`; the points beyond `GRPDLY` were after time zero, so the stored FID starts
+  that many dwells after t = 0. This is returned as a negative delay, so that `ft` restores the time
+  origin. A warning reports the missing points. If `acqu` does not show how many were removed, no
+  delay is applied.
 """
-function _groupdelay(acqusdic)
+function _groupdelay(acqusdic, expfolder=nothing)
     Int(get(acqusdic, :digmod, 1)) == 0 && return 0.0
     dspfvs = get(acqusdic, :dspfvs, nothing)
     if dspfvs isa Real && !(10 <= dspfvs <= 23)
+        offset = _modifiedfidoffset(acqusdic, expfolder)
+        if offset > 0
+            @warn "loadfid: DSPFVS = $dspfvs indicates the FID has been modified (e.g. by TopSpin's " *
+                  "cryoproc1d), and comparison with acqu shows its first $offset points after " *
+                  "t = 0 were removed. The time axis starts at $offset dwell times; the missing " *
+                  "points may leave a baseline distortion."
+            return -Float64(offset)
+        end
         @warn "loadfid: DSPFVS = $dspfvs is outside the range 10–23, which indicates the FID has " *
               "already been modified (e.g. by TopSpin's cryoproc1d, which removes the start of the " *
               "FID). No group delay will be removed. The first points of the FID may be missing; " *
@@ -309,6 +327,31 @@ function _groupdelay(acqusdic)
         return 0.0
     end
     return Float64(grpdly)
+end
+
+"""
+    _modifiedfidoffset(acqusdic, expfolder) -> Int
+
+For a FID rewritten with its start removed (e.g. by `cryoproc1d`), the number of complex points
+after time zero that were removed: the drop in `TD` from `acqu` (the original) to `acqus`, less the
+group delay `GRPDLY`. Zero if this cannot be determined.
+"""
+function _modifiedfidoffset(acqusdic, expfolder)
+    isnothing(expfolder) && return 0
+    acqufile = joinpath(expfolder, "acqu")
+    isfile(acqufile) || return 0
+    original = try
+        loadjdx(acqufile)
+    catch err
+        @debug "loadfid: could not read $acqufile" exception = err
+        return 0
+    end
+    tdorig = get(original, :td, nothing)
+    td = get(acqusdic, :td, nothing)
+    grpdly = get(acqusdic, :grpdly, nothing)
+    (tdorig isa Real && td isa Real && grpdly isa Real && grpdly >= 0) || return 0
+    removed = (tdorig - td) ÷ 2
+    return max(round(Int, removed - grpdly), 0)
 end
 
 "baseopt acquisition (`DIGMOD = 3`): the spectrometer has corrected the initial points of the FID"

@@ -121,3 +121,15 @@ end
         end
     end
 end
+
+@testset "loadfid: modified FID time origin (cryoproc1d)" begin
+    # cryoproc1d removes the filter build-up plus some points after t = 0; acqu keeps the original TD
+    mktempdir() do dir
+        write(joinpath(dir, "acqu"), "##TITLE= Parameter file, TopSpin 4.0.0\n##\$TD= 65536\n##END=\n")
+        acqus = Dict{Symbol,Any}(:td => 65340, :grpdly => 76.0, :dspfvs => 0, :digmod => 3)
+        @test NMRTools.NMRIO._modifiedfidoffset(acqus, dir) == 22
+        @test (@test_logs (:warn, r"22 points after") NMRTools.NMRIO._groupdelay(acqus, dir)) == -22
+        # without acqu the offset is unknown: no delay
+        @test (@test_logs (:warn, r"DSPFVS = 0") NMRTools.NMRIO._groupdelay(acqus, nothing)) == 0
+    end
+end

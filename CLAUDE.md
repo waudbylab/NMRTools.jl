@@ -89,7 +89,7 @@ loadfid("1/ser") |> apodize |> zerofill |> ft |>
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
 
-Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata. `poleplot` (MakieExt) plots shift × linewidth coloured by doubled phase.
+Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
 
 ## Style Conventions
 

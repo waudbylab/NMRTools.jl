@@ -46,7 +46,7 @@ end
     spec = synthetic_spectrum(LINES; noise=1e-3)
     for (p0, p1) in ((0.0, 0.0), (37.0, 0.0), (-120.0, 25.0), (150.0, -60.0))
         bad = phase(spec, 1, p0, p1)
-        est = estimatephase(bad)
+        est = estimatephase(bad; maxdelay=50e-6)      # SW 5 kHz: ±90° first-order range
         @test abs(rad2deg(angle(cis(deg2rad(est.p0 + p0))))) < 3
         @test abs(est.p1 + p1) < 3
         @test est.residual < 5
@@ -72,6 +72,8 @@ end
     est = estimatephase(biased)
     @test abs(rad2deg(angle(cis(deg2rad(est.p0 + 40.0))))) < 3
     @test est.nlines >= length(LINES)
+    # the first-order search range follows from maxdelay and the spectral width (5 kHz here)
+    @test abs(estimatephase(phase(spec, 1, 0.0, -60.0)).p1) <= 360 * 5000 * 20e-6 + 1e-6
     # without edge observations
     @test isempty(estimatephase(spec; edges=0).edges)
 

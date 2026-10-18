@@ -139,7 +139,7 @@ function _scanp1(φ, f, w, p1range, p1expected, λ)
 end
 
 """
-    estimatephase(spec, [dim]; order=1, p1=0, p1range=(-180, 180), pivot=nothing, snr=10,
+    estimatephase(spec, [dim]; order=1, p1=0, maxdelay=20e-6, pivot=nothing, snr=10,
                   coupling=20, maxwidthratio=3, maxresidual=30, λ=20, edges=0.01, kw...)
         -> NamedTuple
 
@@ -175,8 +175,13 @@ systematic uncertainty: the scatter of the line groups about the fit, or 2° for
 
 # Keywords
 - `order`: `1` fits `p0` and `p1`; `0` fits `p0` only, with the first-order phase fixed at `p1`.
-- `p1`: expected first-order phase (degrees). Close to zero after digital-filter removal.
-- `p1range`: search range for the first-order phase (degrees).
+- `p1`: expected first-order phase (degrees). Close to zero once the digital-filter group delay has
+  been removed.
+- `maxdelay`: largest timing error (seconds) to allow for. A first-order phase is a shift of the time
+  origin: an error of τ gives a first-order phase of 360°·SW·τ across the spectral width SW, so the
+  search covers `p1 ± 360·SW·maxdelay` degrees. The default of 20 µs covers the residual dead-time
+  and receiver delays of most experiments; it gives ±100° for a 14 kHz ¹H spectrum and ±950° for a
+  130 kHz ¹⁹F spectrum.
 - `pivot`: chemical shift (ppm) at which `p0` is reported. Defaults to the first point, as for
   TopSpin's `PHC0`/`PHC1`.
 - `snr`: minimum signal-to-noise ratio of lines used.
@@ -196,7 +201,7 @@ systematic uncertainty: the scatter of the line groups about the fit, or 2° for
 See also [`autophase`](@ref), [`phase`](@ref).
 """
 function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
-                       p1range=(-180.0, 180.0), pivot=nothing, snr::Real=10.0,
+                       maxdelay::Real=20e-6, pivot=nothing, snr::Real=10.0,
                        coupling::Real=20.0, maxwidthratio::Real=3.0, maxresidual::Real=30.0,
                        λ::Real=20.0, edges::Real=0.01, kw...)
     order in (0, 1) || throw(ArgumentError("estimatephase: order must be 0 or 1, got $order"))
@@ -206,6 +211,11 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
     isempty(poles) &&
         throw(NMRToolsError("estimatephase: no lines found with signal-to-noise above $snr"))
     groups = _phasegroups(poles, metadata(d, :bf), coupling, maxwidthratio)
+    # first-order search range from the timing uncertainty
+    swhz = something(metadata(d, :swhz), abs(data(d)[2] - data(d)[1]) * length(d) *
+                                         metadata(d, :bf) * 1e-6)
+    p1max = 360 * swhz * maxdelay
+    p1range = (p1 - p1max, p1 + p1max)
 
     δ = data(d)
     n = length(δ)
@@ -317,7 +327,7 @@ function autophase(spec::NMRData, dim=1; kw...)
                       for r in strong], ", ")
         @warn "autophase: strong lines left out of the fit, with their remaining phase error: " *
               "$where. They may have a genuinely different phase, or the first-order phase may " *
-              "be far from the expected value; pass `p1` (and `p1range`) to set it."
+              "be far from the expected value; pass `p1` (and `maxdelay`) to set it."
     end
     return phase(spec, dim, est.p0, est.p1; pivot=est.pivot)
 end

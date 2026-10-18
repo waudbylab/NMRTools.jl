@@ -278,13 +278,15 @@ function savefid(path, spec::NMRData; dtype::Type=Float64, overwrite::Bool=false
     dtypa = dtype === Float64 ? 2 : 0
     src = _sourceexperiment(spec)
     if isnothing(src)
-        _minimalacqus(path, spec, storagedims, tds; dtypa, grpdly)
+        _minimalacqus(path, spec, storagedims, tds; dtypa, grpdly=max(grpdly, 0.0))
     else
         _copyparameters(src, path)
         acqusdic = metadata(spec, :acqus)
-        _patchjdxfile(joinpath(path, "acqus"),
-                      Pair{String,Any}["TD" => td, "DTYPA" => dtypa, "BYTORDA" => 0,
-                                       "GRPDLY" => grpdly])
+        # a negative delay marks a FID already modified in TopSpin (e.g. by cryoproc1d): its
+        # parameters are copied unchanged so that loadfid recognises it again
+        patch = Pair{String,Any}["TD" => td, "DTYPA" => dtypa, "BYTORDA" => 0]
+        grpdly >= 0 && push!(patch, "GRPDLY" => grpdly)
+        _patchjdxfile(joinpath(path, "acqus"), patch)
         # indirect storage axis k is described by acqu file `order[k-1]` (depends on AQSEQ)
         order = _indirectstorageorder(something(acqusdic, Dict()), ndim)
         for (j, fileindex) in enumerate(order)

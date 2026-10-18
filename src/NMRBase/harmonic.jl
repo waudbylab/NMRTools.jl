@@ -460,7 +460,7 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, o
     m = order === :auto ? clamp(n ÷ 2, 8, 32) : order
     # Digital-filter build-up points before t = 0 (direct dimension of `loadfid` data) are left
     # alone: prediction works on the FID from t = 0.
-    i0 = round(Int, _groupdelaypoints(d)) + 1
+    i0 = max(round(Int, _groupdelaypoints(d)), 0) + 1
     if i0 > 1 && replace == 0 && direction === :backward
         throw(ArgumentError("linearpredict: backward extension is not possible while the " *
                             "dimension holds digital-filter build-up points before t = 0; use " *

@@ -57,7 +57,7 @@ How the delay is found depends on the acquisition parameters:
 | `DIGMOD = 3` (baseopt, `DSPFIRM` rectangle) | delay `GRPDLY` (an integer); t = 0 point not scaled |
 | `DIGMOD = 1` (digital), `DSPFVS` 20–23 | delay `GRPDLY` (may be fractional); t = 0 point scaled by 0.5 |
 | `DIGMOD = 0` (analogue) | no delay |
-| `DSPFVS` outside 10–23 | no delay, with a warning |
+| `DSPFVS` outside 10–23 (FID modified, e.g. by `cryoproc1d`) | time axis starts after t = 0 by the points removed beyond `GRPDLY`, with a warning |
 
 In baseopt mode the spectrometer aligns acquisition with time zero (the pulse programme's `acqt0`)
 and corrects the initial points of the FID itself, so no first-order phase correction should be
@@ -65,9 +65,12 @@ needed and the t = 0 point already has its half weight.
 
 A `DSPFVS` outside 10–23 is not a firmware version Bruker defines. TopSpin's `cryoproc1d`, used to
 process X-nucleus spectra from cryoprobes, sets `DSPFVS = 0` after rewriting the FID with its start
-removed (the original is saved in another experiment number, recorded in `audita.txt`). Such data
-are loaded with no group delay, and the missing first points need to be rebuilt by backward linear
-prediction before the spectrum can be phased.
+removed: the filter build-up and some points after time zero (the original is saved in another
+experiment number, recorded in `audita.txt`). `loadfid` compares `TD` in `acqu`, which keeps the
+original value, with `TD` in `acqus` to find how many points after time zero are missing, and starts
+the time axis at that time, so that `ft` restores the correct time origin and the lines can be
+phased together. A warning reports the number of missing points; their absence can leave a broad
+baseline distortion.
 
 ## The processing pipeline
 
@@ -149,13 +152,16 @@ phase(spec, F1Dim, est.p0, est.p1)
 `autophase` warns when a rejected line is at least 2% as strong as the strongest line used. Such a
 line may have a genuinely different phase, or the first-order phase may be far from its expected
 value. The second case is common for heteronuclei with wide spectral windows: there, set the
-expected first-order phase with `p1` (widening `p1range` if needed) or fix it with `order=0`.
+expected first-order phase with `p1` (increasing `maxdelay` if needed) or fix it with `order=0`.
 
 Useful options:
 
 - `order=0` fits the zero-order phase only, with the first-order phase fixed at `p1` (default 0).
-  After digital-filter removal the first-order phase of the direct dimension should be close to
-  zero, so this is often the more robust choice.
+  Once the digital-filter group delay has been removed, the first-order phase of the direct
+  dimension should be close to zero, so this is often the more robust choice.
+- `maxdelay` sets how far the first-order phase may range. A first-order phase is a shift of the
+  time origin, so the range is given as a timing uncertainty (default 20 µs) and converted with the
+  spectral width: ±100° for a 14 kHz ¹H spectrum, ±950° for a 130 kHz ¹⁹F spectrum.
 - `exclude=[4.6 .. 4.9]` ignores lines in the given chemical-shift ranges, e.g. water or buffer.
 - `λ` sets how strongly the first-order phase is pulled towards `p1`. The pull is scaled by the
   scatter of the line phases and the number of lines, so it has little effect when many lines agree.
@@ -210,21 +216,6 @@ the line's phase) and a signal-to-noise ratio:
 poles = estimatepoles(spec)
 # Pole(3.6848 ppm, 2.6 Hz, phase 128.2°, SNR 2.31e4)
 ```
-
-With Makie loaded, [`poleplot`](@ref) draws the pole model below the spectrum:
-
-```julia
-using CairoMakie
-poleplot(spec)
-```
-
-Each marker is a line, at its chemical shift (x) and linewidth (y, log scale), with area
-proportional to its integral. Colour shows twice the line's phase on a cyclic colour map, so that
-positive and negative absorption lines have the same colour. A correctly phased spectrum is
-therefore a single colour; a zero-order error shifts every colour, and a first-order error appears
-as a colour gradient along the shift axis. Filled markers have a positive real part and open
-markers a negative one. Narrow lines from real signals form a band at plausible linewidths, while
-noise gives small, scattered markers.
 
 ## Linear prediction and solvent suppression
 

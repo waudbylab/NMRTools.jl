@@ -379,28 +379,3 @@ end
     @test ax.limits[] !== nothing
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/pseudo2D_XSTE_xlim.png"
 end
-
-@testset "MakieExt: pole plot" begin
-    dat = exampledata("1D_19F")
-    poles = [Pole(-120.0, 5.0, 1.0 + 0im, 10.0, 100.0), Pole(-121.0, 8.0, -0.5 + 0im, 5.0, 50.0),
-             Pole(-122.0, 3.0, 0.3im, 3.0, 30.0)]
-
-    # into an existing axis: filled markers for positive lines, open for negative
-    fig = Makie.Figure()
-    ax = Makie.Axis(fig[1, 1])
-    plt = poleplot!(ax, poles)
-    @test plt isa Makie.Scatter
-    @test count(p -> p isa Makie.Scatter, ax.scene.plots) == 2
-    @test ax.xreversed[] == true
-
-    # full figure from precomputed poles: spectrum panel, pole map and colour bar
-    fig, ax, plt = poleplot(dat; poles=poles)
-    @test fig isa Makie.Figure
-    @test ax.ylabel[] == "Linewidth (Hz)"
-    @test count(c -> c isa Makie.Axis, fig.content) == 2
-    @test count(c -> c isa Makie.Colorbar, fig.content) == 1
-
-    fig, ax, plt = poleplot(dat; poles=poles, spectrum=false, colorbar=false)
-    @test count(c -> c isa Makie.Axis, fig.content) == 1
-    @test count(c -> c isa Makie.Colorbar, fig.content) == 0
-end
