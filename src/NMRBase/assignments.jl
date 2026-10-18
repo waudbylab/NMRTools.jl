@@ -37,6 +37,7 @@ Base.show(io::IO, s::ChemicalShift) = print(io, "ChemicalShift(", label(s), ", "
 """
     peaklist(shifts, atoms...) -> Vector{Peak{N}}
     peaklist(shifts, H1, X) -> Vector{Peak{2}}
+    peaklist(shifts, X) -> Vector{Peak{1}}
 
 The peaks expected in an `N`-dimensional experiment, assembled from a list of assigned
 chemical shifts (see [`loadshifts`](@ref NMRTools.NMRIO.loadshifts)). Dimensions are
@@ -52,6 +53,9 @@ pair of atoms with assigned shifts: every N–H for an ¹⁵N HSQC, including si
 NH₂ groups, or every C–H for a ¹³C HSQC. Methyl and methylene protons with identical
 shifts give a single peak.
 
+**A 1D list.** Passing a single nucleus gives one peak for every shift of that nucleus,
+e.g. the expected lines of a ¹³C or ¹⁹F 1D spectrum.
+
 Peaks are labelled by residue and atom, e.g. `L23H-N`, `K22C-L23N` or `L23HD1-CD1`.
 Positions come from the shift list, while intensities and linewidths are `NaN`.
 
@@ -62,6 +66,7 @@ shifts = loadshifts(15000)              # download BMRB entry 15000
 peaklist(shifts, "H", "N")              # backbone amide ¹H,¹⁵N HSQC
 peaklist(shifts, H1, N15)               # all NH groups, including side chains
 peaklist(shifts, H1, C13)               # ¹H,¹³C HSQC
+peaklist(shifts, C13)                   # every ¹³C shift, as a 1D list
 peaklist(shifts, "C-1", "N")            # CON: C′ of residue i-1 with N of residue i
 peaklist(shifts, "H", "N", "C-1")       # HNCO
 peaklist(shifts, "H", "N", "CA")        # the i peaks of an HNCA
@@ -87,6 +92,12 @@ function peaklist(shifts::AbstractVector{ChemicalShift}, atoms::AbstractString..
         push!(pks, Peak(Tuple(ppm.(found)); label=_peaklabel(collect(found), multientity)))
     end
     return pks
+end
+
+function peaklist(shifts::AbstractVector{ChemicalShift}, n::Nucleus)
+    multientity = length(unique(s.entity for s in shifts)) > 1
+    selected = sort(filter(s -> nucleus(s) == n, shifts); by=s -> (s.entity, s.residue))
+    return Peak{1}[Peak(ppm(s); label=_peaklabel([s], multientity)) for s in selected]
 end
 
 function peaklist(shifts::AbstractVector{ChemicalShift}, a::Nucleus, b::Nucleus)

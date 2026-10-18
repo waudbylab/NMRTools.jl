@@ -663,6 +663,12 @@ end
     @test !any(startswith("V9HG21"), l)
     @test all(p -> 0 < ppm(p, 1) < 12 && 5 < ppm(p, 2) < 180, ch)
 
+    # a 1D list of every shift of one nucleus
+    c = peaklist(shifts, C13)
+    @test c isa Vector{Peak{1}}
+    @test length(c) == count(s -> nucleus(s) == C13, shifts)
+    @test "S2CB" in label.(c)
+
     # residue selection by filtering the shift list
     ser = filter(s -> s.residuename == "SER", shifts)
     @test all(p -> startswith(label(p), "S"), peaklist(ser, H1, C13))
