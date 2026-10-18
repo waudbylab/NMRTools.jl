@@ -1,5 +1,6 @@
 module NMRTools
 
+using Logging: with_logger, NullLogger
 using PrecompileTools
 using Reexport: Reexport
 using MulticomplexNumbers

@@ -1,5 +1,6 @@
 # don't actually run this - it's a collection of the commands used to upload example data to github gists
-# and update the Artifacts.toml file
+# and update the Artifacts.toml file. ArtifactUtils is not a dependency of NMRTools, so
+# install it into a separate environment first: `] add ArtifactUtils`, then `using ArtifactUtils`
 
 artifact_id = artifact_from_directory("/Users/chris/Documents/Work/NMRTools/additional-data/1D_1H")
 gist = upload_to_gist(artifact_id)

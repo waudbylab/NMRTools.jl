@@ -3,7 +3,6 @@ module NMRIO
 using ..NMRBase
 import ..NMRBase: NMRSample, NMRExperiment
 using Artifacts
-using ArtifactUtils
 using Dates
 using Downloads
 using LazyArtifacts
