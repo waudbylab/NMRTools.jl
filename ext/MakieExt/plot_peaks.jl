@@ -42,3 +42,36 @@ function NMRTools.nmrplot!(pks::AbstractVector{<:Peak}; kwargs...)
         Call nmrplot(spec) first, or pass an Axis explicitly."))
     return NMRTools.nmrplot!(ax, pks; kwargs...)
 end
+
+# A peak list on its own, without a spectrum: e.g. a list predicted from BMRB shifts. The
+# axes are set up as for a spectrum, but peaks carry no nucleus, so the axis labels are
+# generic unless given.
+function NMRTools.nmrplot(pks::AbstractVector{<:Peak}; figure=NamedTuple(), kwargs...)
+    fig = Makie.Figure(; figure...)
+    ap = NMRTools.nmrplot(fig[1, 1], pks; kwargs...)
+    return Makie.FigureAxisPlot(fig, ap.axis, ap.plot)
+end
+
+function NMRTools.nmrplot(gp::Union{Makie.GridPosition,Makie.GridSubposition},
+                          pks::AbstractVector{<:Peak{1}};
+                          title="", xlabel="Chemical shift (ppm)", axis=NamedTuple(),
+                          kwargs...)
+    defaults = (; xreversed=true, xlabel, title, xgridvisible=false, ygridvisible=false,
+                yticksvisible=false, yticklabelsvisible=false, leftspinevisible=false,
+                rightspinevisible=false, topspinevisible=false, xtickalign=1)
+    ax = Makie.Axis(gp; merge(defaults, axis)...)
+    plt = NMRTools.nmrplot!(ax, pks; kwargs...)
+    Makie.ylims!(ax, 0, 1)
+    return Makie.AxisPlot(ax, plt)
+end
+
+function NMRTools.nmrplot(gp::Union{Makie.GridPosition,Makie.GridSubposition},
+                          pks::AbstractVector{<:Peak{2}};
+                          title="", xlabel="Chemical shift (ppm)",
+                          ylabel="Chemical shift (ppm)", axis=NamedTuple(), kwargs...)
+    defaults = (; xreversed=true, yreversed=true, xlabel, ylabel, title,
+                xgridvisible=false, ygridvisible=false, xtickalign=1, ytickalign=1)
+    ax = Makie.Axis(gp; merge(defaults, axis)...)
+    plt = NMRTools.nmrplot!(ax, pks; kwargs...)
+    return Makie.AxisPlot(ax, plt)
+end

@@ -394,4 +394,12 @@ end
     @test plt isa Makie.Scatter
     @test length(plt[1][]) == length(pks)
     @test nmrplot!(fig, pks; labels=false) isa Makie.Scatter
+
+    # a peak list on its own, without a spectrum
+    fap = nmrplot(pks; xlabel="1H (ppm)")
+    @test fap isa Makie.FigureAxisPlot
+    @test fap.axis.xlabel[] == "1H (ppm)"
+    @test fap.axis.xreversed[] && fap.axis.yreversed[]
+    @test nmrplot(detectpeaks(spec1)) isa Makie.FigureAxisPlot
+    @test nmrplot(Peak{2}[]) isa Makie.FigureAxisPlot
 end

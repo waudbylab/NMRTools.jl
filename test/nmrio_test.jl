@@ -622,3 +622,64 @@ end
         @test all(isempty, label.(sw))
     end
 end
+
+@testset "NMRIO: assigned shifts (NMR-STAR)" begin
+    shifts = loadshifts(joinpath("test-data", "bmrb", "bmr15000_shifts.str"))
+    @test shifts isa Vector{ChemicalShift}
+    @test length(shifts) == 340
+    s = first(shifts)
+    @test (s.residue, s.residuename, s.atom, nucleus(s), ppm(s)) == (2, "SER", "H", H1, 9.307)
+    @test s.error == 0.01
+    @test label(s) == "S2H"
+
+    # backbone amides
+    hn = peaklist(shifts, "H", "N")
+    @test hn isa Vector{Peak{2}}
+    @test length(hn) == 33
+    @test hn[1] == Peak(9.307, 121.58; label="S2H-N")
+    @test peaklist(shifts, "HN", "N") == hn
+    @test all(p -> isnan(intensity(p)), hn)
+
+    # inter-residue correlations
+    con = peaklist(shifts, "CO-1", "N")
+    @test con[1] == Peak(179.756, 121.409; label="D5C-F6N")
+    hnco = peaklist(shifts, "H", "N", "C-1")
+    @test hnco isa Vector{Peak{3}}
+    @test hnco[1] == Peak(8.716, 121.409, 179.756; label="F6H-N-D5C")
+
+    # all NH groups, including side chains
+    nh = peaklist(shifts, H1, N15)
+    @test length(nh) == 40
+    @test label.(hn) ⊆ label.(nh)
+    @test "W23HE1-NE1" in label.(nh)
+    @test "R7HE-NE" in label.(nh)
+    @test peaklist(shifts, N15, H1)[1] == Peak(121.58, 9.307; label="S2N-H")
+
+    # CH groups: methylenes give one peak per proton, degenerate methyls just one
+    ch = peaklist(shifts, H1, C13)
+    l = label.(ch)
+    @test "S2HB2-CB" in l && "S2HB3-CB" in l
+    @test "V9HG2-CG2" in l
+    @test !any(startswith("V9HG21"), l)
+    @test all(p -> 0 < ppm(p, 1) < 12 && 5 < ppm(p, 2) < 180, ch)
+
+    # residue selection by filtering the shift list
+    ser = filter(s -> s.residuename == "SER", shifts)
+    @test all(p -> startswith(label(p), "S"), peaklist(ser, H1, C13))
+
+    @test_throws ArgumentError peaklist(shifts, C13, N15)
+    @test_throws ArgumentError peaklist(shifts, "C A")
+    @test_throws ArgumentError loadshifts(joinpath("test-data", "bmrb", "bmr15000_shifts.str");
+                                          list=2)
+
+    # the peak list can be saved for NMRAnalysis
+    mktempdir() do dir
+        f = joinpath(dir, "hsqc.csv")
+        savepeaks(f, nh)
+        @test loadpeaks(f) == nh
+    end
+
+    # NMR-STAR tokens: quoting, comments and multi-line text fields
+    tokens = NMRTools.NMRIO._startokens("a 'b c' \"d'e\" it's # note\n;\nline 1\nline 2\n;\nf")
+    @test tokens == ["a", "b c", "d'e", "it's", "\nline 1\nline 2", "f"]
+end

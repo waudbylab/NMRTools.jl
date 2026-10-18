@@ -53,6 +53,7 @@ include("windows.jl")
 include("metadata.jl")
 include("noise.jl")
 include("peaks.jl")
+include("assignments.jl")
 include("pcls.jl")
 include("reference.jl")
 
@@ -167,6 +168,10 @@ export ComplexLineshape
 export Peak
 export intensity, linewidth
 export detectpeaks, findpeak, findnearest
+
+# assigned chemical shifts
+export ChemicalShift
+export peaklist
 
 # phase-constrained least squares
 export pcls
