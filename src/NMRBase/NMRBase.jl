@@ -19,7 +19,7 @@ using Dates: Dates, DateTime, Date, unix2datetime
 using LinearAlgebra
 using MulticomplexNumbers
 using Optim
-using Peaks
+import Tables
 using SimpleTraits
 using SpecialFunctions
 using Statistics
@@ -53,6 +53,7 @@ include("windows.jl")
 include("metadata.jl")
 include("noise.jl")
 include("peaks.jl")
+include("assignments.jl")
 include("pcls.jl")
 include("reference.jl")
 
@@ -164,8 +165,14 @@ export RealLineshape
 export ComplexLineshape
 
 # peaks and peak detection
-export AbstractPeak, SimplePeak
-export detectpeaks
+export Peak
+export intensity, linewidth
+export detectpeaks, findpeak, findnearest
+export register!, register
+
+# assigned chemical shifts
+export ChemicalShift
+export peaklist
 
 # phase-constrained least squares
 export pcls

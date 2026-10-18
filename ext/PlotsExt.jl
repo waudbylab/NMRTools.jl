@@ -540,21 +540,29 @@ end
     end
 end
 
-# Plot SimplePeak{1} objects as vertical lines
-@recipe function f(peaks::Vector{<:AbstractPeak{1}})
-    # Set defaults for vertical lines
+# Plot 1D peaks as vertical lines
+@recipe function f(peaks::AbstractVector{<:Peak{1}})
     seriestype --> :vline
     linecolor --> :red
     linestyle --> :solid
-    # linewidth --> 0.5
     alpha --> 0.3
     label --> nothing
     z_order --> 1
 
-    # Extract chemical shift positions from peaks
-    δ_positions = [p.δ for p in peaks]
+    return [ppm(p, 1) for p in peaks]
+end
 
-    return δ_positions
+# Plot 2D peaks as crosses
+@recipe function f(peaks::AbstractVector{<:Peak{2}})
+    seriestype --> :scatter
+    markershape --> :xcross
+    markercolor --> :black
+    markersize --> 3
+    label --> nothing
+    xflip --> true
+    yflip --> true
+
+    return [ppm(p, 1) for p in peaks], [ppm(p, 2) for p in peaks]
 end
 
 end # module

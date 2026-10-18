@@ -551,3 +551,147 @@ end
     @test length(found) == 1
     @test found[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
 end
+@testset "NMRIO: peak lists" begin
+    spec = exampledata("2D_HN")
+    pks = detectpeaks(spec; sign=:positive)[1:5]
+    pks[2] = Peak(pks[2]; label="G10")
+
+    mktempdir() do dir
+        # NMRAnalysis.jl peaklist.csv round trip
+        f = joinpath(dir, "out", "peaklist.csv")
+        @test savepeaks(f, pks) == f
+        lines = readlines(f)
+        @test startswith(lines[1], "#")
+        @test lines[2] == "label,plane,x (ppm),y (ppm),lwx (Hz),lwy (Hz),intensity"
+        @test startswith(lines[4], "G10,,")
+        @test loadpeaks(f) == pks
+        @test loadpeaks(f, spec) == pks
+        @test_throws DimensionMismatch loadpeaks(f, exampledata("1D_19F"))
+
+        # unlabelled peaks are written as X1, X2, ...
+        savepeaks(f, [Peak(8.0, 120.0), Peak(7.0, 110.0; label="A")])
+        @test label.(loadpeaks(f)) == ["X1", "A"]
+        @test_throws ArgumentError savepeaks(f, [Peak(8.0, 120.0; label="A,B")])
+        @test_throws ArgumentError savepeaks(f, [Peak(8.0, 1.0; label="A"),
+                                                 Peak(7.0, 1.0; label="A")])
+
+        # a 1D list
+        f1 = joinpath(dir, "peaks1d.csv")
+        p1 = detectpeaks(exampledata("1D_19F"))
+        savepeaks(f1, p1)
+        @test loadpeaks(f1) == p1
+
+        # a hand-made list without a header
+        fh = joinpath(dir, "hand.txt")
+        write(fh, "# my peaks\nA 8.1 121.0\nB 7.5 118.2\n")
+        hand = loadpeaks(fh)
+        @test hand == [Peak(8.1, 121.0; label="A"), Peak(7.5, 118.2; label="B")]
+
+        # a list written by NMRAnalysis.jl, with tracked positions and radius columns
+        fn = joinpath(dir, "nmranalysis.csv")
+        write(fn, """
+              # NMRAnalysis.jl 0.4.3
+              # X radius / ppm: 0.03
+              label,plane,x (ppm),y (ppm),xradius (ppm),yradius (ppm)
+              L23N,,8.5,122.1,0.03,0.3
+              G10,1,8.1,110.2,0.03,0.3
+              G10,2,8.12,110.4,0.03,0.3
+              """)
+        nmra = @test_logs (:warn,) loadpeaks(fn)
+        @test label.(nmra) == ["L23N", "G10"]
+        @test ppm(nmra[2]) == (8.1, 110.2)
+        @test isnan(intensity(nmra[1]))
+
+        # Sparky: written with the indirect dimension first, read back in NMRTools order
+        fs = joinpath(dir, "hsqc.list")
+        savepeaks(fs, pks)
+        sl = readlines(fs)
+        @test split(sl[1]) == ["Assignment", "w1", "w2", "Data", "Height"]
+        @test parse(Float64, split(sl[4])[2]) ≈ ppm(pks[2], 2) atol = 1e-3
+        sp = loadpeaks(fs)
+        @test label.(sp) == label.(pks)
+        @test all(isapprox.(ppm.(sp, 1), ppm.(pks, 1); atol=1e-3))
+        @test all(isapprox.(ppm.(sp, 2), ppm.(pks, 2); atol=1e-3))
+
+        # a Sparky list written the other way round is detected against the spectrum
+        fsw = joinpath(dir, "swapped.list")
+        write(fsw, "Assignment w1 w2\n\n" *
+                   join(["?-? $(ppm(p, 1)) $(ppm(p, 2))" for p in pks], "\n"))
+        sw = @test_logs (:info,) loadpeaks(fsw, spec)
+        @test ppm.(sw, 1) ≈ ppm.(pks, 1)
+        @test all(isempty, label.(sw))
+    end
+end
+
+@testset "NMRIO: assigned shifts (NMR-STAR)" begin
+    shifts = loadbmrb(joinpath("test-data", "bmrb", "bmr15000_shifts.str"))
+    @test shifts isa Vector{ChemicalShift}
+    @test length(shifts) == 340
+    s = first(shifts)
+    @test (s.residue, s.residuename, s.atom, nucleus(s), ppm(s)) == (2, "SER", "H", H1, 9.307)
+    @test s.error == 0.01
+    @test label(s) == "S2H"
+
+    # backbone amides
+    hn = peaklist(shifts, "H", "N")
+    @test hn isa Vector{Peak{2}}
+    @test length(hn) == 33
+    @test hn[1] == Peak(9.307, 121.58; label="S2H-N")
+    @test peaklist(shifts, "HN", "N") == hn
+    @test all(p -> isnan(intensity(p)), hn)
+
+    # inter-residue correlations
+    con = peaklist(shifts, "CO-1", "N")
+    @test con[1] == Peak(179.756, 121.409; label="D5C-F6N")
+    hnco = peaklist(shifts, "H", "N", "C-1")
+    @test hnco isa Vector{Peak{3}}
+    @test hnco[1] == Peak(8.716, 121.409, 179.756; label="F6H-N-D5C")
+
+    # all NH groups, including side chains
+    nh = peaklist(shifts, H1, N15)
+    @test length(nh) == 40
+    @test label.(hn) ⊆ label.(nh)
+    @test "W23HE1-NE1" in label.(nh)
+    @test "R7HE-NE" in label.(nh)
+    @test peaklist(shifts, N15, H1)[1] == Peak(121.58, 9.307; label="S2N-H")
+
+    # CH groups: methylenes give one peak per proton, degenerate methyls just one
+    ch = peaklist(shifts, H1, C13)
+    l = label.(ch)
+    @test "S2HB2-CB" in l && "S2HB3-CB" in l
+    @test "V9HG2-CG2" in l
+    @test !any(startswith("V9HG21"), l)
+    @test all(p -> 0 < ppm(p, 1) < 12 && 5 < ppm(p, 2) < 180, ch)
+
+    # a 1D list of every shift of one nucleus
+    c = peaklist(shifts, C13)
+    @test c isa Vector{Peak{1}}
+    @test length(c) == count(s -> nucleus(s) == C13, shifts)
+    @test "S2CB" in label.(c)
+
+    # residue selection by filtering the shift list
+    ser = filter(s -> s.residuename == "SER", shifts)
+    @test all(p -> startswith(label(p), "S"), peaklist(ser, H1, C13))
+
+    @test_throws ArgumentError peaklist(shifts, C13, N15)
+    @test_throws ArgumentError peaklist(shifts, "C A")
+    @test_throws ArgumentError loadbmrb(joinpath("test-data", "bmrb", "bmr15000_shifts.str");
+                                          list=2)
+
+    # shifts straight to a peak list
+    f = joinpath("test-data", "bmrb", "bmr15000_shifts.str")
+    @test loadbmrb(f, H1, N15) == nh
+    @test loadbmrb(f, "H", "N", "CO-1") == hnco
+    @test loadbmrb(f, C13) == c
+
+    # the peak list can be saved for NMRAnalysis
+    mktempdir() do dir
+        f = joinpath(dir, "hsqc.csv")
+        savepeaks(f, nh)
+        @test loadpeaks(f) == nh
+    end
+
+    # NMR-STAR tokens: quoting, comments and multi-line text fields
+    tokens = NMRTools.NMRIO._startokens("a 'b c' \"d'e\" it's # note\n;\nline 1\nline 2\n;\nf")
+    @test tokens == ["a", "b c", "d'e", "it's", "\nline 1\nline 2", "f"]
+end
