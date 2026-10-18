@@ -104,7 +104,7 @@ _settmax(w::NullWindow, ::Real) = w
 _settmax(w::UnknownWindow, ::Real) = w
 _settmax(w::ExponentialWindow, t::Real) = isfinite(w.tmax) ? w : ExponentialWindow(w.lb, t)
 _settmax(w::CosWindow, t::Real) = isfinite(w.tmax) ? w : CosWindow(t)
-_settmax(w::Cos²Window, t::Real) = isfinite(w.tmax) ? w : Cos²Window(t)
+_settmax(w::Cos2Window, t::Real) = isfinite(w.tmax) ? w : Cos2Window(t)
 function _settmax(w::GeneralSineWindow, t::Real)
     return isfinite(w.tmax) ? w : GeneralSineWindow(w.offset, w.endpoint, w.power, t)
 end
@@ -182,19 +182,25 @@ end
 """
     apodize(spec, [dim], [window]; inverse=false)
 
-Apply a window function along the specified `TimeDimension`(s) of `spec`. Pass a
-[`WindowFunction`](@ref) positionally to set the window; omit it to use the window stored in each
-dimension's `:window` metadata (falling back to no apodization). With no dimension argument every
-Fourier time dimension is apodized. The window's `tmax` is filled in automatically from the
-dimension's acquisition time (`:td`/`:swhz`), so lengths need not be given — e.g. `Cos²Window()`.
-The window starts at t = 0; digital-filter build-up points at negative time are left unwindowed.
-`inverse=true` divides by the window (undoing a previous apodization). Curried and dictionary forms
-are provided for pipelines.
+Multiply the time-domain data by a window function. With no dimension argument every Fourier time
+dimension is apodized; with no window, each dimension's `:window` metadata is used (no apodization if
+it has none).
 
+The window's length is set from the acquisition time when it is not given, so `Cos2Window()` or
+`GeneralSineWindow(0.5, 1, 2)` can be used without a `tmax`. The window starts at t = 0;
+digital-filter build-up points before t = 0 are left unwindowed. The window applied is recorded in
+the dimension's `:window` metadata.
+
+# Keywords
+- `inverse`: divide by the window instead, undoing a previous apodization.
+
+# Examples
 ```julia
-loadfid("1/ser") |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft
-loadfid("1/ser") |> apodize(T1Dim, ExponentialWindow(5.0)) |> apodize(T2Dim, Cos²Window())
+loadfid("expt/1") |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft
+loadfid("hsqc/1") |> apodize(T1Dim, ExponentialWindow(5.0)) |> apodize(T2Dim, Cos2Window())
 ```
+
+See also [`WindowFunction`](@ref), [`zerofill`](@ref).
 """
 function apodize(spec::NMRData, dim, window::WindowFunction; inverse=false)
     di = resolvedim(spec, dim)
@@ -256,9 +262,14 @@ end
 """
     zerofill(spec, [dim]; factor=2)
 
-Zero-fill the specified `TimeDimension`(s) by the given integer `factor` (default doubling the
-number of points), appending zeros to the end of the FID. The dimension length and `:tdzf` metadata
-are updated. With no dimension argument, every Fourier time dimension is zero-filled.
+Append zeros to the end of the FID, multiplying the number of points by the integer `factor`. With
+no dimension argument every Fourier time dimension is zero-filled. The `:tdzf` metadata is updated.
+
+# Examples
+```julia
+fid |> zerofill |> ft                   # double every Fourier dimension
+fid |> zerofill(T1Dim; factor=4) |> ft
+```
 """
 function zerofill(spec::NMRData, dim; factor=2)
     di = resolvedim(spec, dim)
@@ -298,12 +309,15 @@ function zerofill(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
 end
 
 "extend a time dimension to `n` points, continuing the time axis at the same dwell"
-function _extendtimedim(d, di, n)
+function _extendtimedim(d, di, n; prepend::Integer=0)
     md = deepcopy(metadata(d).val)
     swhz = md[:swhz]
     dt = 1 / swhz
     md[:tdzf] = n
-    t = range(first(data(d)); step=dt, length=n)  # keeps negative times of any filter build-up
+    # keeps negative times of any filter build-up; `prepend` points added before the first
+    t = range(first(data(d)) - prepend * dt; step=dt, length=n)
+    # points prepended to a FID that starts after t = 0 (negative group delay) move its start back
+    prepend > 0 && haskey(md, :grpdly) && (md[:grpdly] = something(md[:grpdly], 0.0) + prepend)
     return TDIM_CONSTRUCTORS[di](t; metadata=md)
 end
 
@@ -312,20 +326,27 @@ end
 """
     ft(spec, [dim]; inverse=false)
 
-Fourier transform the specified dimension(s). A `TimeDimension` becomes the corresponding
-`FrequencyDimension` (and vice versa for `inverse=true`). The imaginary unit used for the transform
-is read from the dimension's `:mcindex`. With no dimension argument, every Fourier time dimension is
-transformed in dimension order (direct dimension first).
+Fourier transform one dimension, or with no dimension argument every Fourier dimension in order
+(direct dimension first). A time dimension becomes the corresponding frequency dimension, or the
+reverse with `inverse=true`. The transform uses the dimension's imaginary unit (`:mcindex`), applies
+no normalisation, as TopSpin does, and refreshes the noise estimate.
 
-The forward transform is `reverse ∘ fftshift ∘ fft`, so that a positive offset frequency maps to
-higher chemical shift and the spectrum is ordered high-ppm-first, matching data loaded via
-[`loadnmr`](@ref NMRTools.NMRIO.loadnmr); the inverse composes the exact opposites so that
-`ft(inverse=true) ∘ ft ≈ identity`.
+The spectrum is ordered from high to low chemical shift, as for data loaded with
+[`loadnmr`](@ref NMRTools.NMRIO.loadnmr), and `ft(ft(spec); inverse=true)` recovers `spec`.
 
-If the dimension carries a digital-filter group delay (`:grpdly` metadata, set by
-[`loadfid`](@ref NMRTools.NMRIO.loadfid)), it is removed after the FFT with a linear phase ramp, so the
-filter's build-up points end up at negative time. The resulting frequency dimension has no group
-delay, so an inverse transform gives an FID with its time origin at the first point.
+A digital-filter group delay recorded by [`loadfid`](@ref NMRTools.NMRIO.loadfid) (`:grpdly`) is
+removed after the transform with a linear phase ramp, which moves the filter's build-up points to
+negative time. The frequency dimension has no group delay left, so an inverse transform gives a FID
+whose first point is at t = 0.
+
+# Keywords
+- `inverse`: inverse transform from the frequency domain to the time domain.
+
+# Examples
+```julia
+spec = loadfid("expt/1") |> apodize(Cos2Window()) |> zerofill |> ft
+spec2 = ft(spec, F1Dim; inverse=true)
+```
 """
 function ft(spec::NMRData, dim; inverse=false)
     di = resolvedim(spec, dim)
@@ -372,20 +393,29 @@ end
 
 """
     phase(spec, dim, p0, p1=0; pivot=nothing)
+    phase(dim, p0, p1=0; pivot=nothing)
 
-Apply a phase correction along dimension `dim`: zero-order `p0` and first-order `p1`, both in
-degrees. The imaginary unit that carries the phase is read from the dimension's `:mcindex`, so the
-same function works in the time or frequency domain.
+Apply a zero-order (`p0`) and first-order (`p1`) phase correction, in degrees, along dimension
+`dim`. The phase applied to point `n` of `N` (counting from 0 at the first, highest-ppm point) is
+`θ = p0 + p1·n/N`, multiplied in as `exp(-imₖ·θ)` with the dimension's imaginary unit. This is
+TopSpin's convention, so `p0` and `p1` are its `PHC0` and `PHC1`. Works in the time or frequency
+domain. The second form returns a function for use with `|>`.
 
-The correction follows the TopSpin convention: the phase applied to point `n` (0-indexed) is
-`θ = p0 + p1·n/N`, multiplied in as `exp(-imₖ·θ)`. The pivot — the point where only `p0` acts —
-defaults to the **first point** (left edge, highest ppm), so `p0`/`p1` are TopSpin's `PHC0`/`PHC1`
-and values can be copied between the two. Pass `pivot` (ppm for a frequency dimension, seconds for a time
-dimension) to move it. A curried form `phase(dim, p0, p1=0; pivot)` is provided for pipelines.
+For a frequency dimension the total correction applied so far is recorded in the dimension's
+`:phase` metadata as `(p0=…, p1=…)`, with `p0` referred to the first point, and the noise estimate
+is refreshed.
 
-For a frequency dimension, the total correction applied so far is recorded in the dimension's
-`:phase` metadata as `(p0=…, p1=…)`, with `p0` referred to the first point. See also
-[`autophase`](@ref).
+# Keywords
+- `pivot`: position at which only `p0` acts, in ppm for a frequency dimension or seconds for a time
+  dimension. Defaults to the first point.
+
+# Examples
+```julia
+spec |> phase(F1Dim, 128.5) |> real
+phase(spec, F1Dim, 40.0, -20.0; pivot=4.7)
+```
+
+See also [`autophase`](@ref), [`autophase0`](@ref).
 """
 function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
     di = resolvedim(spec, dim)
@@ -404,13 +434,14 @@ function phase(spec::NMRData, dim, p0::Real, p1::Real=0.0; pivot=nothing)
     θ = deg2rad(p0) .+ deg2rad(p1) .* frac
     pf = @. cos(θ) - sin(θ) * imk
     newdata = parent(spec) .* _reshape_along(pf, di, ndims(spec))
-    newspec = rebuild(spec; data=newdata)
+    newspec = rebuild(spec; data=newdata, metadata=deepcopy(metadata(spec)))
     d isa FrequencyDimension || return newspec
 
     # accumulate the total correction, with p0 referred to the first point
     prev = something(metadata(d, :phase), (p0=0.0, p1=0.0))
     total = (p0=_wrap180(prev.p0 + p0 - p1 * ipiv / n), p1=prev.p1 + p1)
-    return _setdimmetadata(newspec, di, :phase => total)
+    # the noise estimate depends on the real part, so refresh it
+    return estimatenoise(_setdimmetadata(newspec, di, :phase => total))
 end
 
 "0-based fractional point index at which the dimension axis equals `pivot`"
@@ -430,11 +461,17 @@ end
 
 """
     frequencyshift(spec, dim, Δ)
+    frequencyshift(dim, Δ)
 
-Shift a time-domain dimension in frequency by `Δ` Hz — multiply the FID by `exp(-imₖ·2π·Δ·t)`, so a
-signal at `+Δ` Hz moves to the carrier (0 Hz). A native multicomplex operation (no reinterpretation),
-used internally by [`solventfilter`](@ref) to move an off-carrier target on resonance, and useful on
-its own for time-domain re-referencing. Curried form `frequencyshift(dim, Δ)` for pipelines.
+Shift time-domain data in frequency by `Δ` Hz, by multiplying the FID by `exp(-imₖ·2π·Δ·t)`: a
+signal at `+Δ` Hz moves to the carrier. [`solventfilter`](@ref) uses this to suppress signals away
+from the carrier; it is also useful for re-referencing in the time domain. The second form returns a
+function for use with `|>`.
+
+# Examples
+```julia
+fid |> frequencyshift(T1Dim, 250.0) |> ft
+```
 """
 function frequencyshift(spec::NMRData, dim, Δ::Real)
     di = resolvedim(spec, dim)
@@ -464,16 +501,20 @@ end
     extract(dim1 => range1, dim2 => range2, ...)
 
 Return a pipeline-compatible closure that selects a region of a spectrum. `dim` is a dimension type
-(e.g. `F1Dim`) and `range` an interval (e.g. `6.0 .. 10.0`).
+(for example `F1Dim`) and `range` an interval (for example `6.0 .. 10.0`). The noise estimate (`:noise`) of the
+selected region is refreshed.
 
 ```julia
 loadfid("1/ser") |> ft |> extract(F1Dim, 6.0 .. 10.0) |> phase(F1Dim, -50) |> real
 ```
 """
-extract(dim, range) = spec -> spec[dim(range)]
+extract(dim, range) = spec -> _withnoise(spec[dim(range)])
 function extract(pairs::Pair...)
-    return spec -> spec[(p.first(p.second) for p in pairs)...]
+    return spec -> _withnoise(spec[(p.first(p.second) for p in pairs)...])
 end
+
+"copy of `spec` with its own metadata and a fresh noise estimate"
+_withnoise(spec) = estimatenoise(rebuild(spec; metadata=deepcopy(metadata(spec))))
 
 # element-type conversions #########################################################################
 
@@ -488,14 +529,15 @@ Base.real(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=realest.(parent(sp
 """
     imag(spec::NMRData)
 
-Elementwise imaginary part (strips the highest-order imaginary unit).
+Return the imaginary part of a multicomplex spectrum: the coefficient of its highest-order imaginary
+unit.
 """
 Base.imag(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=imag.(parent(spec)))
 
 """
     abs(spec::NMRData)
 
-Elementwise magnitude of a multicomplex spectrum, returning `Float64` data.
+Return the magnitude of each point of a multicomplex spectrum, as `Float64` data.
 """
 Base.abs(spec::NMRData{<:Multicomplex}) = rebuild(spec; data=abs.(parent(spec)))
 

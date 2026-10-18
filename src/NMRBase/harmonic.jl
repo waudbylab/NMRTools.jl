@@ -420,30 +420,41 @@ end
 # ---------------------------------------------------------------------------------------------------
 
 """
-    linearpredict(spec, [dim]; npoints=nothing, factor=2, order=:auto,
-                  direction=:forward, replace=0, rootfix=true)
+    linearpredict(spec, [dim]; npoints=nothing, factor=2, order=:auto, direction=:forward,
+                  replace=0, rootfix=true, pool=true)
 
-Linear-prediction extension (or first-point repair) of the specified `TimeDimension`(s) using the
-autoregressive coefficient method (as in nmrPipe/nmrglue). Forward extension uses the Zhu–Bax scheme
-by default (fit backward LP, reflect the prediction-polynomial roots inside the unit circle, rebuild
-forward coefficients), which is the stable variant preferred for NMR; extrapolation is by recurrence.
-With no dimension argument, every *indirect* Fourier dimension is extended (forward LP of the directly
-detected dimension is rarely wanted). Applied per vector — cheap because the model `order` is small.
+Extend a time dimension by linear prediction, or rebuild its first points.
+
+Linear prediction models each FID as a sum of decaying oscillations, using the autoregressive
+coefficient method of nmrPipe and nmrglue, and extrapolates it by recurrence. Forward extension uses
+the Zhu–Bax scheme: it fits backward coefficients, reflects the roots of the prediction polynomial
+inside the unit circle, and builds forward coefficients from them, which keeps the extrapolation
+stable.
+
+With no dimension argument, every indirect Fourier dimension is extended. Prediction uses the FID
+from t = 0; digital-filter build-up points before t = 0 are left unchanged.
 
 # Keywords
-- `npoints`: target length after prediction. Defaults to `factor × td`.
-- `factor`: length multiplier when `npoints` is not given (default `2`).
-- `order`: LP order (number of coefficients); `:auto` ⇒ `clamp(td ÷ 2, 8, 32)`.
-- `direction`: `:forward` (append points) or `:backward` (prepend).
-- `replace`: if `> 0`, repair the first `replace` points from t = 0 by backward prediction (length
-  unchanged; overrides `npoints`/`direction`). Digital-filter build-up points before t = 0 are left
-  unchanged.
-- `rootfix`: reflect unstable roots for a stable extrapolation (default `true`).
-- `pool`: estimate one shared set of coefficients from the highest-energy vectors and apply the
-  recurrence to all vectors (default `true`; valid because vectors along a dimension share poles).
-  `pool=false` fits each vector independently (matching nmrglue) — correct but far slower.
+- `npoints`: length after prediction. Defaults to `factor` times the current length.
+- `factor`: length multiplier used when `npoints` is not given.
+- `order`: number of prediction coefficients. `:auto` uses `clamp(td ÷ 2, 8, 32)`.
+- `direction`: `:forward` appends points; `:backward` prepends them and moves the start of the time
+  axis back. Backward extension rebuilds points missing at the start of a FID that begins after
+  t = 0 (see [`loadfid`](@ref NMRTools.NMRIO.loadfid)).
+- `replace`: if greater than 0, replace that many points from t = 0 by backward prediction, keeping
+  the length unchanged. Overrides `npoints` and `direction`.
+- `rootfix`: reflect unstable roots so that the extrapolation cannot grow.
+- `pool`: estimate one set of coefficients from the strongest vectors and apply it to all of them.
+  Vectors along one dimension share the same frequencies, so this is valid and much faster than
+  fitting each vector separately (`pool=false`, as nmrglue does).
 
-Runs on time-domain data before `apodize`; updates `:td`. Element type stays `Multicomplex`.
+Use on time-domain data, before [`apodize`](@ref). The `:td` metadata is updated.
+
+# Examples
+```julia
+fid |> linearpredict(T2Dim) |> apodize |> zerofill |> ft     # double the indirect dimension
+linearpredict(fid, T1Dim; replace=2)                          # rebuild the first two points
+```
 """
 function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, order=:auto,
                        direction::Symbol=:forward, replace::Integer=0, rootfix::Bool=true,
@@ -483,7 +494,8 @@ function linearpredict(spec::NMRData, dim; npoints=nothing, factor::Integer=2, o
     end
 
     newdata = _maptransform(parent(spec), di, mcindex, kernel)
-    newdim = _extendtimedim(d, di, newlen)
+    prepended = (replace == 0 && direction === :backward) ? newlen - n : 0
+    newdim = _extendtimedim(d, di, newlen; prepend=prepended)
     newdims = _replacedimtuple(dims(spec), di, newdim)
     newspec = _rebuilddims(spec, newdata, newdims)
     metadata(newspec, di)[:td] = newlen          # LP grows the *acquired* points

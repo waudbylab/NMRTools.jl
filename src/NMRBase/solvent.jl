@@ -68,26 +68,32 @@ function _shifthz(shift, d)
 end
 
 """
-    solventfilter(spec, [dim]; shift=:carrier, method=:lowpass,
-                  width=40.0, shape=:sine, band=nothing, ncoef=:auto)
+    solventfilter(spec, [dim]; shift=:carrier, method=:lowpass, width=40.0, shape=:sine,
+                  band=nothing, ncoef=:auto)
 
-Suppress a solvent (or any narrow on-/off-resonance signal) in the time domain. With no dimension
-argument the directly detected dimension is used.
+Suppress a solvent signal, or any narrow signal, in the time domain. With no dimension argument the
+direct dimension is filtered.
 
 # Keywords
-- `shift`: `:carrier` (default) or a chemical shift in ppm. A ppm target is moved on resonance via
-  [`frequencyshift`](@ref), filtered, then shifted back.
-- `method`: `:lowpass` (convolution difference, native, fast — good for 2D+) or `:hsvd`
-  (frequency-selective subspace subtraction — best for 1D).
-- `width`: approximate suppression notch width in Hz (larger ⇒ wider notch). Mapped to a low-pass
-  filter length via the spectral width.
-- `shape`: low-pass window, `:boxcar` | `:sine` | `:sine²` (`:lowpass` only).
-- `band`: full frequency band (Hz) around the target to remove (`:hsvd` only; default `width`).
-- `ncoef`: number of exponentials to fit (`:hsvd` only); `:auto` ⇒ `clamp(td ÷ 16, 16, 48)`. `:hsvd`
-  runs an SVD per data vector, so it is intended for 1D (or a modest number of vectors); prefer
-  `:lowpass` for 2D+.
+- `shift`: `:carrier`, or the chemical shift (ppm) of the signal to remove. A signal away from the
+  carrier is moved to it with [`frequencyshift`](@ref), filtered, and moved back.
+- `method`: `:lowpass` subtracts a low-pass filtered copy of the FID (the convolution difference
+  method of nmrPipe's `SOL`). It is fast and suits multidimensional data. `:hsvd` fits the FID with
+  decaying oscillations and subtracts those within `band` of the target, which disturbs nearby
+  peaks less but fits each FID separately, so it suits 1D data.
+- `width`: approximate width (Hz) of the region suppressed by `:lowpass`. A larger value
+  suppresses a wider region.
+- `shape`: low-pass window for `:lowpass`: `:boxcar`, `:sine` or `:sine²`.
+- `band`: width (Hz) of the region removed by `:hsvd`. Defaults to `width`.
+- `ncoef`: number of oscillations fitted by `:hsvd`. `:auto` uses `clamp(td ÷ 16, 16, 48)`.
 
-Runs on time-domain data before `apodize`. Element type stays `Multicomplex`.
+Use on time-domain data, before [`apodize`](@ref).
+
+# Examples
+```julia
+fid |> solventfilter |> apodize |> zerofill |> ft
+solventfilter(fid; shift=4.7, method=:hsvd, band=60)
+```
 """
 function solventfilter(spec::NMRData, dim; shift=:carrier, method::Symbol=:lowpass,
                        width::Real=40.0, shape::Symbol=:sine, band=nothing, ncoef=:auto)

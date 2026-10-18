@@ -29,35 +29,44 @@ const _PHASESENSITIVE = (:states, :states_tppi, :echoantiecho)
 """
     loadfid(filename; removefilter=true, firstpoint=nothing) -> NMRData
 
-Load raw Bruker time-domain data (`fid` for 1D, `ser` for nD) into an [`NMRData`](@ref) with
-`Multicomplex` element type and `TimeDimension` axes, ready for processing.
+Load raw Bruker time-domain data (`fid` for 1D, `ser` for nD) as an [`NMRData`](@ref) with
+`Multicomplex` elements and `TimeDimension` axes, ready for processing. `filename` is the `fid` or
+`ser` file or the experiment folder.
 
-`filename` may point directly at a `fid`/`ser` file or at the enclosing experiment directory.
+Phase-sensitive indirect dimensions (States, States-TPPI, echo/anti-echo) are combined into extra
+imaginary units, so a 2D experiment has `Multicomplex{Float64,2,4}` elements and even 1D data use
+`Multicomplex{Float64,1,2}`. Each time dimension records its imaginary unit in `:mcindex`
+(`T1Dim` → 1, `T2Dim` → 2, …). Non-Fourier dimensions such as a relaxation series become
+`X2Dim`/`X3Dim` with `:mcindex == nothing`. Intensities match TopSpin's: the raw data are scaled by
+`2^NC` as TopSpin scales them, and [`ft`](@ref NMRTools.NMRBase.ft) applies no normalisation.
 
 # Keywords
-- `removefilter=true`: account for the Bruker digital-filter group delay (`GRPDLY`). The filter's
-  build-up points stay in the FID, on a time axis that starts at `-GRPDLY` dwell times, and the
-  delay is recorded in the direct dimension's `:grpdly` metadata; [`ft`](@ref NMRTools.NMRBase.ft)
-  removes it with a linear phase ramp, as TopSpin and NMRPipe do. Keeping the build-up points at
-  negative time, rather than discarding them, avoids baseline distortion at the edges of the
-  spectrum. Data whose `DSPFVS` is outside 10–23, such as FIDs already modified by TopSpin's
-  `cryoproc1d`, get no group delay, with a warning. With `removefilter=false` the time axis starts
-  at zero and no delay is recorded.
-- `firstpoint=nothing`: scaling factor for the t = 0 point of each time dimension. The default is
-  `0.5`, except for the direct dimension of baseopt data (`DIGMOD = 3`), where it is `1.0`: the
-  spectrometer's baseopt correction already gives that point its half weight.
-  Override per dimension with a dictionary keyed by dimension type, e.g.
-  `firstpoint=Dict(T2Dim => 1.0)`, or with a single number for all dimensions.
+- `removefilter`: account for the digital filter's group delay. The filter's build-up points stay
+  in the FID, on a time axis that starts `GRPDLY` dwell times before zero, and the delay is recorded
+  in the direct dimension's `:grpdly` metadata. [`ft`](@ref NMRTools.NMRBase.ft) removes it with a
+  linear phase ramp, as TopSpin and NMRPipe do. With `false`, the time axis starts at zero and no
+  delay is recorded.
+- `firstpoint`: scaling factor for the t = 0 point of each time dimension, as a number for all
+  dimensions or a dictionary keyed by dimension type, for example `Dict(T2Dim => 1.0)`. The default
+  is 0.5, except in the direct dimension of baseopt data (`DIGMOD = 3`), where the spectrometer
+  already gives the t = 0 point its half weight, and 1.0 is used.
 
-The element type is `Multicomplex{Float64,N,2^N}` where `N` is the number of phase-sensitive
-(Fourier) dimensions — even 1D data uses `Multicomplex{Float64,1,2}`. Each `TimeDimension` carries an
-`:mcindex` linking it to its imaginary unit (`T1Dim → 1`, `T2Dim → 2`, …); non-Fourier axes such as a
-relaxation series use `X2Dim`/`X3Dim` with `:mcindex == nothing`.
+FIDs modified by TopSpin's `cryoproc1d` (`DSPFVS` outside 10–23) have had their first points
+removed. `loadfid` compares `TD` in `acqu` and `acqus` to find how many points after t = 0 are
+missing, starts the time axis there, and warns. The missing points leave a ripple around strong
+lines; [`linearpredict`](@ref NMRTools.NMRBase.linearpredict) with `direction=:backward` can rebuild
+them.
 
 Annotations ([`annotate`](@ref)) and sample metadata ([`addsampleinfo`](@ref)) are applied as for
 [`loadnmr`](@ref).
 
-See also [`apodize`](@ref), [`zerofill`](@ref), [`ft`](@ref), [`phase`](@ref).
+# Examples
+```julia
+fid = loadfid("myexperiment/1")
+spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> real
+```
+
+See also [`autoprocess`](@ref NMRTools.NMRBase.autoprocess), [`savefid`](@ref).
 """
 function loadfid(filename; removefilter=true, firstpoint=nothing)
     filename = abspath(string(filename))
@@ -188,6 +197,9 @@ function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
     # (paddedtd, td2, td3, …); for 1D this collapses to a plain vector
     raw = reshape(raw, size(raw, 1), indirecttds...)
     C = _directcomplex(raw, tddirect)          # ComplexF64 (nc1, td2, td3, …), im1 = direct
+    # raw data are stored scaled by 2^-NC; restoring it gives the same intensities as TopSpin
+    nc = get(acqusdic, :nc, 0)
+    nc isa Real && nc != 0 && (C .*= 2.0^nc)
 
     # recombine each phase-sensitive indirect dimension into an extra multicomplex order.
     # mcindex counts imaginary units in acquisition order (1 = direct); pseudo-dims get `nothing`.
@@ -222,7 +234,7 @@ function _buildfidspec(datafile, md, acqusdic; removefilter, firstpoint)
                                   firstindex=Dict(1 => max(round(Int, grpdly), 0) + 1))
 
     # reorder axes so Fourier dimensions come first (in acquisition order) and pseudo-dimensions
-    # last, matching the dimension ordering used by loadnmr/loadpdata (e.g. the [1,3,2] permute when
+    # last, matching the dimension ordering used by loadnmr/loadpdata (for example the [1,3,2] permute when
     # a pseudo-dimension was acquired before a frequency one)
     pseudoaxes = [k for k in 1:ndim if isnothing(mcindex[k])]
     neworder = vcat(fourieraxes, pseudoaxes)
@@ -308,14 +320,14 @@ function _groupdelay(acqusdic, expfolder=nothing)
     if dspfvs isa Real && !(10 <= dspfvs <= 23)
         offset = _modifiedfidoffset(acqusdic, expfolder)
         if offset > 0
-            @warn "loadfid: DSPFVS = $dspfvs indicates the FID has been modified (e.g. by TopSpin's " *
+            @warn "loadfid: DSPFVS = $dspfvs indicates the FID has been modified (for example by TopSpin's " *
                   "cryoproc1d), and comparison with acqu shows its first $offset points after " *
                   "t = 0 were removed. The time axis starts at $offset dwell times; the missing " *
                   "points may leave a baseline distortion."
             return -Float64(offset)
         end
         @warn "loadfid: DSPFVS = $dspfvs is outside the range 10–23, which indicates the FID has " *
-              "already been modified (e.g. by TopSpin's cryoproc1d, which removes the start of the " *
+              "already been modified (for example by TopSpin's cryoproc1d, which removes the start of the " *
               "FID). No group delay will be removed. The first points of the FID may be missing; " *
               "they can be rebuilt by backward linear prediction."
         return 0.0
@@ -332,7 +344,7 @@ end
 """
     _modifiedfidoffset(acqusdic, expfolder) -> Int
 
-For a FID rewritten with its start removed (e.g. by `cryoproc1d`), the number of complex points
+For a FID rewritten with its start removed (for example by `cryoproc1d`), the number of complex points
 after time zero that were removed: the drop in `TD` from `acqu` (the original) to `acqus`, less the
 group delay `GRPDLY`. Zero if this cannot be determined.
 """

@@ -64,13 +64,15 @@ end
 """
     _tracenoise(s; blocksize=64, q=0.2) -> Float64
 
-rms noise (per real component) of a complex trace. The trace is split into blocks, a straight line
+rms noise (per real component) of a complex trace. The trace is split into blocks (at most
+`blocksize` points, fewer for short traces, so that there are at least 16), a straight line
 is removed from the real and imaginary parts of each block, and the noise is taken from a low
 quantile `q` of the block standard deviations, so that blocks containing signal (including the
 dispersive tails of an unphased spectrum) do not inflate it.
 """
 function _tracenoise(s::AbstractVector{<:Complex}; blocksize::Integer=64, q::Real=0.2)
     n = length(s)
+    blocksize = clamp(n ÷ 16, 8, blocksize)          # short traces (indirect dimensions): smaller blocks
     nblocks = n ÷ blocksize
     nblocks >= 4 || return std(real.(s))
     x = collect(1.0:blocksize) .- (blocksize + 1) / 2
@@ -91,7 +93,7 @@ end
         -> Vector{Pole}
 
 Model a frequency-domain spectrum along `dim` (default: the direct dimension) as a sum of Lorentzian
-lines by band-wise harmonic inversion (HSVD), returning one [`Pole`](@ref) per line, sorted by
+lines, by band-wise harmonic inversion (HSVD), and return one [`Pole`](@ref) per line, sorted by
 decreasing chemical shift. The spectrum may be unphased: the phase of each line is part of the
 result.
 
@@ -111,7 +113,7 @@ dimension and sums over the remaining dimensions.
 - `snr`: minimum signal-to-noise ratio (peak height / noise) for a pole to be kept.
 - `maxlinewidth`: largest linewidth (Hz) kept; broader poles model baseline rather than lines.
   Defaults to an eighth of the band width in Hz.
-- `exclude`: chemical-shift intervals (ppm) to ignore, e.g. `[4.6 .. 4.9]` to drop water.
+- `exclude`: chemical-shift intervals (ppm) to ignore, for example `[4.6 .. 4.9]` to drop water.
 
 See also [`estimatephase`](@ref), [`autophase`](@ref).
 """

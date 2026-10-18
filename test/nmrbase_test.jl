@@ -559,7 +559,7 @@ end
 
 @testset "NMRBase: window functions" begin
     dat = exampledata("pseudo2D_XSTE")
-    @test dat[1, :window] isa Cos²Window
+    @test dat[1, :window] isa Cos2Window
     @test dat[1, :window].tmax == 0.0512
     @test length(apod(dat, 1)) == 2048
     @test apod(dat, 1)[10] == 0.9992377902866475

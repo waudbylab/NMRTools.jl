@@ -118,7 +118,8 @@ function _minimalacqus(dest, spec, axisdims, tds; dtypa=2, grpdly=0.0)
                                  "NUC1" => string(something(metadata(d, :label), "off"))]
         if k == 1
             append!(pairs,
-                    Pair{String,Any}["DTYPA" => dtypa, "BYTORDA" => 0, "GRPDLY" => grpdly,
+                    Pair{String,Any}["DTYPA" => dtypa, "BYTORDA" => 0, "NC" => 0,
+                                     "GRPDLY" => grpdly,
                                      "DIGMOD" => grpdly > 0 ? 1 : 0, "AQ_mod" => 3,
                                      "AQSEQ" => 0, "NS" => something(metadata(spec, :ns), 1),
                                      "RG" => something(metadata(spec, :rg), 1),
@@ -182,27 +183,31 @@ end
 """
     savefid(path, spec; dtype=Float64, overwrite=false) -> String
 
-Write time-domain data as a raw Bruker experiment in folder `path`: `fid` (1D) or `ser` (nD), with
-acquisition parameter files. Returns the path of the data file.
+Write time-domain data as a raw Bruker experiment in the folder `path`, as `fid` (1D) or `ser` (nD)
+with acquisition parameter files, and return the path of the data file.
 
-`spec` has `TimeDimension`s for its Fourier dimensions (e.g. from [`loadfid`](@ref), possibly after
-time-domain processing such as [`linearpredict`](@ref NMRTools.NMRBase.linearpredict)) and
-optionally non-Fourier dimensions such as a relaxation series. The steps taken by `loadfid` are
-undone so that the file has the layout TopSpin expects: the t = 0 points are unscaled,
-phase-sensitive indirect dimensions are re-encoded with their original quadrature scheme (States,
-States-TPPI or echo/anti-echo), and the dimensions are put back in acquisition order. Digital-filter
-build-up points are kept in the data by `loadfid`, so they are written back unchanged, and `GRPDLY`
-is set to the group delay still present in the data (zero after a forward and inverse Fourier
-transform). `loadfid` on the written experiment returns the original data.
+`spec` is time-domain data such as that from [`loadfid`](@ref), possibly after time-domain
+processing such as [`linearpredict`](@ref NMRTools.NMRBase.linearpredict). The changes `loadfid`
+makes are undone, so the file has the layout TopSpin expects: t = 0 points are unscaled, the `2^NC`
+intensity scaling is removed, phase-sensitive indirect dimensions are re-encoded with their original
+quadrature scheme (States, States-TPPI or echo/anti-echo), and the dimensions are put back in
+acquisition order. Digital-filter build-up points stay in the data, so they are written back
+unchanged. `loadfid` on the written experiment returns the original data.
 
-Parameter files (`acqus`, `acqu2s`, pulse programme, lists, …) are copied from the experiment the
-data were loaded from, with `TD`, `DTYPA` and `BYTORDA` updated. Without a source experiment,
-minimal parameter files are generated from the dimension metadata.
+Parameter files (`acqus`, `acqu2s`, the pulse programme, lists, …) are copied from the experiment
+the data were loaded from, with `TD`, `DTYPA`, `BYTORDA` and `GRPDLY` updated. Without a source
+experiment, minimal parameter files are generated from the dimension metadata.
 
 # Keywords
-- `dtype`: `Float64` (TopSpin `DTYPA=2`, as written by Avance NEO spectrometers) or `Int32`
-  (`DTYPA=0`, readable by older TopSpin versions; data are rounded and must fit in 32 bits).
+- `dtype`: `Float64` (`DTYPA = 2`, as written by Avance NEO spectrometers) or `Int32` (`DTYPA = 0`,
+  readable by older TopSpin versions; data are rounded and must fit in 32 bits).
 - `overwrite`: replace existing data in `path`.
+
+# Examples
+```julia
+fid = loadfid("myexperiment/1")
+savefid("extended/1", linearpredict(fid, T2Dim))
+```
 
 See also [`savenmr`](@ref).
 """
@@ -251,8 +256,11 @@ function savefid(path, spec::NMRData; dtype::Type=Float64, overwrite::Bool=false
         y = _splitunit(y, k, metadata(storagedims[k], :quadrature))
     end
 
-    # 4. interleave the direct-dimension real/imaginary points and pad rows to 1024 bytes
-    c = [ComplexF64(realest(m), imag(m)) for m in y]
+    # 4. interleave the direct-dimension real/imaginary points and pad rows to 1024 bytes. Undo the
+    # 2^NC scaling applied by loadfid when the source parameters (with their NC) are copied.
+    src = _sourceexperiment(spec)
+    nc = isnothing(src) ? 0 : get(something(metadata(spec, :acqus), Dict()), :nc, 0)
+    c = [ComplexF64(realest(m), imag(m)) * 2.0^(-nc) for m in y]
     raw = zeros(Float64, 2 * size(c, 1), size(c)[2:end]...)
     selectdim(raw, 1, 1:2:size(raw, 1)) .= real.(c)
     selectdim(raw, 1, 2:2:size(raw, 1)) .= imag.(c)
@@ -276,13 +284,12 @@ function savefid(path, spec::NMRData; dtype::Type=Float64, overwrite::Bool=false
     # 5. parameter files
     tds = [td; [size(y, k) for k in 2:ndim]]
     dtypa = dtype === Float64 ? 2 : 0
-    src = _sourceexperiment(spec)
     if isnothing(src)
         _minimalacqus(path, spec, storagedims, tds; dtypa, grpdly=max(grpdly, 0.0))
     else
         _copyparameters(src, path)
         acqusdic = metadata(spec, :acqus)
-        # a negative delay marks a FID already modified in TopSpin (e.g. by cryoproc1d): its
+        # a negative delay marks a FID already modified in TopSpin (for example by cryoproc1d): its
         # parameters are copied unchanged so that loadfid recognises it again
         patch = Pair{String,Any}["TD" => td, "DTYPA" => dtypa, "BYTORDA" => 0]
         grpdly >= 0 && push!(patch, "GRPDLY" => grpdly)
@@ -309,7 +316,7 @@ const _PDATAFILES = Dict(1 => ["1r", "1i"],
 "window function → (WDW, LB, SSB) procs parameters"
 _wdwpars(w::ExponentialWindow) = (1, w.lb, 0.0)
 _wdwpars(::CosWindow) = (3, 0.0, 2.0)
-_wdwpars(::Cos²Window) = (4, 0.0, 2.0)
+_wdwpars(::Cos2Window) = (4, 0.0, 2.0)
 _wdwpars(w::GeneralSineWindow) = (w.power == 2 ? 4 : 3, 0.0,
                                   w.offset >= 1 ? 0.0 : 1 / (1 - w.offset))
 _wdwpars(::Any) = (0, 0.0, 0.0)
@@ -343,19 +350,29 @@ end
 """
     savenmr(path, spec; procno=1, overwrite=false) -> String
 
-Write a frequency-domain spectrum as Bruker processed data and return the processed-data folder.
-`path` is either an experiment folder (data go in `path/pdata/<procno>`) or a processed-data folder
+Write a frequency-domain spectrum as Bruker processed data, and return the processed-data folder.
+`path` is an experiment folder (data go in `path/pdata/<procno>`) or a processed-data folder
 `…/pdata/<n>`. 1D, 2D and 3D spectra are supported, including pseudo-dimensions.
 
-The real part is written to `1r`/`2rr`/`3rrr`. For multicomplex 1D and 2D spectra the imaginary
+The real part is written to `1r`, `2rr` or `3rrr`. For multicomplex 1D and 2D spectra the imaginary
 parts are written too (`1i`; `2ir`, `2ri`, `2ii`), conjugated to TopSpin's sign convention. Data are
-stored as 32-bit integers with the `NC_proc` scaling exponent chosen to keep full precision.
-Processing parameters (`procs`, `proc2s`, …) record the axes, window function and the phase
-correction applied (`PHC0`/`PHC1`).
+stored as 32-bit integers, with the `NC_proc` exponent chosen to keep full precision. The processing
+parameter files (`procs`, `proc2s`, …) record the axes, the window function and the phase correction
+applied (`PHC0`, `PHC1`).
 
 If the experiment folder has no acquisition parameters, they are copied from the experiment the
 spectrum was loaded from or, failing that, generated from the dimension metadata, so that
 [`loadnmr`](@ref) can read the result.
+
+# Keywords
+- `procno`: processed-data number, used when `path` is an experiment folder.
+- `overwrite`: replace existing processed data.
+
+# Examples
+```julia
+spec = loadfid("myexperiment/1") |> autoprocess
+savenmr("myexperiment/1", spec; procno=2)
+```
 
 See also [`savefid`](@ref).
 """

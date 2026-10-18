@@ -46,7 +46,7 @@ end
     @test size(apodize(spec)) == size(spec)
 
     # a window with no length constructs and gets tmax filled in automatically
-    @test apodize(spec, T1Dim, Cos²Window()) isa NMRData
+    @test apodize(spec, T1Dim, Cos2Window()) isa NMRData
 end
 
 @testset "processing: zerofill" begin

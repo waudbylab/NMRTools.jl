@@ -67,7 +67,7 @@ end
     if !isfile(joinpath(src, "ser"))
         @test_skip "raw test data not available"
     else
-        spec = loadfid(src) |> apodize(Cos²Window()) |> zerofill |> ft |> phase(1, 30.0)
+        spec = loadfid(src) |> apodize(Cos2Window()) |> zerofill |> ft |> phase(1, 30.0)
         mktempdir() do dir
             pdir = savenmr(dir, spec)
             @test pdir == joinpath(dir, "pdata", "1")

@@ -11,6 +11,29 @@ processing the element type is `Multicomplex`: each dimension's quadrature is ca
 imaginary unit (`im1` for the direct dimension, `im2` for the first indirect dimension, …), and the
 `:mcindex` metadata of each dimension records which unit belongs to it.
 
+## Quick start: `autoprocess`
+
+[`autoprocess`](@ref) turns raw data into a phased spectrum in one step: water suppression for ¹H
+spectra in H₂O, a cos² window, zero-filling to twice the size, Fourier transformation and automatic
+phasing of every dimension.
+
+```julia
+using NMRTools
+spec = loadfid("myexperiment/1") |> autoprocess
+spec = loadfid("myexperiment/1") |> autoprocess(window=ExponentialWindow(1.0), solvent=false)
+```
+
+Each step can be changed with a keyword, for all dimensions or per dimension with a dictionary:
+
+```julia
+spec = autoprocess(loadfid("hsqc/1");
+                   window=Dict(T1Dim => Cos2Window(), T2Dim => Cos2Window()),
+                   zerofill=Dict(T2Dim => 4),
+                   phase=Dict(F2Dim => (0.0, 0.0)))     # fixed phases for the indirect dimension
+```
+
+The rest of this page describes the individual steps.
+
 ## Loading raw data
 
 [`loadfid`](@ref) reads a `fid` (1D) or `ser` (nD) file and returns time-domain data:
@@ -28,7 +51,9 @@ On loading:
 - the digital filter's build-up points stay in the FID, on a time axis that starts before t = 0;
   [`ft`](@ref) removes the group delay (see below);
 - the t = 0 point of each Fourier dimension is scaled by 0.5 (change this with `firstpoint`), except
-  in the direct dimension of baseopt data.
+  in the direct dimension of baseopt data;
+- the data are scaled by `2^NC`, as TopSpin scales them, so that intensities after [`ft`](@ref),
+  which applies no normalisation, match TopSpin's.
 
 ### Digital filtering and baseopt
 
@@ -57,7 +82,7 @@ How the delay is found depends on the acquisition parameters:
 | `DIGMOD = 3` (baseopt, `DSPFIRM` rectangle) | delay `GRPDLY` (an integer); t = 0 point not scaled |
 | `DIGMOD = 1` (digital), `DSPFVS` 20–23 | delay `GRPDLY` (may be fractional); t = 0 point scaled by 0.5 |
 | `DIGMOD = 0` (analogue) | no delay |
-| `DSPFVS` outside 10–23 (FID modified, e.g. by `cryoproc1d`) | time axis starts after t = 0 by the points removed beyond `GRPDLY`, with a warning |
+| `DSPFVS` outside 10–23 (FID modified, for example by `cryoproc1d`) | time axis starts after t = 0 by the points removed beyond `GRPDLY`, with a warning |
 
 In baseopt mode the spectrometer aligns acquisition with time zero (the pulse programme's `acqt0`)
 and corrects the initial points of the FID itself, so no first-order phase correction should be
@@ -69,8 +94,11 @@ removed: the filter build-up and some points after time zero (the original is sa
 experiment number, recorded in `audita.txt`). `loadfid` compares `TD` in `acqu`, which keeps the
 original value, with `TD` in `acqus` to find how many points after time zero are missing, and starts
 the time axis at that time, so that `ft` restores the correct time origin and the lines can be
-phased together. A warning reports the number of missing points; their absence can leave a broad
-baseline distortion.
+phased together. A warning reports the number of missing points. Their absence leaves a ripple
+around strong lines. TopSpin rebuilds them by backward linear prediction with thousands of
+coefficients; `linearpredict(fid, T1Dim; direction=:backward, npoints=n)`, or
+`autoprocess(fid; rebuild=true)`, rebuilds them with a low-order prediction, which removes the ripple
+but can distort the baseline when the FID contains fast-decaying signals such as probe background.
 
 ## The processing pipeline
 
@@ -99,7 +127,7 @@ one only, for example to use different windows in each dimension of a 2D experim
 
 ```julia
 spec = loadfid("hsqc/1") |>
-       apodize(T1Dim, Cos²Window()) |> apodize(T2Dim, Cos²Window()) |>
+       apodize(T1Dim, Cos2Window()) |> apodize(T2Dim, Cos2Window()) |>
        zerofill |> ft |>
        phase(F1Dim, -87.5) |> phase(F2Dim, 0.0, 180.0) |>
        real
@@ -162,7 +190,7 @@ Useful options:
 - `maxdelay` sets how far the first-order phase may range. A first-order phase is a shift of the
   time origin, so the range is given as a timing uncertainty (default 20 µs) and converted with the
   spectral width: ±100° for a 14 kHz ¹H spectrum, ±950° for a 130 kHz ¹⁹F spectrum.
-- `exclude=[4.6 .. 4.9]` ignores lines in the given chemical-shift ranges, e.g. water or buffer.
+- `exclude=[4.6 .. 4.9]` ignores lines in the given chemical-shift ranges, for example water or buffer.
 - `λ` sets how strongly the first-order phase is pulled towards `p1`. The pull is scaled by the
   scatter of the line phases and the number of lines, so it has little effect when many lines agree.
   Increase it when the lines cover only part of the spectrum.

@@ -133,3 +133,16 @@ end
         @test (@test_logs (:warn, r"DSPFVS = 0") NMRTools.NMRIO._groupdelay(acqus, nothing)) == 0
     end
 end
+
+@testset "loadfid: intensity scaling by 2^NC" begin
+    cest = joinpath(TESTDATA, "19f-cest-ts3")             # NC = -6, DTYPA = 0
+    if !isfile(joinpath(cest, "ser"))
+        @test_skip "raw test data not available"
+    else
+        raw = Vector{Int32}(undef, 2)
+        open(f -> read!(f, raw), joinpath(cest, "ser"))
+        dat = loadfid(cest; removefilter=false, firstpoint=1.0)
+        @test realest(parent(dat)[1, 1]) ≈ ltoh(raw[1]) * 2.0^-6
+        @test imag(parent(dat)[1, 1]) ≈ ltoh(raw[2]) * 2.0^-6
+    end
+end

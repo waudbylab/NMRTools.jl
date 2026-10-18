@@ -83,7 +83,7 @@ w = CosWindow(0.1)
 
 ---
 
-**`Cos²Window(tmax)`**
+**`Cos2Window(tmax)`**
 
 Squared cosine window function:
 
@@ -92,7 +92,7 @@ w(t) = \cos^2\left(\frac{\pi t}{2t_{\mathrm{max}}}\right)
 ```
 
 ```@example windows
-w = Cos²Window(0.1)
+w = Cos2Window(0.1)
 ```
 
 **Effect:** Gentler apodization than cosine, better S/N but slightly lower resolution.
@@ -123,7 +123,7 @@ w = GeneralSineWindow(0.5, 1.0, 2.0, 0.1)
 
 **Special cases:**
 - `offset=0.5, power=1.0` → `CosWindow`
-- `offset=0.5, power=2.0` → `Cos²Window`
+- `offset=0.5, power=2.0` → `Cos2Window`
 
 ### Gaussian windows
 

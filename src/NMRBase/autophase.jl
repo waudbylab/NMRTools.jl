@@ -4,7 +4,7 @@
 # argument of its complex amplitude. Individual pole phases are unreliable in two cases, so poles
 # are filtered and grouped first:
 #
-#   - Multiplets. J-evolution during echoes (e.g. excitation sculpting) gives the lines of a
+#   - Multiplets. J-evolution during echoes (for example excitation sculpting) gives the lines of a
 #     multiplet antiphase dispersive components, which cancel only in the sum over the multiplet.
 #     Poles closer than a coupling constant (plus their half-linewidths) are grouped, and the phase
 #     of the group's summed amplitude is used.
@@ -151,8 +151,7 @@ the correction, `residual` is the weighted rms phase error (degrees) of the obse
 `(shift, residual, relsnr)`, strongest first, where `relsnr` is the signal-to-noise ratio relative to
 the strongest group used, and `edges` lists the edge observations as
 `(edge, snr, residual, used)`. A large residual, a small number of groups, or a strong rejected group
-means the estimate should not be trusted. [`autophase`](@ref) warns when a rejected group has
-`relsnr ≥ 0.02`.
+means the estimate should not be trusted. [`autophase`](@ref) warns when strong groups are rejected.
 
 Lines are found with [`estimatepoles`](@ref) and each line's phase is read from its complex
 amplitude. Poles within a coupling constant of each other are grouped and the phase of their summed
@@ -270,7 +269,7 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
 
     # Fit the line groups first. An edge joins only if it agrees with that fit within three times
     # the scatter of the line groups (and `maxresidual`), so that the edges refine the line-based
-    # estimate but cannot override it. Edges are wrong when the baseline has an offset (e.g. from a
+    # estimate but cannot override it. Edges are wrong when the baseline has an offset (for example from a
     # wrong first-point factor) or when a strong line has a genuinely different phase, since its
     # dispersion tail reaches the edges too.
     p0r, p1r, inl, w, σlines = fit(isline)
@@ -305,8 +304,8 @@ end
 
 Estimate the phase correction of dimension `dim` (default: the direct dimension) with
 [`estimatephase`](@ref) and apply it with [`phase`](@ref). The total correction applied is recorded in
-the dimension's `:phase` metadata. Keywords are passed to `estimatephase`, e.g. `order=0` for
-zero-order only or `exclude=[4.6 .. 4.9]` to ignore water.
+the dimension's `:phase` metadata. Keywords are passed to `estimatephase`, for example `order=0`
+for zero-order only, or `exclude=[4.6 .. 4.9]` to ignore water.
 
 For multidimensional data the correction is estimated from a single trace along `dim` (see
 [`estimatepoles`](@ref)) and applied to the whole dataset.
@@ -322,12 +321,15 @@ function autophase(spec::NMRData, dim=1; kw...)
           "(residual $(round(est.residual; digits=1))° over $(est.nlines) of $ntotal line groups)"
     # warn about strong lines that could not be phased together with the rest
     strong = filter(r -> r.relsnr >= 0.02, est.rejected)
-    if !isempty(strong)
+    # Only when the lines left out are a substantial part of the signal: in crowded spectra many
+    # small overlapping groups scatter without affecting the result.
+    if !isempty(strong) && length(strong) <= max(2, est.nlines ÷ 4)
         where = join(["$(round(r.shift; digits=2)) ppm ($(round(Int, r.residual))°)"
-                      for r in strong], ", ")
+                      for r in first(strong, 3)], ", ")
+        more = length(strong) > 3 ? " and $(length(strong) - 3) more" : ""
         @warn "autophase: strong lines left out of the fit, with their remaining phase error: " *
-              "$where. They may have a genuinely different phase, or the first-order phase may " *
-              "be far from the expected value; pass `p1` (and `maxdelay`) to set it."
+              "$where$more. They may have a genuinely different phase, or the first-order phase " *
+              "may be far from the expected value; pass `p1` (and `maxdelay`) to set it."
     end
     return phase(spec, dim, est.p0, est.p1; pivot=est.pivot)
 end
@@ -341,12 +343,12 @@ end
 """
     autophase0(spec, [dim]; exclude=())
 
-Zero-order phase correction of dimension `dim` (default: the direct dimension) of a
+Correct the zero-order phase of dimension `dim` (default: the direct dimension) of a
 frequency-domain spectrum. `p0` is chosen so that the integral of the dispersion mode over the
 spectrum is zero and the integral of the absorption mode is positive: it is the phase of the integral
 of the complex spectrum, which equals the phase of the first point of the FID. Points in the
-chemical-shift intervals `exclude` (e.g. `[4.6 .. 4.9]`) are left out of the integral. No first-order
-correction is applied.
+chemical-shift intervals `exclude`, for example `[4.6 .. 4.9]`, are left out of the integral. No
+first-order correction is applied.
 
 The integral includes everything in the spectrum, so baseline offsets, broad background signals and
 corrupted first FID points all bias the result. For multidimensional data the correction is

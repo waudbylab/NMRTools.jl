@@ -58,6 +58,7 @@ include("harmonic.jl")
 include("solvent.jl")
 include("poles.jl")
 include("autophase.jl")
+include("autoprocess.jl")
 include("peaks.jl")
 include("pcls.jl")
 include("reference.jl")
@@ -121,6 +122,7 @@ export linearpredict
 export solventfilter
 export Pole, estimatepoles
 export estimatephase, autophase, autophase0
+export autoprocess
 
 # Dimensions
 export NMRDimension
@@ -171,7 +173,7 @@ export NullWindow
 export UnknownWindow
 export ExponentialWindow
 export SineWindow
-export GeneralSineWindow, CosWindow, Cos²Window
+export GeneralSineWindow, CosWindow, Cos2Window, Cos²Window
 export GaussWindow
 export GeneralGaussWindow, LorentzToGaussWindow
 export lineshape

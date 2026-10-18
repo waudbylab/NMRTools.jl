@@ -56,7 +56,7 @@ Acquisition time is `tmax`.
     \\right)\\right]^\\mathrm{power}
 ```
 
-Specialises to `CosWindow`, `Cos²Window` or `GeneralSineWindow`.
+Specialises to `CosWindow`, `Cos2Window` or `GeneralSineWindow`.
 
 # Arguments
 - `offset`: initial value is ``\\sin(\\mathrm{offset}\\cdot\\pi)`` (0 to 1)
@@ -69,7 +69,7 @@ function SineWindow(offset=0.0, endpoint=1.0, power=1.0, tmax=Inf)
     if power ≈ 1.0 && offset ≈ 0.5
         return CosWindow(endpoint * tmax)
     elseif power ≈ 2.0 && offset ≈ 0.5
-        return Cos²Window(endpoint * tmax)
+        return Cos2Window(endpoint * tmax)
     else
         return GeneralSineWindow(offset, endpoint, power, tmax)
     end
@@ -90,7 +90,7 @@ end
 
 Apodization by a pure cosine function. Acquisition time is `tmax`.
 
-See also [`Cos²Window`](@ref), [`SineWindow`](@ref).
+See also [`Cos2Window`](@ref), [`SineWindow`](@ref).
 """
 struct CosWindow <: SineWindow
     tmax::Float64
@@ -98,16 +98,23 @@ struct CosWindow <: SineWindow
 end
 
 """
-    Cos²Window(tmax)
+    Cos2Window(tmax=Inf)
 
-Apodization by a pure cosine squared function. Acquisition time is `tmax`.
+Apodization by a cosine-squared function, `cos²(πt / 2tmax)`, falling from 1 at t = 0 to 0 at
+`tmax`. When `tmax` is left at `Inf`, [`apodize`](@ref) sets it to the acquisition time.
+Equivalent to TopSpin's `QSINE` with `SSB = 2`.
+
+`Cos²Window` is an alias, kept for compatibility.
 
 See also [`CosWindow`](@ref), [`SineWindow`](@ref).
 """
-struct Cos²Window <: SineWindow
+struct Cos2Window <: SineWindow
     tmax::Float64
-    Cos²Window(tmax=Inf) = new(tmax)
+    Cos2Window(tmax=Inf) = new(tmax)
 end
+
+"Alias of [`Cos2Window`](@ref), kept for compatibility."
+const Cos²Window = Cos2Window
 
 """
     GaussWindow(expHz, gaussHz, center, tmax)
@@ -224,14 +231,14 @@ function _lineshape(ω, R, ωax, w::CosWindow, ::RealLineshape)
     return real(_lineshape(ω, R, ωax, w, ComplexLineshape()))
 end
 
-function _lineshape(ω, R, ωax, w::Cos²Window, ::ComplexLineshape)
+function _lineshape(ω, R, ωax, w::Cos2Window, ::ComplexLineshape)
     x = @. R + 1im * (ω - ωax)
     Tx = w.tmax * x
 
     return @. (π^2 * (1 - exp(-Tx)) + 2 * Tx^2) / (2 * (π^2 + Tx^2) * x)
 end
 
-function _lineshape(ω, R, ωax, w::Cos²Window, ::RealLineshape)
+function _lineshape(ω, R, ωax, w::Cos2Window, ::RealLineshape)
     return real(_lineshape(ω, R, ωax, w, ComplexLineshape()))
 end
 
@@ -275,4 +282,4 @@ function apod(t, w::GeneralSineWindow)
     @. sin(π * w.offset + π * ((w.endpoint - w.offset) * t / w.tmax))^w.power
 end
 apod(t, w::CosWindow) = @. cos(π / 2 * t / w.tmax)
-apod(t, w::Cos²Window) = @. cos(π / 2 * t / w.tmax)^2
+apod(t, w::Cos2Window) = @. cos(π / 2 * t / w.tmax)^2

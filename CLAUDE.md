@@ -34,7 +34,7 @@ NMRTools.jl is a Julia library for NMR spectroscopy data. It encodes the structu
 - **`NMRData <: AbstractDimArray`**: main data container. Wraps arrays with named dimensions and metadata. Built on DimensionalData.jl.
 - **`Multicomplex{T,N,C}`**: element type for NMR data. From MulticomplexNumbers.jl. A 2D experiment has `Multicomplex{Float64,2,4}` elements (bicomplex, 4 components). `im1` is the conventional complex unit — never use Julia's `im`.
 - **Dimension hierarchy**: `FrequencyDimension` (F1Dim–F4Dim), `TimeDimension` (T1Dim–T4Dim, TrelaxDim, TkinDim), `GradientDimension` (G1Dim–G4Dim), `UnknownDimension` (X1Dim–X4Dim), `OffsetDimension` (OffsetDim), `FieldDimension` (SpinlockDim)
-- **`WindowFunction`** subtypes: `ExponentialWindow`, `CosWindow`, `Cos²Window`, `SineWindow`, `GaussWindow`, `LorentzToGaussWindow`, `NullWindow`, `UnknownWindow`
+- **`WindowFunction`** subtypes: `ExponentialWindow`, `CosWindow`, `Cos2Window`, `SineWindow`, `GaussWindow`, `LorentzToGaussWindow`, `NullWindow`, `UnknownWindow`
 
 ### Critical metadata: `:mcindex`
 
@@ -88,6 +88,8 @@ loadfid("1/ser") |> apodize |> zerofill |> ft |>
 ```
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
+
+`autoprocess(fid; window, zerofill, solvent, phase, rebuild)` chains solvent filter (¹H in H₂O), apodize (`Cos2Window` default), zerofill, ft and autophase for 1D/2D; per-dimension settings via `Dict`. `loadfid` scales raw data by `2^NC` so intensities match TopSpin. `phase`, `extract` and `ft` refresh `:noise`. `Cos2Window` (alias `Cos²Window`).
 
 Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
 

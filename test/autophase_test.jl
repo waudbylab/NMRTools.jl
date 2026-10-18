@@ -4,7 +4,7 @@ using Test
 
 # Synthetic 1D spectrum: a sum of Lorentzian lines (shift in Hz from the carrier, linewidth in Hz,
 # complex amplitude), Fourier transformed with the standard pipeline.
-function synthetic_spectrum(lines; n=4096, sw=5000.0, bf=500.0e6, noise=0.0)
+function synthetic_fid(lines; n=4096, sw=5000.0, bf=500.0e6, noise=0.0)
     t = collect((0:(n - 1)) ./ sw)
     z = zeros(ComplexF64, n)
     for (ν, lw, a) in lines
@@ -16,9 +16,9 @@ function synthetic_spectrum(lines; n=4096, sw=5000.0, bf=500.0e6, noise=0.0)
                           :swppm => 1e6 * sw / bf, :offsethz => 0.0, :offsetppm => 4.7,
                           :td => n, :tdzf => n, :npoints => n, :region => missing,
                           :window => nothing, :pseudodim => false, :units => "s")
-    fid = NMRData([Multicomplex(real(zi), imag(zi)) for zi in z], (T1Dim(t; metadata=dd),))
-    return fid |> zerofill |> ft
+    return NMRData([Multicomplex(real(zi), imag(zi)) for zi in z], (T1Dim(t; metadata=dd),))
 end
+synthetic_spectrum(lines; kw...) = synthetic_fid(lines; kw...) |> zerofill |> ft
 
 const LINES = [(-2000.0, 4.0, 1.0), (-1300.0, 6.0, 0.8), (-600.0, 3.0, 1.2), (-100.0, 5.0, 0.6),
                (400.0, 4.0, 1.0), (900.0, 8.0, 0.9), (1500.0, 3.0, 0.7), (2100.0, 5.0, 1.1)]
@@ -139,4 +139,60 @@ end
     @test phase(spec, 1, 0) isa NMRData
     # the TopSpin sign convention: data are multiplied by exp(-im1·θ)
     @test parent(phase(spec, 1, 90.0))[1] ≈ parent(spec)[1] * (-im1)
+end
+
+@testset "noise refresh and Cos2Window alias" begin
+    spec = synthetic_spectrum(LINES; noise=1e-3)
+    bad = phase(spec, 1, 70.0)
+    n0 = metadata(bad, :noise)
+    fixed = phase(bad, 1, -70.0)
+    @test metadata(fixed, :noise) != n0                 # re-estimated after phasing
+    @test metadata(bad, :noise) == n0                   # input unchanged
+    region = extract(F1Dim, 4.0 .. 6.0)(fixed)
+    @test !isnothing(metadata(region, :noise))
+    @test Cos²Window === Cos2Window
+end
+
+@testset "linearpredict: rebuilding points before the first stored point" begin
+    # a FID starting 6 dwells after t = 0 (negative group delay, as for cryoproc1d data)
+    fid = synthetic_fid(LINES; noise=1e-4)
+    n, sw, k = size(fid, 1), 5000.0, 6
+    md = Dict{Symbol,Any}(pairs(metadata(dims(fid, 1)).val))
+    md[:grpdly] = -Float64(k)
+    late = NMRData(parent(fid)[(k + 1):end], (T1Dim(collect((k:(n - 1)) ./ sw); metadata=md),))
+    rebuilt = linearpredict(late, 1; direction=:backward, npoints=n)
+    @test data(dims(rebuilt, 1))[1] ≈ 0 atol = 1e-12
+    @test metadata(rebuilt, 1, :grpdly) == 0
+    @test parent(rebuilt)[2:k] ≈ parent(fid)[2:k] rtol = 1e-2
+    # ft of the late-starting FID restores the time origin: same line phases as the full FID
+    @test abs(estimatephase(late |> zerofill |> ft; order=0).p0) < 3
+end
+
+@testset "autoprocess" begin
+    fid = synthetic_fid(LINES; noise=1e-3)
+    bad = phase(fid, 1, 50.0)                            # zero-order phase error in the FID
+    spec = autoprocess(bad; solvent=false)
+    @test dims(spec, 1) isa F1Dim
+    @test size(spec, 1) == 2 * size(fid, 1)
+    @test abs(rad2deg(angle(cis(deg2rad(metadata(spec, 1, :phase).p0 + 50.0))))) < 3   # undoes +50°
+    @test metadata(spec, 1, :window) isa Cos2Window
+    # keyword forms: curried, explicit phase, no zero-filling, per-dimension dictionaries
+    @test parent(bad |> autoprocess(solvent=false)) ≈ parent(spec)
+    s2 = autoprocess(bad; solvent=false, phase=(50.0, 0.0), zerofill=1,
+                     window=Dict(T1Dim => ExponentialWindow(2.0)))
+    @test size(s2, 1) == size(fid, 1)
+    @test metadata(s2, 1, :phase).p0 ≈ 50.0
+    @test metadata(s2, 1, :window) isa ExponentialWindow
+    @test metadata(autoprocess(bad; solvent=false, phase=nothing), 1, :phase) === nothing
+    @test_throws ArgumentError autoprocess(bad; solvent=false, phase=:wrong)
+
+    testdata = joinpath(@__DIR__, "test-data")
+    if isfile(joinpath(testdata, "15n-trosy-ts3", "ser"))
+        s2d = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")))
+        @test dims(s2d, 1) isa F1Dim && dims(s2d, 2) isa F2Dim
+        @test !isnothing(metadata(s2d, 2, :phase))
+        pseudo = autoprocess(loadfid(joinpath(testdata, "19f-cest-ts3")))
+        @test dims(pseudo, 1) isa F1Dim
+        @test size(pseudo, 2) == 101
+    end
 end
