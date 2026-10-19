@@ -62,7 +62,8 @@ change in a future release.
   dimension argument, `autophase` and `autophase0` phase every frequency dimension in turn (a
   dimension with too little signal is left unphased, with a warning). The total correction applied
   is recorded in each frequency dimension's `:phase` metadata, and the estimate is logged at debug
-  level.
+  level. Automatic phasing is reliable for 1D spectra; for multidimensional data, and indirect
+  dimensions in particular, check the result and set known phases with `phase`.
 - `autoprocess` chains solvent suppression, apodization, zero-filling, Fourier transformation and
   automatic phasing in one step, with per-dimension settings.
 - `Cos2Window` replaces `Cos²Window`, which remains as an alias. `CosWindow`, `Cos2Window` and
