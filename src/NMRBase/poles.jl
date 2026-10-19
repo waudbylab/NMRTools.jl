@@ -54,14 +54,11 @@ point while signal comes from only a few.
 function _referencetrace(spec::NMRData, di::Integer)
     A = parent(spec)
     mcindex = metadata(dims(spec, di), :mcindex)
-    N = MulticomplexNumbers.order(first(A))
-    Ac = copy(A)
-    # the complex view wraps Ac's memory without referencing Ac, so Ac must be kept alive while
-    # the view is read
-    v = GC.@preserve Ac begin
-        w = MulticomplexNumbers.unsafe_ascomplex!(Ac, mcindex)   # N-1 component axes, then data
-        collect(ComplexF64, w[ntuple(i -> i <= N - 1 ? 1 : Colon(), ndims(w))...])
-    end
+    # complex view in the dimension's unit; above first order it has a leading component axis, whose
+    # first entry is real in every other unit
+    w = MulticomplexNumbers.ascomplex(A, mcindex)
+    ndims(w) > ndims(A) && (w = selectdim(w, 1, 1))
+    v = collect(ComplexF64, w)
     for (j, d) in enumerate(dims(spec))
         j == di && continue
         v = if d isa TimeDimension
