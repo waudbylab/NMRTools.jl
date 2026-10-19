@@ -309,8 +309,9 @@ savefid("processed/1", linearpredict(fid))          # new experiment folder
 ```
 
 `savenmr` writes the real part (`1r`, `2rr`, `3rrr`) and, for multicomplex 1D and 2D data, the
-imaginary parts, as 32-bit integers scaled by `NC_proc`. The processing parameter files (`procs`,
-`proc2s`, …) record the axes, the window function and the phase correction applied.
+imaginary parts, as 32-bit integers scaled by `NC_proc`. The processing parameter files, both
+current (`proc`, `proc2`, …) and status (`procs`, `proc2s`, …), record the axes, the window function
+and the phase correction applied.
 
 `savefid` undoes the steps taken by `loadfid`: it restores the first points and the digital-filter
 group delay, re-encodes each indirect dimension with its original quadrature scheme and puts the

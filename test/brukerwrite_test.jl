@@ -71,7 +71,9 @@ end
         mktempdir() do dir
             pdir = savenmr(dir, spec)
             @test pdir == joinpath(dir, "pdata", "1")
-            @test all(isfile, joinpath.(pdir, ["2rr", "2ir", "2ri", "2ii", "procs", "proc2s"]))
+            @test all(isfile, joinpath.(pdir, ["2rr", "2ir", "2ri", "2ii", "proc", "procs", "proc2",
+                                               "proc2s"]))
+            @test read(joinpath(pdir, "proc")) == read(joinpath(pdir, "procs"))
             @test isfile(joinpath(dir, "acqus"))                  # copied from the source
             @test_throws ArgumentError savenmr(dir, spec)
 

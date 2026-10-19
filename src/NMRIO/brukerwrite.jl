@@ -363,8 +363,8 @@ The forms without the data argument return a function for use with `|>`.
 The real part is written to `1r`, `2rr` or `3rrr`. For multicomplex 1D and 2D spectra the imaginary
 parts are written too (`1i`; `2ir`, `2ri`, `2ii`), conjugated to TopSpin's sign convention. Data are
 stored as 32-bit integers, with the `NC_proc` exponent chosen to keep full precision. The processing
-parameter files (`procs`, `proc2s`, …) record the axes, the window function and the phase correction
-applied (`PHC0`, `PHC1`).
+parameter files, both current (`proc`, `proc2`, …) and status (`procs`, `proc2s`, …), record the axes,
+the window function and the phase correction applied (`PHC0`, `PHC1`).
 
 If the experiment folder has no acquisition parameters, they are copied from the experiment the
 spectrum was loaded from or, failing that, generated from the dimension metadata, so that
@@ -424,10 +424,13 @@ function savenmr(path, spec::NMRData; procno::Integer=1, overwrite::Bool=false)
         write(joinpath(pdir, f), htol.(round.(Int32, vec(c) .* 2.0^(-nc))))
     end
 
-    procsfiles = ["procs", "proc2s", "proc3s"]
+    # TopSpin reads both the current (proc, proc2, …) and status (procs, proc2s, …) parameters
+    procfiles = ["proc", "proc2", "proc3"]
     for (i, d) in enumerate(dims(spec))
-        _writejdx(joinpath(pdir, procsfiles[i]),
-                  _procspars(spec, d, size(spec, i), nc, i == 1))
+        pars = _procspars(spec, d, size(spec, i), nc, i == 1)
+        for f in (procfiles[i], procfiles[i] * "s")
+            _writejdx(joinpath(pdir, f), pars)
+        end
     end
     _writetitle(pdir, spec)
 

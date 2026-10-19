@@ -68,7 +68,7 @@ Reading time-domain data (under development):
 - Digital filter: `loadfid` keeps the `GRPDLY` build-up points on a time axis starting at `-GRPDLY` dwells and records `:grpdly`; `ft` removes the delay with a linear phase ramp after the FFT (as TopSpin/NMRPipe — matches TopSpin 1r to ~1e-8). Dropping the points instead gives the edge "smile". `apodize` leaves t < 0 unwindowed; `linearpredict` works from t = 0. Baseopt (`DIGMOD = 3`): t = 0 point not scaled. `DSPFVS` outside 10–23 (e.g. 0 after TopSpin's `cryoproc1d`, which rewrites the FID with its start removed): no delay, warn.
 
 Writing Bruker data:
-- **`savenmr(path, spec; procno=1)`**: frequency-domain data → `pdata/<procno>/1r`, `2rr`, … (int32 + NC_proc)
+- **`savenmr(path, spec; procno=1)`**: frequency-domain data → `pdata/<procno>/1r`, `2rr`, … (int32 + NC_proc), with both `proc`/`procs` (and `proc2`/`proc2s`, …) parameter files, which TopSpin needs
 - **`savefid(path, fid)`**: time-domain data → raw `fid`/`ser`, undoing everything `loadfid` did (first-point scaling, group delay, quadrature recombination, axis order); `loadfid(savefid(...))` round-trips
 - Both copy parameter files from the source experiment (`:experimentfolder` metadata) or generate minimal ones
 
