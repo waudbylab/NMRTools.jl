@@ -254,10 +254,13 @@ const FDIM_CONSTRUCTORS = Dict(1 => F1Dim, 2 => F2Dim, 3 => F3Dim, 4 => F4Dim)
 
 """
     shiftdim(data::NMRData, dim_ref, offset)
+    shiftdim(dim_ref, offset)
 
 Add an offset to a frequency dimension in an NMRData object. The dimension can be
 specified as a numerical index, a dimension type like `F1Dim`, or a `Nucleus` enum
 (e.g., `H1`, `C13`).
+
+The forms without the data argument return a function for use with `|>`.
 
 The metadata is copied using `replacedimension`, and an entry is added or updated
 in the dimension metadata to record the offset change.
@@ -311,3 +314,6 @@ function shiftdim(spec, dim_ref, offsetppm)
 
     return new_spec
 end
+
+# curried form for piping
+shiftdim(dim_ref, offsetppm::Real) = spec -> shiftdim(spec, dim_ref, offsetppm)

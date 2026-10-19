@@ -222,12 +222,15 @@ end
 
 """
     setkinetictimes(A::NMRData, [dimnumber], tvals, units="")
+    setkinetictimes([dimnumber], tvals, units="")
 
 Return a new NMRData with a kinetic time axis containing the passed values (and optionally, units).
 If a dimension number is specified, that dimension will be replaced with a `TkinDim`. If not, the
 function will search for a unique non-frequency dimension, and replace that. If there are multiple
 non-frequency dimensions, the dimension number must be specified explicitly, and the function will throw
 an error.
+
+The forms without the data argument return a function for use with `|>`.
 """
 function setkinetictimes() end
 
@@ -256,12 +259,15 @@ end
 
 """
     setrelaxtimes(A::NMRData, [dimnumber], tvals, units="")
+    setrelaxtimes([dimnumber], tvals, units="")
 
 Return a new NMRData with a relaxation time axis containing the passed values (and optionally, units).
 If a dimension number is specified, that dimension will be replaced with a `TrelaxDim`. If not, the
 function will search for a unique non-frequency dimension, and replace that. If there are multiple
 non-frequency dimensions, the dimension number must be specified explicitly, and the function will throw
 an error.
+
+The forms without the data argument return a function for use with `|>`.
 """
 function setrelaxtimes() end
 
@@ -290,9 +296,12 @@ end
 
 """
     setgradientlist(A::NMRData, [dimnumber], relativegradientlist, Gmax=nothing)
+    setgradientlist([dimnumber], relativegradientlist, Gmax=nothing)
 
 Return a new NMRData with a gradient axis containing the passed values. If no maximum strength is specified,
 a default gradient strength of 0.55 T m⁻¹ will be set, but a warning raised for the user.
+
+The forms without the data argument return a function for use with `|>`.
 
 If a dimension number is specified, that dimension will be replaced. If not, the function will search for
 a unique non-frequency dimension, and replace that. If there are multiple non-frequency dimensions, the
@@ -368,8 +377,11 @@ end
 
 """
     replacedimension(nmrdata, olddimnumber, newdim)
+    replacedimension(olddimnumber, newdim)
 
 Return a new NMRData, in which the numbered axis is replaced by a new `Dimension`.
+
+The forms without the data argument return a function for use with `|>`.
 """
 function replacedimension(A::NMRData, olddimnumber, newdim)
     olddim = dims(A, olddimnumber)
@@ -387,9 +399,12 @@ end
 
 """
     decimate(data, n dims=1)
+    decimate(n)
 
 Decimate NMR data into n-point averages along the specified dimension.
 Note that data are *averaged* and not *summed*. Noise metadata is not updated.
+
+The forms without the data argument return a function for use with `|>`.
 """
 function decimate(expt::NMRData, n, dims=1)
     np = size(expt, dims) ÷ n
@@ -552,3 +567,19 @@ function hasnonfrequencydimension(spectrum::NMRData{T,N,A}) where {T,N,A}
     return any(map(dim -> (typeintersect(dim, FrequencyDimension) == Union{}),
                    A.parameters))
 end
+
+# curried forms for piping
+setkinetictimes(tvals::AbstractVector, units::AbstractString="") = A -> setkinetictimes(A, tvals, units)
+function setkinetictimes(dimnumber::Integer, tvals::AbstractVector, units::AbstractString="")
+    return A -> setkinetictimes(A, dimnumber, tvals, units)
+end
+setrelaxtimes(tvals::AbstractVector, units::AbstractString="") = A -> setrelaxtimes(A, tvals, units)
+function setrelaxtimes(dimnumber::Integer, tvals::AbstractVector, units::AbstractString="")
+    return A -> setrelaxtimes(A, dimnumber, tvals, units)
+end
+setgradientlist(list::AbstractVector, Gmax=nothing) = A -> setgradientlist(A, list, Gmax)
+function setgradientlist(dimnumber::Integer, list::AbstractVector, Gmax=nothing)
+    return A -> setgradientlist(A, dimnumber, list, Gmax)
+end
+replacedimension(olddimnumber, newdim::NMRDimension) = A -> replacedimension(A, olddimnumber, newdim)
+decimate(n::Integer) = A -> decimate(A, n)

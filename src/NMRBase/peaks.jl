@@ -158,8 +158,11 @@ end
 
 """
     detectpeaks(spec; snr=10, threshold=nothing, sign=:both) -> Vector{Peak{N}}
+    detectpeaks(; kwargs...)
 
 Find the peaks in a frequency-domain spectrum of any dimensionality.
+
+The forms without the data argument return a function for use with `|>`.
 
 A peak is a local maximum (or, for negative peaks, minimum) over its immediate neighbours
 in every dimension whose height exceeds `threshold`, which by default is `snr` times the
@@ -209,11 +212,14 @@ end
 
 """
     findpeak(spec, position; label="") -> Peak
+    findpeak(position; label="")
 
 The peak nearest to `position` (a tuple in ppm, ordered like the dimensions of `spec`),
 found by climbing from the closest data point to the top of the hill it sits on, or to
 the bottom of the valley if the spectrum is negative there. The position, height and
 linewidths are refined just as in [`detectpeaks`](@ref).
+
+The forms without the data argument return a function for use with `|>`.
 
 This is what snapping a mouse click onto a peak means.
 
@@ -393,11 +399,15 @@ end
 """
     register!(peaks, spec; maxshift=nothing) -> peaks
     register(peaks, spec; maxshift=nothing) -> Vector{Peak{N}}
+    register!(spec; maxshift=nothing)
+    register(spec; maxshift=nothing)
 
 Translate a peak list onto a spectrum: find the single offset, applied to every peak, that
 best matches the list to the signals observed in `spec`, and move the peaks by it.
 `register` returns a moved copy and leaves `peaks` unchanged. The offset found is reported
 with `@info`.
+
+The forms without the data argument return a function for use with `|>`.
 
 This corrects for referencing differences, e.g. between a list predicted from BMRB shifts
 (see [`loadbmrb`](@ref NMRTools.NMRIO.loadbmrb)) and a spectrum recorded under different
@@ -490,3 +500,9 @@ function _dilate(a::AbstractArray{<:Real,N}) where {N}
     end
     return out
 end
+
+# curried forms for piping
+detectpeaks(; kwargs...) = spec -> detectpeaks(spec; kwargs...)
+findpeak(position; kwargs...) = spec -> findpeak(spec, position; kwargs...)
+register!(spec::NMRData; kwargs...) = pks -> register!(pks, spec; kwargs...)
+register(spec::NMRData; kwargs...) = pks -> register(pks, spec; kwargs...)

@@ -49,8 +49,11 @@ watershift(temperature_K) = 7.83 - temperature_K / 96.9
 
 """
     reference(spec; indirect=true, aqueous=:auto, temperature=nothing)
+    reference(; kwargs...)
 
 Reference a spectrum to water based on the sample temperature.
+
+The forms without the data argument return a function for use with `|>`.
 
 This method is used when no explicit reference shift is provided. It calculates the
 expected water chemical shift from the temperature and applies a correction relative
@@ -109,8 +112,11 @@ end
 
 """
     reference(spec, dim, pair::Pair; indirect=true, aqueous=:auto)
+    reference(dim, pair::Pair; kwargs...)
 
 Reference a spectrum dimension by specifying an old and new chemical shift.
+
+The forms without the data argument return a function for use with `|>`.
 
 # Arguments
 - `spec`: NMRData object to reference
@@ -151,8 +157,11 @@ end
 
 """
     reference(spec, dims, pairs; indirect=true, aqueous=:auto)
+    reference(dims, pairs; kwargs...)
 
 Reference multiple spectrum dimensions simultaneously.
+
+The forms without the data argument return a function for use with `|>`.
 
 # Arguments
 - `spec`: NMRData object to reference
@@ -325,4 +334,11 @@ function _apply_indirect_referencing(spec, referenced_dims; aqueous=:auto)
     end
 
     return result
+end
+
+# curried forms for piping
+reference(; kwargs...) = spec -> reference(spec; kwargs...)
+reference(dim, pair::Pair{<:Number,<:Number}; kwargs...) = spec -> reference(spec, dim, pair; kwargs...)
+function reference(dims::Union{Tuple,AbstractVector}, pairs::Union{Tuple,AbstractVector}; kwargs...)
+    return spec -> reference(spec, dims, pairs; kwargs...)
 end

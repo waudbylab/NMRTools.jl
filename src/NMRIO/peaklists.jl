@@ -48,10 +48,13 @@ end
 
 """
     savepeaks(filename, peaks)
+    savepeaks(filename)
 
 Write a peak list. A filename ending in `.list` is written in Sparky format; anything else
 is written as a `peaklist.csv` that NMRAnalysis.jl reads directly, with positions in ppm,
 linewidths in Hz and intensities at full precision.
+
+The forms without the data argument return a function for use with `|>`.
 
 Peak labels identify peaks in NMRAnalysis, so they must be unique and may not contain
 commas. Unlabelled peaks are written as `X1`, `X2`, … by their position in the list.
@@ -228,3 +231,6 @@ function _writesparky(filename, pks::AbstractVector{<:Peak{N}}, labels) where {N
         end
     end
 end
+
+# curried form for ending a pipeline
+savepeaks(filename::AbstractString) = pks -> savepeaks(filename, pks)

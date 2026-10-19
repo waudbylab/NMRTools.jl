@@ -180,6 +180,7 @@ end
     estimatephase(spec, [dim]; order=1, p1=0, maxdelay=20e-6, pivot=nothing, snr=10,
                   coupling=20, maxwidthratio=3, maxresidual=30, λ=20, edges=0.01, kw...)
         -> NamedTuple
+    estimatephase([dim]; kwargs...)
 
 Estimate the zero- and first-order phase correction (degrees) for dimension `dim` (default: the
 direct dimension) of a frequency-domain spectrum. Returns
@@ -190,6 +191,8 @@ the correction, `residual` is the weighted rms phase error (degrees) of the obse
 the strongest group used, and `edges` lists the edge observations as
 `(edge, snr, residual, used)`. A large residual, a small number of groups, or a strong rejected group
 means the estimate should not be trusted. [`autophase`](@ref) warns when strong groups are rejected.
+
+The forms without the data argument return a function for use with `|>`.
 
 Lines are found with [`estimatepoles`](@ref). Poles within a coupling constant of each other are
 grouped, because the lines of a multiplet can carry antiphase dispersive components that cancel only
@@ -407,6 +410,8 @@ function autophase(spec::NMRData; kw...)
 end
 
 autophase(; kw...) = spec -> autophase(spec; kw...)
+estimatephase(; kw...) = spec -> estimatephase(spec; kw...)
+estimatephase(dim; kw...) = spec -> estimatephase(spec, dim; kw...)
 autophase(dim; kw...) = spec -> autophase(spec, dim; kw...)
 function autophase(d::AbstractDict{Symbol,<:NMRData}, args...; kw...)
     return Dict(k => autophase(v, args...; kw...) for (k, v) in d)

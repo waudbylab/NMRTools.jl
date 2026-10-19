@@ -37,6 +37,15 @@ detectpeaks(spec; sign=:negative)      # negative peaks only; the default is :bo
 To pick peaks in a pseudo-2D experiment, index one plane first, e.g.
 `detectpeaks(spec[:, 1])`.
 
+Like the processing functions, `detectpeaks`, `register` and `savepeaks` have forms for use in a
+pipeline:
+
+```julia
+pks = loadfid("hsqc/1") |> autoprocess |> realest |> detectpeaks(snr=20)
+pks |> savepeaks("peaklist.csv")
+loadbmrb(15000, H1, N15) |> register(spec) |> savepeaks("bmrb.csv")
+```
+
 ## Plotting peaks
 
 `nmrplot!` overlays a peak list on a spectrum. 2D peaks are drawn as labelled crosses:

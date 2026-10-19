@@ -88,6 +88,13 @@ change in a future release.
 - Peak lists can be plotted with Plots (as lines in 1D, crosses in 2D) and with Makie (`nmrplot`
   and `nmrplot!`), with or without a spectrum.
 
+### Pipelines
+
+Besides the processing functions, `detectpeaks`, `findpeak`, `register`/`register!`,
+`estimatepoles`, `estimatephase`, `reference`, `shiftdim`, `setrelaxtimes`, `setkinetictimes`,
+`setgradientlist`, `replacedimension`, `decimate`, `savenmr`, `savefid` and `savepeaks` have curried
+forms for use with `|>`, for example `spec |> detectpeaks(snr=20) |> savepeaks("peaklist.csv")`.
+
 ### Other changes
 
 - Plots: the normalisation logic of the contour and pseudo-2D recipes has been consolidated. In

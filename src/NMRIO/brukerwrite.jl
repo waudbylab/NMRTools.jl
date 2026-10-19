@@ -182,9 +182,12 @@ end
 
 """
     savefid(path, spec; dtype=Float64, overwrite=false) -> String
+    savefid(path; kwargs...)
 
 Write time-domain data as a raw Bruker experiment in the folder `path`, as `fid` (1D) or `ser` (nD)
 with acquisition parameter files, and return the path of the data file.
+
+The forms without the data argument return a function for use with `|>`.
 
 `spec` is time-domain data such as that from [`loadfid`](@ref), possibly after time-domain
 processing such as [`linearpredict`](@ref NMRTools.NMRBase.linearpredict). The changes `loadfid`
@@ -349,10 +352,13 @@ end
 
 """
     savenmr(path, spec; procno=1, overwrite=false) -> String
+    savenmr(path; kwargs...)
 
 Write a frequency-domain spectrum as Bruker processed data, and return the processed-data folder.
 `path` is an experiment folder (data go in `path/pdata/<procno>`) or a processed-data folder
 `…/pdata/<n>`. 1D, 2D and 3D spectra are supported, including pseudo-dimensions.
+
+The forms without the data argument return a function for use with `|>`.
 
 The real part is written to `1r`, `2rr` or `3rrr`. For multicomplex 1D and 2D spectra the imaginary
 parts are written too (`1i`; `2ir`, `2ri`, `2ii`), conjugated to TopSpin's sign convention. Data are
@@ -441,3 +447,7 @@ end
 _realpart(A::AbstractArray{<:Multicomplex}) = realest.(A)
 _realpart(A::AbstractArray{<:Complex}) = real.(A)
 _realpart(A::AbstractArray{<:Real}) = A
+
+# curried forms for ending a pipeline
+savefid(path; kwargs...) = spec -> savefid(path, spec; kwargs...)
+savenmr(path; kwargs...) = spec -> savenmr(path, spec; kwargs...)

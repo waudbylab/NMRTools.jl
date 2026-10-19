@@ -117,11 +117,14 @@ end
 """
     estimatepoles(spec, [dim]; bandwidth=:auto, ncoef=16, snr=5, maxlinewidth=nothing, exclude=())
         -> Vector{Pole}
+    estimatepoles([dim]; kwargs...)
 
 Model a frequency-domain spectrum along `dim` (default: the direct dimension) as a sum of Lorentzian
 lines, by band-wise harmonic inversion (HSVD), and return one [`Pole`](@ref) per line, sorted by
 decreasing chemical shift. The spectrum may be unphased: the phase of each line is part of the
 result.
+
+The forms without the data argument return a function for use with `|>`.
 
 The spectrum is split into overlapping bands of `bandwidth` points. Each band is inverse Fourier
 transformed to a short time signal (using only the part covering acquired, not zero-filled,
@@ -203,3 +206,7 @@ function estimatepoles(spec::NMRData, dim=1; bandwidth=:auto, ncoef::Integer=16,
     end
     return sort!(poles; by=p -> p.shift, rev=true)
 end
+
+# curried forms for piping
+estimatepoles(; kwargs...) = spec -> estimatepoles(spec; kwargs...)
+estimatepoles(dim; kwargs...) = spec -> estimatepoles(spec, dim; kwargs...)

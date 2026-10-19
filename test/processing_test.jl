@@ -162,3 +162,45 @@ end
         @test realest(real(spec)) == realest(spec)
     end
 end
+
+@testset "processing: pipeline forms of analysis functions" begin
+    fid = synthetic_fid(; n=512, ν=100.0)
+    fid = NMRTools.rebuild(fid; data=parent(fid) .* exp.(-π * 5.0 .* data(dims(fid, 1))))  # 5 Hz line
+    clean = ft(zerofill(fid))
+    noisy = NMRTools.rebuild(clean; data=parent(clean) .+ [Multicomplex(1e-2 * randn(), 1e-2 * randn())
+                                                         for _ in 1:length(clean)])
+    spec = estimatenoise(noisy)
+
+    pks = detectpeaks(spec; snr=20)
+    @test !isempty(pks)
+    @test (spec |> detectpeaks(snr=20)) == pks
+    δ = ppm(first(pks), 1)
+    @test (spec |> findpeak(δ)) == findpeak(spec, δ)
+    @test (pks |> register(spec)) == register(pks, spec)
+    @test (copy(pks) |> register!(spec)) == register!(copy(pks), spec)
+
+    @test (spec |> estimatepoles) == estimatepoles(spec)
+    @test (spec |> estimatepoles(1; snr=10)) == estimatepoles(spec, 1; snr=10)
+    @test (spec |> estimatephase(order=0)).p0 == estimatephase(spec; order=0).p0
+
+    @test data(dims(spec |> shiftdim(F1Dim, 0.1), 1)) == data(dims(shiftdim(spec, F1Dim, 0.1), 1))
+    refd = spec |> reference(F1Dim, δ => δ + 0.05; indirect=false)
+    @test data(dims(refd, 1)) == data(dims(reference(spec, F1Dim, δ => δ + 0.05; indirect=false), 1))
+    @test parent(spec |> decimate(2)) == parent(decimate(spec, 2))
+
+    pseudo = NMRData(randn(8, 3), (F1Dim(range(8.0, 7.0; length=8)), X2Dim(1:3)))
+    t = [0.1, 0.2, 0.3]
+    @test dims(pseudo |> setrelaxtimes(t, "s"), 2) isa TrelaxDim
+    @test data(dims(pseudo |> setrelaxtimes(2, t), 2)) == data(dims(setrelaxtimes(pseudo, 2, t), 2))
+    @test dims(pseudo |> setkinetictimes(t), 2) isa TkinDim
+    @test dims(pseudo |> replacedimension(2, TrelaxDim(t)), 2) isa TrelaxDim
+
+    mktempdir() do dir
+        file = joinpath(dir, "peaklist.csv")
+        pks |> savepeaks(file)
+        @test length(loadpeaks(file)) == length(pks)
+        spec |> savenmr(joinpath(dir, "1"))
+        @test isfile(joinpath(dir, "1", "pdata", "1", "1r"))
+    end
+end
+
