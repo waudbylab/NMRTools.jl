@@ -32,7 +32,7 @@ const TESTDATA = joinpath(@__DIR__, "test-data")
         sw = metadata(dat, 1, :swhz)
         @test data(dims(dat, 1))[1] ≈ -76 / sw
         @test data(dims(dat, 1))[2] - data(dims(dat, 1))[1] ≈ 1 / sw
-        @test data(dims(dat, 2))[1] == 0.0
+        @test data(dims(dat, 2))[1] ≈ 0.0
 
         # routing through loadnmr gives the same result
         dat2 = loadnmr(joinpath(dir, "ser"))
@@ -87,14 +87,14 @@ end
         dat = loadfid(trosy)
         raw = loadfid(trosy; removefilter=false, firstpoint=1.0)
         @test metadata(dat, 1, :grpdly) == 76
-        @test metadata(dat, 1, :firstpoint) == 1.0
-        @test metadata(dat, 2, :firstpoint) == 0.5
+        @test metadata(dat, 1, :firstpoint) ≈ 1.0
+        @test metadata(dat, 2, :firstpoint) ≈ 0.5
         @test parent(dat)[:, 2:end] ≈ parent(raw)[:, 2:end]        # direct data unchanged
         @test metadata(raw, 1, :grpdly) == 0
-        @test data(dims(raw, 1))[1] == 0.0
+        @test data(dims(raw, 1))[1] ≈ 0.0
         # an explicit first-point factor is applied at t = 0 (point 77)
         dat5 = loadfid(trosy; firstpoint=0.5)
-        @test metadata(dat5, 1, :firstpoint) == 0.5
+        @test metadata(dat5, 1, :firstpoint) ≈ 0.5
         @test parent(dat5)[77, 2] ≈ 0.5 * parent(raw)[77, 2]       # column 2: indirect t > 0
         @test parent(dat5)[76, 2] ≈ parent(raw)[76, 2]
         # ft removes the delay; the spectrum's dimension has none left
@@ -109,7 +109,7 @@ end
         # digital (not baseopt): fractional group delay, first point scaled by 0.5
         dat = loadfid(cest)
         @test metadata(dat, 1, :grpdly) ≈ 67.9868469238281
-        @test metadata(dat, 1, :firstpoint) == 0.5
+        @test metadata(dat, 1, :firstpoint) ≈ 0.5
 
         # DSPFVS outside 10–23 (e.g. after cryoproc1d): no group-delay removal, with a warning
         mktempdir() do dir

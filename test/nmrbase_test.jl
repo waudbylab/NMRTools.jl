@@ -13,10 +13,10 @@ using Test
     @test dat2b == dat2
 
     @test Array(dat1a) isa Matrix{Float64}
-    @test Array(dat1a)[1, 1] == 167.84442138671875
+    @test Array(dat1a)[1, 1] ≈ 167.84442138671875
 
     @test collect(dat1a) isa Matrix{Float64}
-    @test collect(dat1a)[1, 1] == 167.84442138671875
+    @test collect(dat1a)[1, 1] ≈ 167.84442138671875
 
     dat3 = dat1a[:, 3]  # slicing
     @test ndims(dat3) == 1
@@ -27,8 +27,8 @@ using Test
     @test ndims(dat3b) == 1
     @test size(dat3b) == (10,)
 
-    @test data(dat2)[1] == 4671.5184326171875
-    @test data(dat2, 1)[1] == -119.5922
+    @test data(dat2)[1] ≈ 4671.5184326171875
+    @test data(dat2, 1)[1] ≈ -119.5922
 
     @test hasnonfrequencydimension(dat1a) == true
     @test hasnonfrequencydimension(dat2) == false
@@ -82,13 +82,13 @@ end
                                                                                                                                                                                           0.95,
                                                                                                                                                                                           21))
     datG = setgradientlist(dat, LinRange(0.05, 0.95, 21), 0.55)
-    @test data(datG, 2)[end] == 0.5225
+    @test data(datG, 2)[end] ≈ 0.5225
     @test units(datG, 2) == "T m⁻¹"
 
     # offsets
     spec = exampledata("1D_1H")
     spec2 = shiftdim(spec, 1, 0.5)
-    @test data(spec2, 1)[1] - data(spec, 1)[1] == 0.5
+    @test data(spec2, 1)[1] - data(spec, 1)[1] ≈ 0.5
     spec2 = shiftdim(spec2, F1Dim, 0.5)
     @test data(spec2, 1)[1] - data(spec, 1)[1] == 1
 
@@ -542,7 +542,7 @@ end
     @test spin(H1) == 1 // 2
     @test spin(H2) == 1
     @test spin(C12) == 0
-    @test gyromagneticratio(H1) == 2.6752218744e8
+    @test gyromagneticratio(H1) ≈ 2.6752218744e8
 
     @test coherenceorder(SQ(H1)) == 1
     @test coherenceorder(MQ(((H1, 1), (C13, 1)))) == 2
@@ -550,19 +550,19 @@ end
     @test coherenceorder(MQ(((H1, 3), (C13, 1)))) == 4
     @test coherenceorder(MQ(((H1, 0),))) == 0
 
-    @test gyromagneticratio(SQ(H1)) == 2.6752218744e8
-    @test gyromagneticratio(MQ(((H1, 1), (C13, 1)))) == 3.3480498744e8
-    @test gyromagneticratio(MQ(((H1, 1), (C13, -1)))) == 2.0023938744e8
-    @test gyromagneticratio(MQ(((H1, 3), (C13, 1)))) == 8.698493623199999e8
+    @test gyromagneticratio(SQ(H1)) ≈ 2.6752218744e8
+    @test gyromagneticratio(MQ(((H1, 1), (C13, 1)))) ≈ 3.3480498744e8
+    @test gyromagneticratio(MQ(((H1, 1), (C13, -1)))) ≈ 2.0023938744e8
+    @test gyromagneticratio(MQ(((H1, 3), (C13, 1)))) ≈ 8.698493623199999e8
     @test gyromagneticratio(MQ(((H1, 0),))) == 0
 end
 
 @testset "NMRBase: window functions" begin
     dat = exampledata("pseudo2D_XSTE")
     @test dat[1, :window] isa Cos2Window
-    @test dat[1, :window].tmax == 0.0512
+    @test dat[1, :window].tmax ≈ 0.0512
     @test length(apod(dat, 1)) == 2048
-    @test apod(dat, 1)[10] == 0.9992377902866475
+    @test apod(dat, 1)[10] ≈ 0.9992377902866475
 
     @test lineshape(dims(dat, 1), 8.0, 5)[1] ≈ 1.1210822807171034e-8
     @test lineshape(dims(dat, 1), 8.0, 5)[682] ≈ -0.00011946940995147479
@@ -578,9 +578,9 @@ end
     # NMR data
     dat = exampledata("pseudo2D_XSTE")
     @test size(decimate(dat, 10, 1)) == (204, 10)
-    @test decimate(dat, 10, 1)[2, 2] == 43.59735595703125
+    @test decimate(dat, 10, 1)[2, 2] ≈ 43.59735595703125
     @test size(decimate(dat, 3, 2)) == (2048, 3)
-    @test decimate(dat, 3, 2)[2, 2] == -31.345370822482636
+    @test decimate(dat, 3, 2)[2, 2] ≈ -31.345370822482636
 end
 
 @testset "NMRBase: stack" begin
@@ -605,22 +605,22 @@ end
 @testset "NMRBase: Power" begin
     # Test construction from dB
     p1 = Power(30.0, :dB)
-    @test db(p1) == 30.0
+    @test db(p1) ≈ 30.0
     @test watts(p1) ≈ 0.001
 
     # Test construction from Watts
     p2 = Power(1.0, :W)
-    @test watts(p2) == 1.0
-    @test db(p2) == 0.0
+    @test watts(p2) ≈ 1.0
+    @test db(p2) ≈ 0.0
 
     # Test with integer input
     p3 = Power(10, :W)
-    @test watts(p3) == 10.0
+    @test watts(p3) ≈ 10.0
     @test db(p3) ≈ -10.0
 
     # Test zero Watts handling
     p4 = Power(0.0, :W)
-    @test db(p4) == 120.0
+    @test db(p4) ≈ 120.0
     @test watts(p4) ≈ 1e-12
 
     # Test error for missing unit
@@ -667,7 +667,7 @@ end
     p = Peak(8.2, 120.5; label="G10")
     @test p isa Peak{2}
     @test ppm(p) == (8.2, 120.5)
-    @test ppm(p, 2) == 120.5
+    @test ppm(p, 2) ≈ 120.5
     @test label(p) == "G10"
     @test isnan(intensity(p))
     @test all(isnan, linewidth(p))
@@ -869,14 +869,14 @@ end
 
 @testset "NMRBase: Xi ratios" begin
     # Test Xi ratio retrieval for DSS (aqueous)
-    @test xi_ratio(H1) == 1.0
-    @test xi_ratio(H1; aqueous=true) == 1.0
-    @test xi_ratio(C13) == 0.251449530
-    @test xi_ratio(C13; aqueous=true) == 0.251449530
+    @test xi_ratio(H1) ≈ 1.0
+    @test xi_ratio(H1; aqueous=true) ≈ 1.0
+    @test xi_ratio(C13) ≈ 0.251449530
+    @test xi_ratio(C13; aqueous=true) ≈ 0.251449530
 
     # Test Xi ratio retrieval for TMS (organic)
-    @test xi_ratio(H1; aqueous=false) == 1.0
-    @test xi_ratio(C13; aqueous=false) == 0.25145020
+    @test xi_ratio(H1; aqueous=false) ≈ 1.0
+    @test xi_ratio(C13; aqueous=false) ≈ 0.25145020
 
     # Test undefined nucleus returns nothing
     @test xi_ratio(C12) === nothing

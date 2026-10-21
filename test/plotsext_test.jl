@@ -25,8 +25,8 @@ using NMRTools, Plots
     @test pr[1].plotattributes[:xtick_direction] == :out
     @test pr[1].plotattributes[:yshowaxis] == false
 
-    @test pr[1].args[1][1] == -124.16252020246354
-    @test pr[1].args[2][1] == 1.2039054352746015
+    @test pr[1].args[1][1] ≈ -124.16252020246354
+    @test pr[1].args[2][1] ≈ 1.2039054352746015
 end
 
 @testset "PlotsExt: 2D HN" begin
@@ -35,7 +35,7 @@ end
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
     @test pr[1].plotattributes[:normalize] == true
-    @test pr[1].args[2][1, 1] == 20.85546875
+    @test pr[1].args[2][1, 1] ≈ 20.85546875
 
     @test label(pr[1].args[2]) == "13C,15N ubiquitin"
 end

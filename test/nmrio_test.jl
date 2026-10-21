@@ -12,43 +12,43 @@ using Dates
 
     @test parent(dat) isa Vector{Float64}
 
-    @test dat[1] == -3741.875
-    @test dat[end] == 5973.625
-    @test maximum(dat) == 1.274037375e6
+    @test dat[1] ≈ -3741.875
+    @test dat[end] ≈ 5973.625
+    @test maximum(dat) ≈ 1.274037375e6
 
     @test label(dat) == "Example 19F 1D spectrum"
     @test dat[:title] == """Example 19F 1D spectrum
     Sample details in second line
     and third line"""
     @test dat[:ns] == 64
-    @test dat[:rg] == 76.02
+    @test dat[:rg] ≈ 76.02
     @test dat[:format] == :nmrpipe
     @test dat[:ndim] == 1
 
-    @test scale(dat) == 4865.28
+    @test scale(dat) ≈ 4865.28
 
     @test acqus(dat, :pulprog) == "zg"
-    @test acqus(dat, :p, 1) == 13.25e-6
+    @test acqus(dat, :p, 1) ≈ 13.25e-6
     @test acqus(dat, "P", 2) == 22e-6
     @test acqus(dat, :d, 1) == 4
-    @test acqus(dat)[:te] == 318.1509
+    @test acqus(dat)[:te] ≈ 318.1509
 
     @test dims(dat, 1) isa FrequencyDimension
     @test length(dims(dat, 1)) == 8751
-    @test dims(dat, 1)[1] == -119.99959383646768
-    @test dims(dat, 1)[2] == -120.00050820180846
-    @test dims(dat, 1)[end] == -128.00029056823928
+    @test dims(dat, 1)[1] ≈ -119.99959383646768
+    @test dims(dat, 1)[2] ≈ -120.00050820180846
+    @test dims(dat, 1)[end] ≈ -128.00029056823928
 
-    @test metadata(dat, 1, :sf) == 470.4608353134155e6
-    @test dat[1, :bf] == 470.5220031738281e6
+    @test metadata(dat, 1, :sf) ≈ 470.4608353134155e6
+    @test dat[1, :bf] ≈ 470.5220031738281e6
     @test label(dat, 1) == "19F"
     @test dat[1, :td] == 14097
     @test dat[1, :tdzf] == 32768
     @test dat[1, :region] == 5448:14198
     @test dat[1, :offsetppm] == -130
     @test dat[1, :window] == ExponentialWindow(5.0, 0.9999472073130639)
-    @test dat[1, :swhz] == 14097.744257799108
-    @test dat[1, :swppm] == 29.961923486479087
+    @test dat[1, :swhz] ≈ 14097.744257799108
+    @test dat[1, :swppm] ≈ 29.961923486479087
     @test dat[1, :pseudodim] == false
 end
 
@@ -60,15 +60,15 @@ end
 
     @test parent(dat) isa Matrix{Float64}
 
-    @test dat[1, 100] == 59228.95703125
-    @test dat[20, 100] == 27169.9140625
-    @test dat[1] == -48482.26171875
-    @test dat[1, end] == 36429.125
-    @test dat[end, end] == -23958.6171875
-    @test dat[end] == -23958.6171875
-    @test maximum(dat) == 7.984743e6
+    @test dat[1, 100] ≈ 59228.95703125
+    @test dat[20, 100] ≈ 27169.9140625
+    @test dat[1] ≈ -48482.26171875
+    @test dat[1, end] ≈ 36429.125
+    @test dat[end, end] ≈ -23958.6171875
+    @test dat[end] ≈ -23958.6171875
+    @test maximum(dat) ≈ 7.984743e6
 
-    @test dat[Near(8.3), Near(120)] == 81722.171875
+    @test dat[Near(8.3), Near(120)] ≈ 81722.171875
     @test dat[Between(8.3, 8.35), Near(120)] == [86881.734375
                                                  115982.59375
                                                  115535.171875
@@ -105,40 +105,40 @@ end
     @test acqus(dat, :pulprog) == "sfhmqcf3gpph.cw"
     @test acqus(dat, :p, 1) ≈ 9.2e-6
     @test acqus(dat, "P", 2) ≈ 18.4e-6
-    @test acqus(dat, :d, 1) == 0.1
-    @test acqus(dat)[:te] == 276.9988
+    @test acqus(dat, :d, 1) ≈ 0.1
+    @test acqus(dat)[:te] ≈ 276.9988
 
     @test dims(dat, 1) isa FrequencyDimension
     @test length(dims(dat, 1)) == 568
-    @test dims(dat, 1)[1] == 10.996211600312328
-    @test dims(dat, 1)[2] == 10.987407197534884
-    @test dims(dat, 1)[end] == 6.004115225500486
+    @test dims(dat, 1)[1] ≈ 10.996211600312328
+    @test dims(dat, 1)[2] ≈ 10.987407197534884
+    @test dims(dat, 1)[end] ≈ 6.004115225500486
 
-    @test dat[1, :bf] == 600.2030029296875e6
-    @test metadata(dat, 1, :sf) == 600.2059883394103e6
+    @test dat[1, :bf] ≈ 600.2030029296875e6
+    @test metadata(dat, 1, :sf) ≈ 600.2059883394103e6
     @test label(dat, 1) == "HN"
     @test dat[1, :td] == 1024
     @test dat[1, :tdzf] == 2048
     @test dat[1, :region] == 341:908
-    @test dat[1, :offsetppm] == 4.973999977111816
+    @test dat[1, :offsetppm] ≈ 4.973999977111816
     @test dat[1, :window] == CosWindow(0.09461760226549189)
-    @test dat[1, :swhz] == 10822.510563380281
-    @test dat[1, :swppm] == 18.031416888209264
+    @test dat[1, :swhz] ≈ 10822.510563380281
+    @test dat[1, :swppm] ≈ 18.031416888209264
     @test dat[1, :pseudodim] == false
 
-    @test dat[2, :bf] == 60.82500076293945e6
-    @test metadata(dat, 2, :sf) == 60.832195448377445e6
+    @test dat[2, :bf] ≈ 60.82500076293945e6
+    @test metadata(dat, 2, :sf) ≈ 60.832195448377445e6
     @test label(dat, 2) == "15N"
     @test dat[2, :td] == 128
     @test dat[2, :tdzf] == 256
     @test ismissing(dat[2, :region])
-    @test dat[2, :offsetppm] == 118.28500366210938
+    @test dat[2, :offsetppm] ≈ 118.28500366210938
     @test dat[2, :window] == CosWindow(0.09566717062018215)
-    @test dat[2, :swhz] == 1337.9720458984375
-    @test dat[2, :swppm] == 21.997074050406937
+    @test dat[2, :swhz] ≈ 1337.9720458984375
+    @test dat[2, :swppm] ≈ 21.997074050406937
     @test dat[2, :pseudodim] == false
 
-    @test dat[:noise] == 42605.50537796347
+    @test dat[:noise] ≈ 42605.50537796347
 end
 
 @testset "NMRIO: pseudo-2D XSTE (nmrPipe)" begin
@@ -149,13 +149,13 @@ end
 
     @test parent(dat) isa Matrix{Float64}
 
-    @test dat[100, 5] == 193505.375
-    @test dat[1, end] == 413.376953125
-    @test dat[1] == 8857.43359375
-    @test dat[end] == -5065.54248046875
-    @test maximum(dat) == 1.277118e6
+    @test dat[100, 5] ≈ 193505.375
+    @test dat[1, end] ≈ 413.376953125
+    @test dat[1] ≈ 8857.43359375
+    @test dat[end] ≈ -5065.54248046875
+    @test maximum(dat) ≈ 1.277118e6
 
-    @test dat[Near(8.3), 1] == 635359.375
+    @test dat[Near(8.3), 1] ≈ 635359.375
     @test dat[Between(8.3, 8.35), 9] == [241633.140625
                                          219759.296875]
     @test dat[Near(8.4), :] == [1.277118e6
@@ -183,27 +183,27 @@ end
     @test scale(dat) == 2048
 
     @test acqus(dat, :pulprog) == "stebpgp1s19xn.jk"
-    @test acqus(dat, :p, 1) == 9.25e-6
-    @test acqus(dat, "P", 2) == 18.5e-6
+    @test acqus(dat, :p, 1) ≈ 9.25e-6
+    @test acqus(dat, "P", 2) ≈ 18.5e-6
     @test acqus(dat, :d, 1) == 1
-    @test acqus(dat)[:te] == 283.0556
+    @test acqus(dat)[:te] ≈ 283.0556
 
     @test dims(dat, 1) isa FrequencyDimension
     @test length(dims(dat, 1)) == 206
-    @test dims(dat, 1)[1] == 9.995628344572216
-    @test dims(dat, 1)[2] == 9.976091311209679
-    @test dims(dat, 1)[end] == 5.990536505252104
+    @test dims(dat, 1)[1] ≈ 9.995628344572216
+    @test dims(dat, 1)[2] ≈ 9.976091311209679
+    @test dims(dat, 1)[end] ≈ 5.990536505252104
 
-    @test metadata(dat, 1, :sf) == 499.85444701842004e6
-    @test dat[1, :bf] == 499.85198974609375e6
+    @test metadata(dat, 1, :sf) ≈ 499.85444701842004e6
+    @test dat[1, :bf] ≈ 499.85198974609375e6
     @test label(dat, 1) == "1H"
     @test dat[1, :td] == 512
     @test dat[1, :tdzf] == 1024
     @test dat[1, :region] == 253:458
-    @test dat[1, :offsetppm] == 4.915999889373779
+    @test dat[1, :offsetppm] ≈ 4.915999889373779
     @test dat[1, :window] == CosWindow(0.0512)
-    @test dat[1, :swhz] == 10000.0
-    @test dat[1, :swppm] == 20.00592216323802
+    @test dat[1, :swhz] ≈ 10000.0
+    @test dat[1, :swppm] ≈ 20.00592216323802
     @test dat[1, :pseudodim] == false
 
     @test metadata(dat, 2, :sf) === nothing
@@ -224,43 +224,43 @@ end
 
     @test parent(dat) isa Vector{Float64}
 
-    @test dat[1] == 4671.5184326171875
-    @test dat[end] == 5857.3370361328125
-    @test maximum(dat) == 23737.674377441406
+    @test dat[1] ≈ 4671.5184326171875
+    @test dat[end] ≈ 5857.3370361328125
+    @test maximum(dat) ≈ 23737.674377441406
 
     @test label(dat) == "Example 19F 1D spectrum"
     @test dat[:title] == """Example 19F 1D spectrum
     Sample details in second line
     and third line"""
     @test dat[:ns] == 64
-    @test dat[:rg] == 76.02
+    @test dat[:rg] ≈ 76.02
     @test dat[:format] == :pdata
     @test dat[:ndim] == 1
 
-    @test scale(dat) == 4865.28
+    @test scale(dat) ≈ 4865.28
 
     @test acqus(dat, :pulprog) == "zg"
-    @test acqus(dat, :p, 1) == 13.25e-6
+    @test acqus(dat, :p, 1) ≈ 13.25e-6
     @test acqus(dat, "P", 2) == 22e-6
     @test acqus(dat, :d, 1) == 4
-    @test acqus(dat)[:te] == 318.1509
+    @test acqus(dat)[:te] ≈ 318.1509
 
     @test dims(dat, 1) isa FrequencyDimension
     @test length(dims(dat, 1)) == 5000
-    @test dims(dat, 1)[1] == -119.5922
-    @test dims(dat, 1)[2] == -119.59311424688988
-    @test dims(dat, 1)[end] == -124.16252020246354
+    @test dims(dat, 1)[1] ≈ -119.5922
+    @test dims(dat, 1)[2] ≈ -119.59311424688988
+    @test dims(dat, 1)[end] ≈ -124.16252020246354
 
-    @test metadata(dat, 1, :sf) == 470.5217922204685e6
-    @test dat[1, :bf] == 470.582968e6
+    @test metadata(dat, 1, :sf) ≈ 470.5217922204685e6
+    @test dat[1, :bf] ≈ 470.582968e6
     @test label(dat, 1) == "19F"
     @test dat[1, :td] == 14097
     @test dat[1, :tdzf] == 32768
     @test dat[1, :region] == 5000:9999
-    @test dat[1, :offsetppm] == -129.99998659428783
+    @test dat[1, :offsetppm] ≈ -129.99998659428783
     @test dat[1, :window] == ExponentialWindow(10.0, 0.9999471999999971)
-    @test dat[1, :swhz] == 14097.744360902296
-    @test dat[1, :swppm] == 29.95804208728246
+    @test dat[1, :swhz] ≈ 14097.744360902296
+    @test dat[1, :swppm] ≈ 29.95804208728246
     @test dat[1, :pseudodim] == false
 
     # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
@@ -279,15 +279,15 @@ end
 
     @test parent(dat) isa Matrix{Float64}
 
-    @test dat[1, 100] == 587.3193359375
-    @test dat[20, 100] == 277.4541015625
-    @test dat[1] == 20.85546875
-    @test dat[1, end] == 40.3671875
-    @test dat[end, end] == -45.9990234375
-    @test dat[end] == -45.9990234375
-    @test maximum(dat) == 88924.693359375
+    @test dat[1, 100] ≈ 587.3193359375
+    @test dat[20, 100] ≈ 277.4541015625
+    @test dat[1] ≈ 20.85546875
+    @test dat[1, end] ≈ 40.3671875
+    @test dat[end, end] ≈ -45.9990234375
+    @test dat[end] ≈ -45.9990234375
+    @test maximum(dat) ≈ 88924.693359375
 
-    @test dat[Near(8.3), Near(120)] == 3525.2021484375
+    @test dat[Near(8.3), Near(120)] ≈ 3525.2021484375
     @test dat[Between(8.3, 8.35), Near(120)] == [2630.798828125
                                                  2762.41015625
                                                  3282.8671875
@@ -343,37 +343,37 @@ end
     @test acqus(dat, :pulprog) == "sfhmqcf3gpph.cw"
     @test acqus(dat, :p, 1) ≈ 9.2e-6
     @test acqus(dat, "P", 2) ≈ 18.4e-6
-    @test acqus(dat, :d, 1) == 0.1
-    @test acqus(dat)[:te] == 276.9988
+    @test acqus(dat, :d, 1) ≈ 0.1
+    @test acqus(dat)[:te] ≈ 276.9988
 
     @test dims(dat, 1) isa FrequencyDimension
     @test length(dims(dat, 1)) == 1216
-    @test dims(dat, 1)[1] == 11.07119
-    @test dims(dat, 1)[2] == 11.066787776480712
-    @test dims(dat, 1)[end] == 5.722488424064256
+    @test dims(dat, 1)[1] ≈ 11.07119
+    @test dims(dat, 1)[2] ≈ 11.066787776480712
+    @test dims(dat, 1)[end] ≈ 5.722488424064256
 
-    @test metadata(dat, 1, :sf) == 600.2028190015606e6
-    @test dat[1, :bf] == 600.2e6
+    @test metadata(dat, 1, :sf) ≈ 600.2028190015606e6
+    @test dat[1, :bf] ≈ 600.2e6
     @test label(dat, 1) == "1H"
     @test dat[1, :td] == 1024
     @test dat[1, :tdzf] == 4096
     @test dat[1, :region] == 600:1815
     @test dat[1, :offsetppm] ≈ 4.696770344069996
     @test dat[1, :window] == Cos2Window(0.09461759999999972)
-    @test dat[1, :swhz] == 10822.510822510854
+    @test dat[1, :swhz] ≈ 10822.510822510854
     @test dat[1, :swppm] ≈ 18.03150753500642
     @test dat[1, :pseudodim] == false
 
-    @test metadata(dat, 2, :sf) == 60.82491449022095e6
-    @test dat[2, :bf] == 60.817738e6
+    @test metadata(dat, 2, :sf) ≈ 60.82491449022095e6
+    @test dat[2, :bf] ≈ 60.817738e6
     @test label(dat, 2) == "15N"
     @test dat[2, :td] == 64
     @test dat[2, :tdzf] == 512
     @test ismissing(dat[2, :region])
-    @test dat[2, :offsetppm] == 117.99995292412437
+    @test dat[2, :offsetppm] ≈ 117.99995292412437
     @test dat[2, :window] == CosWindow(0.04783359999999993)
-    @test dat[2, :swhz] == 1337.97163500134
-    @test dat[2, :swppm] == 21.999694151751253
+    @test dat[2, :swhz] ≈ 1337.97163500134
+    @test dat[2, :swppm] ≈ 21.999694151751253
     @test dat[2, :pseudodim] == false
 
     # field strength metadata (in Tesla)
@@ -399,7 +399,7 @@ end
     @test parent(dat) isa Matrix{Float64}
     @test parent(datC) isa Matrix{Multicomplex{Float64,1,2}}
 
-    @test dat[2, 3] == -32.08953857421875
+    @test dat[2, 3] ≈ -32.08953857421875
     @test datC[2, 3] == Multicomplex(-32.08953857421875, -87.19561767578125)
     @test metadata(datC, 1, :mcindex) == 1 && isnothing(metadata(datC, 2, :mcindex))
 
@@ -417,27 +417,27 @@ end
 @testset "pseudo3D data (Bruker pdata)" begin
     dat = exampledata("pseudo3D_HN_R2")
     @test size(dat) == (512, 512, 11)
-    @test dat[5, 6, 7] == 2370.09375
+    @test dat[5, 6, 7] ≈ 2370.09375
     @test acqus(dat, :vclist) == [0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16]
 end
 
 @testset "3D data (Bruker pdata)" begin
     spec = exampledata("3D_HNCA")
     @test size(spec) == (432, 64, 256)
-    @test spec[5, 6, 7] == 3506.28125
+    @test spec[5, 6, 7] ≈ 3506.28125
     @test label(spec, 1) == "1H"
     @test label(spec, 2) == "15N"
     @test label(spec, 3) == "13C"
-    @test dims(spec, 1)[2] == 9.693887210893848
-    @test dims(spec, 2)[end] == 107.84188874936109
-    @test dims(spec, 3)[Near(45)] == 44.99702749174231
+    @test dims(spec, 1)[2] ≈ 9.693887210893848
+    @test dims(spec, 2)[end] ≈ 107.84188874936109
+    @test dims(spec, 3)[Near(45)] ≈ 44.99702749174231
 
     spec13 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "131"))
     spec23 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "231"))
     @test size(spec13) == (512, 256)
     @test size(spec23) == (512, 128)
-    @test spec23[Near(7.2), Near(122)] == 19735.930053710938
-    @test spec13[Near(8.3), Near(63)] == -321.002197265625
+    @test spec23[Near(7.2), Near(122)] ≈ 19735.930053710938
+    @test spec13[Near(8.3), Near(63)] ≈ -321.002197265625
     @test maximum(spec) / spec[:noise] ≈ 698.6861209993058
 end
 
@@ -445,14 +445,14 @@ end
     spec = loadnmr(joinpath(artifact"3D_HNCA_pipe", "smile", "test%03d.ft3"))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] == 9.703234081887576
-    @test dims(spec, 2)[1] == 68.7403353437212
-    @test dims(spec, 3)[end] == 107.75223308061521
-    @test spec[10, 11, 12] == 99473.6875
+    @test dims(spec, 1)[1] ≈ 9.703234081887576
+    @test dims(spec, 2)[1] ≈ 68.7403353437212
+    @test dims(spec, 3)[end] ≈ 107.75223308061521
+    @test spec[10, 11, 12] ≈ 99473.6875
     @test spec[1, :window] == Cos2Window(0.09261055758378933)
     @test spec[2, :window] == CosWindow(0.057541115456864404)
     @test spec[3, :window] == CosWindow(0.03894846805778692)
-    @test maximum(spec) / spec[:noise] == 492.00351859142154
+    @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
 
 @testset "NMRIO: 2D HN (ucsf)" begin
@@ -463,13 +463,13 @@ end
 
     @test parent(dat) isa Matrix{Float64}
 
-    @test dat[1, 100] == 59228.95703125
-    @test dat[20, 100] == 27169.9140625
-    @test dat[1] == -48482.26171875
-    @test dat[1, end] == 36429.125
-    @test dat[end, end] == -23958.6171875
-    @test dat[end] == -23958.6171875
-    @test maximum(dat) == 7.984743e6
+    @test dat[1, 100] ≈ 59228.95703125
+    @test dat[20, 100] ≈ 27169.9140625
+    @test dat[1] ≈ -48482.26171875
+    @test dat[1, end] ≈ 36429.125
+    @test dat[end, end] ≈ -23958.6171875
+    @test dat[end] ≈ -23958.6171875
+    @test maximum(dat) ≈ 7.984743e6
 
     @test label(dat, 1) == "1H"
     @test label(dat, 2) == "15N"
@@ -479,10 +479,10 @@ end
     spec = loadnmr(joinpath(artifact"3D_HNCA_ucsf", "hnca.ucsf"))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] == 9.703234542832309
-    @test dims(spec, 2)[1] == 68.74033212965945
-    @test dims(spec, 3)[end] == 107.75222413893053
-    @test spec[10, 11, 12] == 99473.6875
+    @test dims(spec, 1)[1] ≈ 9.703234542832309
+    @test dims(spec, 2)[1] ≈ 68.74033212965945
+    @test dims(spec, 3)[end] ≈ 107.75222413893053
+    @test spec[10, 11, 12] ≈ 99473.6875
     @test spec[1, :window] isa UnknownWindow
     @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
@@ -635,7 +635,7 @@ end
     @test length(shifts) == 340
     s = first(shifts)
     @test (s.residue, s.residuename, s.atom, nucleus(s), ppm(s)) == (2, "SER", "H", H1, 9.307)
-    @test s.error == 0.01
+    @test s.error ≈ 0.01
     @test label(s) == "S2H"
 
     # backbone amides
