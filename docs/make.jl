@@ -4,6 +4,10 @@ ENV["GKSwstype"] = "100"
 
 DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 
+# Fetch the example data before building: on a fresh machine the first use of each artifact
+# prints a download message, which would end up in example and doctest output.
+foreach(name -> exampledata(name; path=true), NMRTools.NMRIO.EXAMPLEDATA_NAMES)
+
 # the release notes page is generated from NEWS.md at the repository root
 write(joinpath(@__DIR__, "src", "releasenotes.md"),
       replace(read(joinpath(@__DIR__, "..", "NEWS.md"), String),
