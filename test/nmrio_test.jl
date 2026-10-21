@@ -717,6 +717,11 @@ end
     @test endswith(exampledata("3D_HNCA_pipe"; path=true), "test%03d.ft3")
     @test size(exampledata("3D_HNCA_ucsf")) == size(exampledata("3D_HNCA_pipe"))
 
+    # loader keywords are passed through
+    @test exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
+    @test fid[T2Dim, :firstpoint] == 0.5
+    @test eltype(exampledata("1D_19F"; allcomponents=true)) <: NMRTools.Multicomplex
+
     @test_throws ArgumentError exampledata("2D_HN_titration"; fid=true)
     @test_throws NMRToolsError exampledata("no such data")
 

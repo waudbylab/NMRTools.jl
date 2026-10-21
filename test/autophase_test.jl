@@ -262,6 +262,9 @@ end
     @test metadata(s2, 1, :phase).p0 ≈ 50.0
     @test metadata(s2, 1, :window) isa ExponentialWindow
     @test metadata(autoprocess(bad; solvent=false, phase=nothing), 1, :phase) === nothing
+    # the real spectrum by default; real=false keeps the multicomplex one
+    @test eltype(spec) == Float64
+    @test eltype(autoprocess(bad; solvent=false, real=false)) <: Multicomplex
     @test_throws ArgumentError autoprocess(bad; solvent=false, phase=:wrong)
     # no lines to phase on: warn and leave the dimension unphased
     noise = synthetic_fid([]; noise=1e-3)
@@ -275,7 +278,8 @@ end
         @test !isnothing(metadata(s2d, 1, :phase))
         # autophase without a dimension phases each frequency dimension in turn, from traces
         # through the cross peaks
-        unphased = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")); phase=nothing)
+        unphased = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")); phase=nothing,
+                               real=false)
         both = autophase(unphased)
         @test !isnothing(metadata(both, 1, :phase)) && !isnothing(metadata(both, 2, :phase))
         @test parent(both) ≈ parent(autophase(autophase(unphased, 1), 2))
@@ -310,7 +314,8 @@ end
 
     # 2D: both dimensions phased from traces through the cross peaks, including a large
     # first-order phase in the direct dimension and the -180° of a half-dwell indirect dimension
-    spec2d = autoprocess(exampledata("2D_HN"; fid=true))
-    @test edgeerror(metadata(spec2d, 1, :phase), (-247.89, 218.4)) < 30
+    # (whose first point is not a t = 0 point, so is not halved)
+    spec2d = autoprocess(exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0)))
+    @test edgeerror(metadata(spec2d, 1, :phase), (-247.89, 218.4)) < 10
     @test edgeerror(metadata(spec2d, 2, :phase), (90.0, -180.0)) < 10
 end

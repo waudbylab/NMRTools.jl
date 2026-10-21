@@ -7,6 +7,19 @@ it, and saved as the starting point for an analysis.
 
 For a worked example, see [Assigning ubiquitin from the BMRB](../tutorials/bmrb.md).
 
+## In one line
+
+Give the BMRB entry number and the atoms correlated in each dimension, direct dimension first:
+
+```julia
+using NMRTools
+hsqc = loadbmrb(17769, "H", "N")             # backbone ¹H,¹⁵N HSQC peaks of ubiquitin
+```
+
+This downloads the entry and returns a peak list, labelled by residue, that can be plotted on a
+spectrum with `nmrplot!`, registered onto it with [`register!`](@ref), or saved with
+[`savepeaks`](@ref).
+
 ## Loading shifts
 
 Given an entry number, `loadbmrb` downloads the entry's NMR-STAR file from bmrb.io. Given a file
@@ -58,8 +71,9 @@ For ¹⁵N this includes side-chain NH and NH₂ groups; for ¹³C every CH, CH�
 methylene protons with identical shifts give a single peak:
 
 ```@example tools-bmrb
+methylregion(p) = -0.5 < ppm(p, 1) < 1.5 && 5 < ppm(p, 2) < 30
 ch = peaklist(shifts, H1, C13)
-fig = nmrplot(ch; title="¹H,¹³C HSQC")
+fig = nmrplot(filter(methylregion, ch); title="¹H,¹³C HSQC, methyl region")
 save("tools-bmrb-ch.svg", fig); nothing # hide
 ```
 
@@ -84,7 +98,8 @@ can be written down directly:
 | HNCA, i peaks | `peaklist(shifts, "H", "N", "CA")` |
 | HNCA, i−1 peaks | `peaklist(shifts, "H", "N", "CA-1")` |
 | HN(CO)CA | `peaklist(shifts, "H", "N", "CA-1")` |
-| HNCACB | `peaklist(shifts, "H", "N", "CB")`, `"CB-1"`, `"CA"`, `"CA-1"` |
+| HNCACB (Cα and Cβ, i and i−1) | `reduce(vcat, [peaklist(shifts, "H", "N", a) for a in ("CA", "CB", "CA-1", "CB-1")])` |
+| CBCA(CO)NH | `vcat(peaklist(shifts, "H", "N", "CA-1"), peaklist(shifts, "H", "N", "CB-1"))` |
 | CON | `peaklist(shifts, "C-1", "N")` |
 | ¹H,¹³Cα | `peaklist(shifts, "HA", "CA")` |
 
@@ -142,9 +157,9 @@ removes it, and `register` returns a moved copy:
 
 ```@example tools-bmrb
 hnca = exampledata("3D_HNCA")
-hn = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim)
-moved = register(backbone, hn)
-fig, ax, _ = nmrplot(hn; title="")
+hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3   # ¹H,¹⁵N projection
+moved = register(backbone, hn_proj)
+fig, ax, _ = nmrplot(hn_proj; title="")
 nmrplot!(ax, moved)
 save("tools-bmrb-overlay.svg", fig); nothing # hide
 ```

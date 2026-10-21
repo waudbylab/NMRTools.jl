@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Breaking: `autoprocess` returns the real spectrum** (as from `realest`). Pass `real=false` to
+  keep the `Multicomplex` spectrum, for example to phase it further.
+- **`ppm(n)`** returns the function `peak -> ppm(peak, n)`, e.g. `sort(pks; by=ppm(1))`.
+- **`register`**, the non-mutating form of `register!`, is now documented.
+- **`exampledata`** passes other keywords to `loadfid` or `loadnmr`, e.g.
+  `exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))`.
 - **Example data.** `exampledata(name; fid=true)` loads the raw data of an example data set with
   `loadfid`, and `exampledata(name; path=true)` returns its path. `3D_HNCA_pipe` and
   `3D_HNCA_ucsf` are now available through `exampledata`, and `BMRB_ubiquitin` returns the
@@ -13,10 +19,12 @@
   the phase of a dimension from 1D traces through the strongest cross peaks, pooled into one fit,
   instead of from a single trace summed over the other dimensions. Each trace combines the
   components of the other dimensions so that it does not depend on how they are phased, and ridges
-  such as t₁ noise from residual water are left out. On the ¹H,¹⁵N example (`2D_HN`) the estimates
-  are within 10° and 5° of TopSpin's phases, where they were wrong by up to 90° before.
+  such as t₁ noise from residual water are left out. On the ¹H,¹⁵N example (`2D_HN`, with its
+  half-dwell ¹⁵N first point unscaled) the estimates are within 4° and 13° of TopSpin's phases,
+  where they were wrong by up to 90° before.
 - **First-order phase search.** `estimatephase` searches five times the `maxdelay` range when the
-  best fit lies at its limit, and keeps the wider result if it fits better. For indirect dimensions
+  best fit lies at its limit, with the prior on `p1` widened to match, and keeps the wider result
+  if it fits better. For indirect dimensions
   the default `p1` is now `nothing`: first-order phases of 0 and -180° (a first point half a dwell
   time after t = 0) are both tried.
 - **Solvent filtering.** `solventfilter` takes the digital-filter group delay into account, filtering

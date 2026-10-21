@@ -10,9 +10,12 @@ apply it to one dimension of multidimensional data. For an introduction, see the
 ```@example process
 using NMRTools, CairoMakie
 fid = exampledata("1D_1H"; fid=true)
-fid2d = exampledata("2D_HN"; fid=true)
+fid2d = exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))
 nothing # hide
 ```
+
+The ¹⁵N dimension of `2D_HN` starts half a dwell time after t = 0, so its first point is not a t = 0
+point and is not halved (`firstpoint`, see [`loadfid`](@ref NMRTools.NMRIO.loadfid)).
 
 ## The functions
 
@@ -26,13 +29,13 @@ nothing # hide
 | [`phase`](@ref) | either | zero- and first-order phase correction |
 | [`autophase`](@ref) | frequency domain | estimate and apply a phase correction |
 | [`extract`](@ref) | either | select a region in a pipeline, e.g. `extract(F1Dim, 6.0 .. 10.0)` |
-| `realest` | either | the purely real part, giving `Float64` data |
+| `real`, `realest` | either | the real part, giving `Float64` data (`real` for 1D, `realest` for nD) |
 
 Each function takes an `NMRData` and returns a new one. Called without data, each returns a
 function, so steps chain with `|>`:
 
 ```@example process
-spec = fid |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0) |> realest
+spec = fid |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0) |> real
 nothing # hide
 ```
 
@@ -73,9 +76,9 @@ in the dimension's `:window` metadata is used. Common choices:
 | `GaussWindow(...)`, `LorentzToGaussWindow(...)` | resolution enhancement |
 
 ```@example process
-fig, ax, _ = nmrplot(realest(fid |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[0.5 .. 1.0];
+fig, ax, _ = nmrplot(real(fid |> apodize(ExponentialWindow(5.0)) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[0.5 .. 1.0];
                      title="exponential (5 Hz) and cos² windows")
-nmrplot!(ax, realest(fid |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[0.5 .. 1.0])
+nmrplot!(ax, real(fid |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[0.5 .. 1.0])
 save("process-windows.svg", fig); nothing # hide
 ```
 
@@ -102,9 +105,9 @@ which is slower but more selective.
 
 ```@example process
 filtered = solventfilter(fid)
-fig, ax, _ = nmrplot(realest(fid |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[3.5 .. 6];
+fig, ax, _ = nmrplot(real(fid |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[3.5 .. 6];
                      title="before and after solvent filtering")
-nmrplot!(ax, realest(filtered |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[3.5 .. 6])
+nmrplot!(ax, real(filtered |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))[3.5 .. 6])
 save("process-solvent.svg", fig); nothing # hide
 ```
 
@@ -189,7 +192,7 @@ auto2d = fid2d |> apodize(T1Dim, Cos2Window()) |> apodize(T2Dim, CosWindow()) |>
 auto2d[F1Dim, :phase], auto2d[F2Dim, :phase]
 ```
 
-These are within about 10° (¹H) and 5° (¹⁵N) of TopSpin's phases for this dataset, (−247.9°, 218.4°)
+These are within about 4° (¹H) and 13° (¹⁵N) of TopSpin's phases for this dataset, (−247.9°, 218.4°)
 and (90°, −180°). The ¹H first-order phase is large, and the cross peaks span only 6–10 ppm, which
 constrains it less well than lines across the whole spectrum would. Check the result, and set
 phases known from the pulse sequence or from TopSpin with [`phase`](@ref).
@@ -226,7 +229,7 @@ Process it as a 1D, then set the series axis with [`setrelaxtimes`](@ref) (or
 [`setgradientlist`](@ref), [`setkinetictimes`](@ref), [`setoffsets`](@ref)):
 
 ```@example process
-relax = series |> apodize(ExponentialWindow(2.0)) |> zerofill |> ft |> autophase |> realest
+relax = series |> apodize(ExponentialWindow(2.0)) |> zerofill |> ft |> autophase |> real
 relax = setrelaxtimes(relax, acqus(relax, :vclist) * 4e-3, "s")
 fig = nmrplot(relax[0.7 .. 1.0, :]; style=:flat)
 save("process-pseudo2d.svg", fig); nothing # hide
@@ -239,8 +242,8 @@ them.
 
 ## Real and imaginary parts
 
-`realest(spec)` gives the purely real part of every point, real in every dimension. `real` and
-`imag` act elementwise as in MulticomplexNumbers, taking the coefficients of the highest-order
+For 1D data, `real(spec)` gives the real spectrum. For multidimensional data, `realest(spec)` gives
+the part real in every dimension. `real` and `imag` take the coefficients of the highest-order
 imaginary unit: for 2D data `real.(spec)` and `imag.(spec)` are the parts real and imaginary in the
 indirect dimension, each still complex in the direct dimension. Individual components are available
 with `component`. See [Multicomplex numbers and quadrature](../concepts/multicomplex.md).

@@ -414,7 +414,7 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Union{Real,No
     # The prior on p1 is scaled by the variance of the phase residuals: weak when the lines agree
     # closely (well-determined fit), stronger when model errors make the phases scatter. Start from
     # a scatter `σ0` and update it from each fit. `candidates` are the observations allowed in.
-    function fit(candidates, σ0, p1exp, p1range)
+    function fit(candidates, σ0, p1exp, p1range, λ)
         inl = copy(candidates)
         p0r, p1r = 0.0, deg2rad(p1exp)
         σ = σ0                           # scatter of the line groups about the fit
@@ -447,11 +447,15 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Union{Real,No
     # dispersion tail reaches the edges too.
     function solve(p1exp, halfwidth)
         p1range = (p1exp - halfwidth, p1exp + halfwidth)
-        p0r, p1r, inl, w, σlines = fit(isline, deg2rad(15), p1exp, p1range)
+        # the prior towards `p1exp` widens with the search, so that a wider search is not pulled
+        # back towards the expected value
+        λr = λ * (p1max / halfwidth)^2
+        p0r, p1r, inl, w, σlines = fit(isline, deg2rad(15), p1exp, p1range, λr)
         redge = _halfwrap.(φ .- p0r .- p1r .* f)
         gate = min(deg2rad(maxresidual), 3 * hypot(σlines, deg2rad(_EDGEFLOOR)))
         goodedge = .!isline .& (abs.(redge) .<= gate)
-        any(goodedge) && ((p0r, p1r, inl, w, _) = fit(isline .| goodedge, σlines, p1exp, p1range))
+        any(goodedge) &&
+            ((p0r, p1r, inl, w, _) = fit(isline .| goodedge, σlines, p1exp, p1range, λr))
         rall = rad2deg.(_halfwrap.(φ .- p0r .- p1r .* f))
         residual = sqrt(sum(w[inl] .* rall[inl] .^ 2) / sum(w[inl]))
         atlimit = order == 1 && halfwidth - abs(rad2deg(p1r) - p1exp) < 0.5

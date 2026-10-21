@@ -12,7 +12,7 @@ function exampledata()
 end
 
 """
-    exampledata(name; fid=false, path=false)
+    exampledata(name; fid=false, path=false, kwargs...)
 
 Load example NMR data provided with NMRTools.jl.
 
@@ -26,6 +26,8 @@ chemical shifts of ubiquitin in `BMRB_ubiquitin` (BMRB entry 17769), which loads
 - `fid`: if `true`, load the raw time-domain data (`fid` or `ser`) with
   [`loadfid`](@ref NMRTools.NMRIO.loadfid) instead of the processed spectrum
 - `path`: if `true`, return the path of the data set instead of loading it
+- other keywords are passed to `loadfid` or [`loadnmr`](@ref NMRTools.NMRIO.loadnmr), for
+  example `firstpoint` or `allcomponents`
 
 Series (`1D_19F_titration`, `2D_HN_titration`) return a vector.
 
@@ -33,15 +35,16 @@ Series (`1D_19F_titration`, `2D_HN_titration`) return a vector.
 ```julia
 spec = exampledata("2D_HN")                 # processed spectrum
 fid = exampledata("2D_HN"; fid=true)        # raw data
+fid = exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))
 dir = exampledata("2D_HN"; path=true)       # experiment directory
 shifts = exampledata("BMRB_ubiquitin")      # assigned chemical shifts
 ```
 """
-function exampledata(name; fid=false, path=false)
+function exampledata(name; fid=false, path=false, kwargs...)
     p = _examplepath(name)
     path && return p
-    name == "BMRB_ubiquitin" && return fid ? _nofid(name) : loadbmrb(p)
-    load = fid ? (q -> loadfid(_examplefidpath(name, q))) : loadnmr
+    name == "BMRB_ubiquitin" && return fid ? _nofid(name) : loadbmrb(p; kwargs...)
+    load = fid ? (q -> loadfid(_examplefidpath(name, q); kwargs...)) : (q -> loadnmr(q; kwargs...))
     return p isa AbstractVector ? map(load, p) : load(p)
 end
 

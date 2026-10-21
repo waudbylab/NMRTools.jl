@@ -94,7 +94,7 @@ loadfid("1/ser") |> apodize |> zerofill |> ft |>
 
 Processing functions dispatch on dimension types — `TimeDimension`s are processed, others are skipped. All functions accept optional dimension arguments for per-dimension control.
 
-`autoprocess(fid; window, zerofill, solvent, phase, rebuild)` chains solvent filter (¹H in H₂O), apodize (`Cos2Window` default), zerofill, ft and autophase for 1D/2D; per-dimension settings via `Dict`. `loadfid` scales raw data by `2^NC` so intensities match TopSpin. `phase`, `extract` and `ft` refresh `:noise`. `Cos2Window` (alias `Cos²Window`).
+`autoprocess(fid; window, zerofill, solvent, phase, rebuild, real)` chains solvent filter (¹H in H₂O), apodize (`Cos2Window` default), zerofill, ft and autophase for 1D/2D, and returns the real spectrum (`real=false` keeps it multicomplex); per-dimension settings via `Dict`. In docs, use `real` for 1D data and `realest` for nD. `loadfid` scales raw data by `2^NC` so intensities match TopSpin. `phase`, `extract` and `ft` refresh `:noise`. `Cos2Window` (alias `Cos²Window`).
 
 Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases; for nD, groups pooled from traces through the strongest cross peaks, each a phase-independent combination of the other dimensions' components; indirect dims try p1 = 0 and −180°; at-limit p1 fits retried over 5× `maxdelay`), `autophase` (estimate + apply). `solventfilter` removes the group delay before filtering and restores it after; `autoprocess` phases a filtered 1D from the unfiltered spectrum with the solvent excluded. `phase` accumulates the total correction in the dimension's `:phase` metadata.
 

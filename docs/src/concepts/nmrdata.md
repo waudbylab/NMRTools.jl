@@ -64,7 +64,7 @@ The element type records what kind of data an `NMRData` holds:
 
 | Element type | Meaning | Produced by |
 |---|---|---|
-| `Float64` | real spectrum | `loadnmr` (default), `realest` |
+| `Float64` | real spectrum | `loadnmr` (default), `autoprocess`, `real`, `realest` |
 | `Multicomplex{Float64,1,2}` | complex in one dimension | `loadfid` on a 1D or pseudo-2D, `loadnmr(...; allcomponents=true)` on 1D data |
 | `Multicomplex{Float64,2,4}` | complex in two dimensions | `loadfid` on a 2D |
 | `Multicomplex{Float64,3,8}` | complex in three dimensions | `loadfid` on a 3D |

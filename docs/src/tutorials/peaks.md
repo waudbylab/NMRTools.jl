@@ -54,6 +54,10 @@ ppm(p)            # position, ordered like the spectrum's dimensions
 ```
 
 ```@example peaks
+ppm(p, 2)         # one coordinate: here the ¹⁵N shift
+```
+
+```@example peaks
 linewidth(p)      # full width at half maximum in each dimension, in Hz
 ```
 
@@ -69,6 +73,13 @@ Sorting and filtering use the accessors:
 
 ```@example peaks
 strong = sort(pks; by=intensity, rev=true)[1:5]
+```
+
+`ppm(n)` gives a function that reads coordinate `n` of a peak, so peaks can be sorted by position:
+
+```@example peaks
+lefttoright = sort(pks; by=ppm(1), rev=true)
+ppm(1).(lefttoright[1:5])
 ```
 
 ```@example peaks

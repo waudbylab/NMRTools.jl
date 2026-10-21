@@ -7,11 +7,13 @@ and without linear prediction in the ¹⁵N dimension.
 
 ```@example lp
 using NMRTools, CairoMakie
-fid = exampledata("2D_HN"; fid=true)
+fid = exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))
 size(fid)
 ```
 
-The ¹⁵N dimension has 64 complex points. The phases below are the ones used to process this
+The ¹⁵N dimension has 64 complex points. Its first point is sampled half a dwell time after
+t = 0, which is why it needs a first-order phase of −180°, so it should not be scaled by 0.5 as a
+t = 0 point is: `firstpoint=Dict(T2Dim => 1.0)` keeps it as recorded. The phases below are the ones used to process this
 dataset in TopSpin, which can be copied directly (see [Phasing](process.md#Phasing)).
 
 ## With `autoprocess`
@@ -36,7 +38,8 @@ predicted = fid |>
             phase(F1Dim, -247.9, 218.4) |>
             linearpredict(T2Dim) |>
             apodize(T2Dim, CosWindow()) |> zerofill(T2Dim) |> ft(T2Dim) |>
-            phase(F2Dim, 90.0, -180.0)
+            phase(F2Dim, 90.0, -180.0) |>
+            realest
 predicted[F2Dim, :td]
 ```
 
@@ -48,7 +51,7 @@ spans the extended FID.
 A ¹⁵N trace through a peak shows the narrower line:
 
 ```@example lp
-trace(s) = realest(s)[Near(8.27), 120 .. 126]
+trace(s) = s[Near(8.27), 120 .. 126]
 fig, ax, _ = nmrplot(trace(plain); title="¹⁵N trace at 8.27 ppm")
 nmrplot!(ax, trace(predicted))
 save("lp-trace.svg", fig); nothing # hide
@@ -58,8 +61,8 @@ save("lp-trace.svg", fig); nothing # hide
 
 ```@example lp
 fig = Figure(size=(900, 400))
-nmrplot(fig[1, 1], realest(plain)[7.5 .. 8.7, 116 .. 126]; title="zero-filling only")
-nmrplot(fig[1, 2], realest(predicted)[7.5 .. 8.7, 116 .. 126]; title="linear prediction")
+nmrplot(fig[1, 1], plain[7.5 .. 8.7, 116 .. 126]; title="zero-filling only")
+nmrplot(fig[1, 2], predicted[7.5 .. 8.7, 116 .. 126]; title="linear prediction")
 save("lp-2d.svg", fig); nothing # hide
 ```
 

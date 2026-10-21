@@ -2,18 +2,17 @@
 
 ## Nuclei
 
-NMRTools defines the nuclei below as instances of [`Nucleus`](@ref). Their spin quantum numbers,
-gyromagnetic ratios and Xi ratios are returned by [`spin`](@ref), [`gyromagneticratio`](@ref) and
-[`xi_ratio`](@ref). A nucleus can also be looked up from a string with [`nucleus`](@ref), e.g.
-`nucleus("15N")`.
+NMRTools defines the nuclei below as instances of [`Nucleus`](@ref). A nucleus can also be looked
+up from a string with [`nucleus`](@ref), e.g. `nucleus("15N")`. The columns give the values
+returned by each function for nucleus `n`.
 
-```@example nuclei
+```@eval
 using NMRTools, Markdown
 fmt(x) = isnothing(x) ? "–" : string(x)
 rows = ["| `$n` | $(fmt(spin(n))) | $(fmt(gyromagneticratio(n))) | $(fmt(xi_ratio(n; aqueous=true))) | $(fmt(xi_ratio(n; aqueous=false))) |"
         for n in instances(Nucleus)]
 Markdown.parse("""
-| Nucleus | Spin | γ (rad s⁻¹ T⁻¹) | Xi ratio (DSS, aqueous) | Xi ratio (TMS, organic) |
+| Nucleus | Spin: `spin(n)` | γ (rad s⁻¹ T⁻¹): `gyromagneticratio(n)` | Xi ratio, DSS (aqueous): `xi_ratio(n)` | Xi ratio, TMS (organic): `xi_ratio(n; aqueous=false)` |
 |:--------|:-----|:----------------|:------------------------|:------------------------|
 $(join(rows, "\n"))
 """)
@@ -30,6 +29,14 @@ Coherences are described by [`SQ`](@ref) (single quantum, on one nucleus) and [`
 (multiple quantum, a combination of nuclei with coherence orders), both subtypes of
 [`Coherence`](@ref). [`coherenceorder`](@ref) gives the total order:
 
-```@example nuclei
-coherenceorder(SQ(H1)), coherenceorder(MQ(((H1, 1), (C13, 1)))), coherenceorder(MQ(((H1, 1), (C13, -1))))
+```@repl nuclei
+coherenceorder(SQ(H1))
+coherenceorder(MQ(((H1, 1), (C13, 1))))     # double quantum
+coherenceorder(MQ(((H1, 1), (C13, -1))))    # zero quantum
+```
+
+[`gyromagneticratio`](@ref) of a coherence is the sum over its nuclei, weighted by their orders:
+
+```@repl nuclei
+gyromagneticratio(MQ(((H1, 1), (C13, 1))))
 ```

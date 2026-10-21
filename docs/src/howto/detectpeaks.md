@@ -108,5 +108,5 @@ length(strong), length(narrow)
 ## In a pipeline
 
 ```julia
-pks = loadfid("hsqc/1") |> autoprocess |> realest |> detectpeaks(snr=20)
+pks = loadfid("hsqc/1") |> autoprocess |> detectpeaks(snr=20)
 ```

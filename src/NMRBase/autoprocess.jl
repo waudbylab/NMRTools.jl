@@ -29,7 +29,8 @@ function _usesolventfilter(spec, solvent)
 end
 
 """
-    autoprocess(fid; window=Cos2Window(), zerofill=2, solvent=:auto, phase=:auto, rebuild=false)
+    autoprocess(fid; window=Cos2Window(), zerofill=2, solvent=:auto, phase=:auto, rebuild=false,
+                real=true)
     autoprocess(; kw...)
 
 Process time-domain data from [`loadfid`](@ref NMRTools.NMRIO.loadfid) into a spectrum in one step.
@@ -46,8 +47,9 @@ The second form returns a function for use with `|>`. The steps, in order:
    leaving out ±0.2 ppm around the solvent: the solvent's dispersion tails at the edges of the
    spectrum help the estimate, and the filter removes them.
 
-The result is a `Multicomplex` spectrum, so it can be phased further; take `real` for the real
-spectrum. Non-Fourier dimensions (relaxation delays, offsets, …) are left unchanged.
+The result is the real spectrum (`Float64`, real in every dimension, as from `realest`). Pass
+`real=false` to keep the `Multicomplex` spectrum, for example to phase it further. Non-Fourier
+dimensions (relaxation delays, offsets, …) are left unchanged.
 
 # Keywords
 - `window`: window function, for example `ExponentialWindow(2.0)` or
@@ -58,6 +60,7 @@ spectrum. Non-Fourier dimensions (relaxation delays, offsets, …) are left unch
   suppression.
 - `phase`: `:auto` runs `autophase`; a tuple `(p0, p1)`, or a single `p0`, applies those phases
   (degrees); `nothing` skips phasing.
+- `real`: return the real spectrum (default) rather than the `Multicomplex` one.
 - `rebuild`: rebuild points missing after t = 0 by backward linear prediction. Missing points leave
   a ripple around strong lines; rebuilding them removes it, but can add a broad baseline distortion
   when the FID contains fast-decaying signals, so it is off by default.
@@ -77,7 +80,7 @@ spec = autoprocess(loadfid("hsqc/1"); window=Dict(T1Dim => Cos2Window(), T2Dim =
 See also [`autophase`](@ref), [`apodize`](@ref), [`zerofill`](@ref), [`ft`](@ref).
 """
 function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:auto, phase=:auto,
-                     rebuild::Bool=false)
+                     rebuild::Bool=false, real::Bool=true)
     spec = fid
     # 1. rebuild points missing after t = 0
     gap = -_groupdelaypoints(dims(spec, 1))
@@ -133,7 +136,7 @@ function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:aut
                                 "or nothing, got $p"))
         end
     end
-    return spec
+    return real ? realest(spec) : spec
 end
 
 autoprocess(; kw...) = fid -> autoprocess(fid; kw...)

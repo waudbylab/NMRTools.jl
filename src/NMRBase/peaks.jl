@@ -75,12 +75,15 @@ Base.ndims(::Type{<:Peak{N}}) where {N} = N
 """
     ppm(peak)
     ppm(peak, n)
+    ppm(n)
 
 The position of a peak in ppm: a tuple ordered like the spectrum's dimensions, or the
-`n`th coordinate on its own.
+`n`th coordinate on its own. `ppm(n)` returns the function `peak -> ppm(peak, n)`, for use with
+`sort`, `filter` or broadcasting, e.g. `sort(pks; by=ppm(1))` or `ppm(2).(pks)`.
 """
 ppm(p::Peak) = p.position
 ppm(p::Peak, n::Integer) = p.position[n]
+ppm(n::Integer) = p -> ppm(p, n)
 
 """
     intensity(peak)
@@ -457,6 +460,20 @@ function register!(pks::AbstractVector{<:Peak{N}}, spec::NMRData{T,N};
     return pks
 end
 
+"""
+    register(pks, spec; maxshift=nothing) -> Vector{Peak}
+    register(spec; maxshift=nothing)
+
+A copy of the peak list `pks` moved by the offset that best matches it to `spec`; `pks` is not
+changed. See [`register!`](@ref), which moves the list in place. The second form returns a function
+for use with `|>`.
+
+# Examples
+```julia
+moved = register(loadbmrb(17769, H1, N15), spec)
+loadbmrb(17769, H1, N15) |> register(spec) |> savepeaks("bmrb.csv")
+```
+"""
 register(pks::AbstractVector{<:Peak}, spec::NMRData; kwargs...) =
     register!(copy(pks), spec; kwargs...)
 

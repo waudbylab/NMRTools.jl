@@ -20,7 +20,7 @@ For your own data, use [`loadfid`](@ref NMRTools.NMRIO.loadfid) with the experim
 
 ```@example proc
 spec = autoprocess(fid)
-fig = nmrplot(realest(spec)[-1 .. 10])
+fig = nmrplot(spec[-1 .. 10])
 save("proc-auto.svg", fig); nothing # hide
 ```
 
@@ -28,7 +28,7 @@ save("proc-auto.svg", fig); nothing # hide
 
 `autoprocess` removes the residual water signal with a solvent filter (for ¹H spectra in H₂O),
 applies a cos² window, zero-fills to twice the size, Fourier transforms and phases the spectrum
-automatically. `realest` then takes the real part. The rest of this page goes through these steps,
+automatically, and returns the real part. The rest of this page goes through these steps,
 leaving the water in; see [Solvent filtering](@ref) for the filter.
 
 ## The FID
@@ -115,7 +115,7 @@ dims(unphased)
 The spectrum is still complex, and not yet phased:
 
 ```@example proc
-fig = nmrplot(realest(unphased)[-1 .. 10]; title="after Fourier transform")
+fig = nmrplot(real(unphased)[-1 .. 10]; title="after Fourier transform")
 save("proc-ft.svg", fig); nothing # hide
 ```
 
@@ -135,8 +135,8 @@ convention as TopSpin's `PHC0` and `PHC1`, so phases from TopSpin can be copied 
 
 ```@example proc
 manual = phase(unphased, F1Dim, 16.8, 0.0)
-fig, ax, _ = nmrplot(realest(phased)[6 .. 10]; title="amide region")
-nmrplot!(ax, realest(manual)[6 .. 10])
+fig, ax, _ = nmrplot(real(phased)[6 .. 10]; title="amide region")
+nmrplot!(ax, real(manual)[6 .. 10])
 save("proc-phase.svg", fig); nothing # hide
 ```
 
@@ -144,11 +144,11 @@ save("proc-phase.svg", fig); nothing # hide
 
 ## The real spectrum
 
-The phased spectrum still has an imaginary part. `realest` takes the real part, giving a
+The phased spectrum still has an imaginary part. `real` takes the real part, giving a
 `Float64` spectrum:
 
 ```@example proc
-final = realest(phased)
+final = real(phased)
 eltype(phased), eltype(final)
 ```
 
@@ -165,7 +165,7 @@ Each processing function returns a new spectrum, and called without data it retu
 so the steps can be chained with `|>`:
 
 ```@example proc
-spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> realest
+spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> real
 nothing # hide
 ```
 

@@ -30,7 +30,7 @@ and the phase correction applied. Reading the result back gives the same spectru
 
 ```@example save
 back = loadnmr(joinpath(expt, "pdata", "2"))
-maximum(abs, back - realest(spec)) / maximum(abs, back)
+maximum(abs, back - spec) / maximum(abs, back)
 ```
 
 ## FIDs

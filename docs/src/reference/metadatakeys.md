@@ -1,7 +1,26 @@
 # Metadata keys
 
 The standard metadata keys set when data are loaded and processed. See [Metadata](../concepts/metadata.md)
-for how metadata are organised and looked up.
+for how metadata are organised.
+
+## Accessing metadata
+
+| Lookup | Returns |
+|:-------|:--------|
+| `spec[:ns]` | spectrum metadata (a key from [Spectra](#Spectra)) |
+| `spec[F1Dim, :swppm]`, `spec[1, :swppm]` | axis metadata (a key from [Frequency and time dimensions](#Frequency-and-time-dimensions)), by dimension type or number |
+| `acqus(spec, :te)` | an acquisition parameter from the `acqus` file |
+| `acqus(spec, :p, 1)` | an arrayed acquisition parameter (here `P1`), indexed as in TopSpin |
+| `acqus(spec, :vdlist)` | an auxiliary file (see [Auxiliary files](#Auxiliary-files)) |
+| `metadata(spec)`, `metadata(spec, F1Dim)` | the whole dictionary for the spectrum, or for one axis |
+
+```@example keys
+using NMRTools
+spec = exampledata("2D_HN")
+spec[:ns], spec[F1Dim, :swppm], acqus(spec, :p, 1)
+```
+
+Times are in seconds and frequencies in Hz (see [Time and frequency units](../concepts/units.md)).
 
 ## Spectra
 

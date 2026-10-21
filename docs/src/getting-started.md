@@ -89,14 +89,14 @@ transformation and automatic phasing.
 ```@example gs
 fid = exampledata("1D_1H"; fid=true)
 spec1h = autoprocess(fid)
-fig = nmrplot(realest(spec1h)[-1 .. 10]; title="")
+fig = nmrplot(spec1h[-1 .. 10]; title="")
 save("gs-fid.svg", fig); nothing # hide
 ```
 
 ![](gs-fid.svg)
 
-`realest` takes the real part of the processed spectrum. For a ¹H spectrum in H₂O, `autoprocess`
-also removes the residual water signal with a solvent filter.
+`autoprocess` returns the real spectrum. For a ¹H spectrum in H₂O, it also removes the residual
+water signal with a solvent filter.
 
 ## Next steps
 

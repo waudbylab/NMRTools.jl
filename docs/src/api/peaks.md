@@ -14,6 +14,7 @@ detectpeaks
 findpeak
 findnearest
 register!
+register
 ```
 
 ## Peak list files

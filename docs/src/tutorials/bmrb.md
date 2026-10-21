@@ -61,13 +61,17 @@ maximum over the ¹³C dimension, looks like an HSQC:
 
 ```@example bmrb
 hnca = exampledata("3D_HNCA")
-hn = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim)
-fig, ax, _ = nmrplot(hn; title="HNCA projection with BMRB peaks")
+hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3
+fig, ax, _ = nmrplot(hn_proj; title="HNCA projection with BMRB peaks")
 nmrplot!(ax, predicted)
 save("bmrb-before.svg", fig); nothing # hide
 ```
 
 ![](bmrb-before.svg)
+
+Contour levels are set from the noise level of the 3D spectrum, which the projection keeps in its
+metadata. Taking the maximum over the ¹³C dimension raises the noise floor above that level, so the
+projection is divided by 3 to keep the lowest contours above the noise.
 
 The predicted peaks sit close to the observed ones, but are systematically offset: the BMRB shifts
 were referenced under the deposited sample conditions, not ours. A few residues, such as G47 and
@@ -75,13 +79,12 @@ A46, lie outside the spectral window of the ¹⁵N dimension.
 
 ## Registering the prediction
 
-[`register!`](@ref) finds the single offset that best matches a peak list to a spectrum, and moves
-the list by it:
+[`register`](@ref) finds the single offset that best matches a peak list
+to a spectrum, and returns the list moved by it ([`register!`](@ref) moves the list in place):
 
 ```@example bmrb
-registered = deepcopy(predicted)
-register!(registered, hn)
-fig, ax, _ = nmrplot(hn; title="after registration")
+registered = register(predicted, hn_proj)
+fig, ax, _ = nmrplot(hn_proj; title="after registration")
 nmrplot!(ax, registered)
 save("bmrb-after.svg", fig); nothing # hide
 ```
@@ -94,22 +97,23 @@ the predicted positions keep their relative pattern.
 ## Reading off assignments
 
 The registered list is now a set of assignments for the spectrum. Zooming in on a crowded region
-shows which residue each peak belongs to:
+shows which residue each peak belongs to (left). [`findpeak`](@ref) snaps each predicted peak onto
+the nearest maximum in the spectrum, keeping its label, to give the observed positions (right):
 
 ```@example bmrb
 region(p) = 7.6 < ppm(p, 1) < 8.4 && 119 < ppm(p, 2) < 124
-fig, ax, _ = nmrplot(hn[7.6 .. 8.4, 119 .. 124]; title="")
-nmrplot!(ax, filter(region, registered))
+observed = [findpeak(hn_proj, ppm(p); label=label(p)) for p in filter(region, registered)]
+fig = Figure(size=(1000, 450))
+ax1 = nmrplot(fig[1, 1], hn_proj[7.6 .. 8.4, 119 .. 124]; title="registered prediction").axis
+nmrplot!(ax1, filter(region, registered))
+ax2 = nmrplot(fig[1, 2], hn_proj[7.6 .. 8.4, 119 .. 124]; title="observed positions").axis
+nmrplot!(ax2, observed)
 save("bmrb-zoom.svg", fig); nothing # hide
 ```
 
 ![](bmrb-zoom.svg)
 
-[`findpeak`](@ref) snaps each predicted peak onto the nearest maximum in the spectrum, keeping its
-label, to give a list of observed positions:
-
 ```@example bmrb
-observed = [findpeak(hn, ppm(p); label=label(p)) for p in registered if region(p)]
 observed[1:3]
 ```
 
@@ -127,9 +131,9 @@ length(predicted), length(allnh)
 ```
 
 ```@example bmrb
-nh2(p) = 6.5 < ppm(p, 1) < 8 && 108 < ppm(p, 2) < 115
+nh2(p) = 6.4 < ppm(p, 1) < 7.9 && 108.5 < ppm(p, 2) < 114.5
 hsqc = exampledata("2D_HN")
-fig, ax, _ = nmrplot(hsqc[6.5 .. 8, 108 .. 115]; title="side-chain NH₂ region")
+fig, ax, _ = nmrplot(hsqc[6.4 .. 7.9, 108.5 .. 114.5]; title="side-chain NH₂ region")
 nmrplot!(ax, filter(nh2, register(sidechains, hsqc)); color=:red)
 save("bmrb-sidechains.svg", fig); nothing # hide
 ```
@@ -143,8 +147,8 @@ An HNCA correlates each amide with the Cα of its own residue (`"CA"`) and of th
 for each amide:
 
 ```@example bmrb
-ca = register!(peaklist(shifts, "H", "N", "CA"), hnca)
-caprev = register!(peaklist(shifts, "H", "N", "CA-1"), hnca)
+ca = register(peaklist(shifts, "H", "N", "CA"), hnca)
+caprev = register(peaklist(shifts, "H", "N", "CA-1"), hnca)
 ca[1:2]
 ```
 

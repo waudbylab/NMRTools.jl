@@ -668,6 +668,8 @@ end
     @test p isa Peak{2}
     @test ppm(p) == (8.2, 120.5)
     @test ppm(p, 2) ≈ 120.5
+    @test ppm(2)(p) == ppm(p, 2)                 # curried form
+    @test ppm(1).([p, p]) == [ppm(p, 1), ppm(p, 1)]
     @test label(p) == "G10"
     @test isnan(intensity(p))
     @test all(isnan, linewidth(p))
