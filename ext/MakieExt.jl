@@ -2,7 +2,7 @@ module MakieExt
 
 using NMRTools
 using NMRTools: NMRData, AbstractNMRData, NMRDimension, FrequencyDimension,
-                NonFrequencyDimension
+                NonFrequencyDimension, TimeDimension, metadata
 using NMRTools: data, dims, refdims, refdims_title, label, scale, units,
                 reorder, ForwardOrdered, Peak, ppm
 using MulticomplexNumbers: Multicomplex, realest

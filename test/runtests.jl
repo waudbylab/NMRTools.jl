@@ -37,3 +37,7 @@ end
 @safetestset "MakieExt" begin
     include("makieext_test.jl")
 end
+
+@safetestset "Doctests" begin
+    include("doctest_test.jl")
+end

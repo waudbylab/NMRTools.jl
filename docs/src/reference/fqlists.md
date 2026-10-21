@@ -4,6 +4,15 @@ Frequency lists are used in NMR experiments to specify arrays of frequencies for
 
 NMRTools represents frequency lists as [`FQList`](@ref) structures that preserve encoding information (Hz vs ppm, relative vs absolute) and provide safe conversion functions.
 
+## Encoding
+
+Frequency lists can be specified on the spectrometer in several ways: in Hz or ppm, and relative to
+the carrier or to the base frequency (0 ppm). An `FQList` stores the values with their unit and
+whether they are relative, and, once attached to a channel with
+[`withreference`](@ref NMRTools.NMRIO.withreference), the base and carrier frequencies needed to
+convert them. The raw values are returned by `data(fqlist)`, but `ppm` and `hz` should be used to
+read frequencies, since they apply the encoding.
+
 ## Accessing frequency lists
 
 Frequency lists are automatically imported when loading data:

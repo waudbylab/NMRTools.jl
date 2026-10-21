@@ -1,4 +1,4 @@
-# NMR Pulse Programme Semantic Annotation System
+# Pulse programme annotations
 
 !!! warning "Alpha Development Status"
     This annotation system is in early alpha development (currently v0.0.2). The schema, syntax, and functionality are subject to significant changes. Use with caution in production environments.

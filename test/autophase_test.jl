@@ -100,8 +100,11 @@ end
     est = estimatephase(biased)
     @test abs(rad2deg(angle(cis(deg2rad(est.p0 + 40.0))))) < 3
     @test est.nlines >= length(LINES)
-    # the first-order search range follows from maxdelay and the spectral width (5 kHz here)
-    @test abs(estimatephase(phase(spec, 1, 0.0, -60.0)).p1) <= 360 * 5000 * 20e-6 + 1e-6
+    # the first-order search range follows from maxdelay and the spectral width (5 kHz here); a fit
+    # at the limit of the range (±36°) is repeated over five times the range
+    @test isapprox(estimatephase(phase(spec, 1, 0.0, -60.0)).p1, 60; atol=2)
+    @test abs(estimatephase(phase(spec, 1, 0.0, -60.0); maxdelay=5e-6).p1) <=
+          5 * 360 * 5000 * 5e-6 + 1e-6
     # without edge observations
     @test isempty(estimatephase(spec; edges=0).edges)
 
@@ -270,9 +273,8 @@ end
         s2d = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")))
         @test dims(s2d, 1) isa F1Dim && dims(s2d, 2) isa F2Dim
         @test !isnothing(metadata(s2d, 1, :phase))
-        # autophase without a dimension phases each frequency dimension in turn; the indirect
-        # trace is summed over the direct-dimension points that carry signal, so it has enough
-        # signal to phase
+        # autophase without a dimension phases each frequency dimension in turn, from traces
+        # through the cross peaks
         unphased = autoprocess(loadfid(joinpath(testdata, "15n-trosy-ts3")); phase=nothing)
         both = autophase(unphased)
         @test !isnothing(metadata(both, 1, :phase)) && !isnothing(metadata(both, 2, :phase))
@@ -281,4 +283,34 @@ end
         @test dims(pseudo, 1) isa F1Dim
         @test size(pseudo, 2) == 101
     end
+end
+
+@testset "autophase and solvent filtering on example data" begin
+    # TopSpin's phases for the example data sets (PHC0, PHC1), which carry over directly
+    edgeerror(ph, ref) = maximum(abs, rad2deg.(angle.(cis.(2 .* deg2rad.([ph.p0 - ref[1],
+                                   ph.p0 + ph.p1 - ref[1] - ref[2]]))) ./ 2))
+
+    # solvent filtering leaves no baseline ripple from the digital-filter build-up points
+    fid = exampledata("1D_1H"; fid=true)
+    proc(f) = realest(f |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))
+    ref = proc(fid)
+    scale = maximum(abs, data(ref[6 .. 10]))
+    for method in (:lowpass, :hsvd)
+        filtered = solventfilter(fid; method)
+        @test !any(isnan, realest.(parent(filtered)))
+        d = data(proc(filtered)[9.6 .. 11]) .- data(ref[9.6 .. 11])   # an empty region
+        X = [ones(length(d)) 1:length(d)]
+        ripple = sqrt(sum(abs2, d .- X * (X \ d)) / length(d)) / scale      # less the water tails
+        @test ripple < 1e-3
+    end
+
+    # 1D in H₂O: the solvent is filtered, and the phase estimated from the unfiltered spectrum
+    spec = autoprocess(fid)
+    @test edgeerror(metadata(spec, 1, :phase), (16.76, 0.0)) < 3
+
+    # 2D: both dimensions phased from traces through the cross peaks, including a large
+    # first-order phase in the direct dimension and the -180° of a half-dwell indirect dimension
+    spec2d = autoprocess(exampledata("2D_HN"; fid=true))
+    @test edgeerror(metadata(spec2d, 1, :phase), (-247.89, 218.4)) < 30
+    @test edgeerror(metadata(spec2d, 2, :phase), (90.0, -180.0)) < 10
 end

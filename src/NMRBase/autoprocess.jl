@@ -41,7 +41,10 @@ The second form returns a function for use with `|>`. The steps, in order:
 2. Suppress the water signal in the direct dimension with [`solventfilter`](@ref).
 3. In each Fourier dimension: [`apodize`](@ref), [`zerofill`](@ref) and [`ft`](@ref).
 4. Phase each frequency dimension, direct dimension first, with [`autophase`](@ref) or given phases.
-   A dimension in which `autophase` finds no lines is left unphased, with a warning.
+   A dimension in which `autophase` finds no lines is left unphased, with a warning. When the
+   solvent was filtered from a 1D spectrum, its phase is estimated from the unfiltered spectrum,
+   leaving out ±0.2 ppm around the solvent: the solvent's dispersion tails at the edges of the
+   spectrum help the estimate, and the filter removes them.
 
 The result is a `Multicomplex` spectrum, so it can be phased further; take `real` for the real
 spectrum. Non-Fourier dimensions (relaxation delays, offsets, …) are left unchanged.
@@ -84,27 +87,39 @@ function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:aut
     end
 
     # 2. solvent suppression in the direct dimension
+    unfiltered = nothing
     if _usesolventfilter(spec, solvent)
-        spec = solvent isa Real && !(solvent isa Bool) ? solventfilter(spec, 1; shift=solvent) :
-               solventfilter(spec, 1)
+        unfiltered = spec
+        if solvent isa Real && !(solvent isa Bool)
+            target = Float64(solvent)
+            spec = solventfilter(spec, 1; shift=solvent)
+        else
+            target = metadata(dims(spec, 1), :offsetppm)
+            spec = solventfilter(spec, 1)
+        end
     end
 
     # 3. window, zero-fill and transform each Fourier dimension
-    for di in _fourierdims(spec)
-        dims(spec, di) isa TimeDimension || continue
-        w = _perdim(window, di; default=Cos2Window())
-        isnothing(w) || (spec = apodize(spec, di, w))
-        zf = _perdim(zerofill, di; default=2)
-        zf > 1 && (spec = NMRBase.zerofill(spec, di; factor=zf))
-        spec = ft(spec, di)
-    end
+    spec = _transformfourier(spec, window, zerofill)
 
     # 4. phase, direct dimension first
     for di in _fourierdims(spec)
         p = _perdim(phase, di; default=:auto)
         if p === :auto
             try
-                spec = autophase(spec, di)
+                if di == 1 && !isnothing(unfiltered) && length(_fourierdims(spec)) == 1
+                    # The solvent's dispersion tails at the edges of a 1D spectrum are a precise
+                    # phase reference, which the filter removes. Phase the direct dimension from
+                    # the unfiltered spectrum instead, leaving out the solvent line itself.
+                    # (Multidimensional spectra are phased from traces through their cross
+                    # peaks, which do not use the edges.)
+                    excl = [(target - SOLVENT_EXCLUDE_PPM) .. (target + SOLVENT_EXCLUDE_PPM)]
+                    ref = autophase(_transformfourier(unfiltered, window, zerofill), 1; exclude=excl)
+                    ph = metadata(dims(ref, 1), :phase)
+                    spec = NMRBase.phase(spec, 1, ph.p0, ph.p1)
+                else
+                    spec = autophase(spec, di)
+                end
             catch err
                 err isa NMRToolsError || rethrow()
                 @warn "autoprocess: dimension $di left unphased: $(err.message)"
@@ -122,3 +137,19 @@ function autoprocess(fid::NMRData; window=Cos2Window(), zerofill=2, solvent=:aut
 end
 
 autoprocess(; kw...) = fid -> autoprocess(fid; kw...)
+
+"half-width (ppm) of the region around a filtered solvent left out of automatic phasing"
+const SOLVENT_EXCLUDE_PPM = 0.2
+
+"apodize, zero-fill and Fourier transform each Fourier time dimension, as in `autoprocess`"
+function _transformfourier(spec, window, zerofill)
+    for di in _fourierdims(spec)
+        dims(spec, di) isa TimeDimension || continue
+        w = _perdim(window, di; default=Cos2Window())
+        isnothing(w) || (spec = apodize(spec, di, w))
+        zf = _perdim(zerofill, di; default=2)
+        zf > 1 && (spec = NMRBase.zerofill(spec, di; factor=zf))
+        spec = ft(spec, di)
+    end
+    return spec
+end

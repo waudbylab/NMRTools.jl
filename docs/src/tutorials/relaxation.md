@@ -1,4 +1,9 @@
-# 1D relaxation analysis
+# Relaxation analysis
+
+!!! tip "NMRAnalysis.jl"
+    [NMRAnalysis.jl](https://waudbylab.org/NMRAnalysis.jl) provides complete relaxation, diffusion
+    and exchange analyses, with interactive fitting. This tutorial does a simple analysis by hand,
+    to show how spectra, selectors and fitting packages fit together.
 
 Let's analyse a measurement of 1H T2 relaxation, acquired as a single pseudo-2D spectrum. First, we need to load the required packages. We will use `LsqFit` for the non-linear least squares fitting, `Measurements` to handle uncertainties, and `Statistics` for calculation of means and standard deviations.
 

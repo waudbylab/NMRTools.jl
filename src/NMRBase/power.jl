@@ -13,24 +13,23 @@ or as dB attenuation (dB). Internally stores the dB value as type `T`.
 - `watts(p::Power)` - Get Watts value
 
 # Examples
-```julia
-# Create power from dB attenuation
-p1 = Power(30.0, :dB)
-db(p1)    # 30.0
-watts(p1) # 0.001
+```jldoctest
+julia> p1 = Power(30.0, :dB)
+Power(30.0 dB, 0.001 W)
 
-# Create power from Watts
-p2 = Power(0.5, :W)
-watts(p2) # 0.5
-db(p2)    # ≈ 3.01
+julia> db(p1), watts(p1)
+(30.0, 0.001)
 
-# Works with integers and other numeric types
-p3 = Power(10, :W)
-db(p3)    # -10.0
+julia> p2 = Power(0.5, :W);
 
-# Zero watts is represented as 120 dB attenuation
-p4 = Power(0.0, :W)
-db(p4)    # 120.0
+julia> round(db(p2); digits=2)
+3.01
+
+julia> db(Power(10, :W))       # integers and other numeric types work
+-10.0
+
+julia> db(Power(0.0, :W))      # zero watts is 120 dB attenuation
+120.0
 ```
 
 # Conversion

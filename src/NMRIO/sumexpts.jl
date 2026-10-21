@@ -68,6 +68,7 @@ function sumexpts(inputexpts...; out, weights=[])
     
     # Copy the entire directory structure from the first input experiment
     cp(inputexpts_str[1], outputexpt_str)
+    _makewritable(outputexpt_str)
     println("Created output experiment from $(inputexpts_str[1])")
     
     # Read binary format parameters from the first experiment's acqus file
@@ -183,14 +184,13 @@ function sumexpts(inputexpts...; out, weights=[])
         println("  Using size: $min_length")
     end
     
-    # Initialize output data array with zeros
-    result_data = zeros(datatype, min_length)
-    
-    # Apply weights and sum all data
+    # Sum in floating point, so that non-integer weights work for integer data
+    summed = zeros(Float64, min_length)
     for (i, (current_data, weight)) in enumerate(zip(all_data, weights))
-        result_data .+= current_data[1:min_length] .* weight
+        summed .+= current_data[1:min_length] .* weight
         println("Applied weight $(weight) to experiment $(inputexpts_str[i])")
     end
+    result_data = datatype <: Integer ? round.(datatype, summed) : summed
     
     # Write output in the format of the first experiment
     outdatapath = joinpath(outputexpt_str, data_file)

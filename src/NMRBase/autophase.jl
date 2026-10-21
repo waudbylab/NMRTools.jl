@@ -177,7 +177,119 @@ function _scanp1(φ, f, w, p1range, p1expected, λ)
 end
 
 """
-    estimatephase(spec, [dim]; order=1, p1=0, maxdelay=20e-6, pivot=nothing, snr=10,
+    _phaseobservations(spec, di; snr, coupling, maxwidthratio, kw...) -> NamedTuple or nothing
+
+Line groups of the trace of `spec` along array dimension `di` (see [`_referencetrace`](@ref)), with
+the phase of each from the integral of the trace, its position as a fraction from the first point,
+and its signal-to-noise ratio. `nothing` if no lines are found. Other keywords are passed to
+[`estimatepoles`](@ref).
+"""
+function _phaseobservations(spec, di; snr, coupling, maxwidthratio, kw...)
+    d = dims(spec, di)
+    poles = estimatepoles(spec, di; snr=snr, kw...)
+    isempty(poles) && return nothing
+    groups = _phasegroups(poles, metadata(d, :bf), coupling, maxwidthratio)
+    δ = data(d)
+    n = length(δ)
+    # group phases from integrals of the spectrum: pole phases are less reliable, since a weak
+    # line's fitted pole can absorb the dispersive tail of a strong neighbour
+    φ = _groupintegralphases(_referencetrace(spec, di), groups, δ, metadata(d, :bf))
+    # position: amplitude-weighted centre of the group, as a fraction from the first point
+    f = [(_groupcentre(g) - δ[1]) / (δ[2] - δ[1]) / n for g in groups]
+    a = [sum(p.amplitude for p in g) for g in groups]
+    groupsnr = [abs(a[i]) / sum(abs(p.amplitude) for p in g) * sum(p.snr for p in g)
+                for (i, g) in enumerate(groups)]
+    return (poles=poles, groups=groups, φ=φ, f=f, snr=groupsnr)
+end
+
+"""
+    _phasetraces(spec, di; maxtraces=64, factor=8) -> (traces, exclude)
+
+1D traces along array dimension `di` from which its phase is estimated, and chemical-shift
+intervals along `di` to leave out of them.
+
+When another dimension of `spec` is a frequency dimension, the traces pass through the strongest
+cross peaks. Peaks are local maxima of the magnitude (the largest over the components) that stand
+out by more than `factor` times the noise of their own point along `di`, measured as the median
+absolute deviation over the other dimensions. Scaling by this local noise suppresses ridges along
+the other dimensions, such as t₁ noise from a residual solvent signal. Points along `di` whose median
+magnitude over the other dimensions is far above the typical one are such ridges, and are returned
+in `exclude`. At most `maxtraces` traces are used, one per position in the other dimensions.
+
+The components of a trace that are real and imaginary in the other dimensions' imaginary units all
+share the phase of its lines along `di`, differing only by real factors that depend on how the
+other dimensions are phased. Each trace is the real combination of these components with the most
+signal (the leading eigenvector of their real Gram matrix, with a non-negative weight on the
+component real in every other unit), so it does not depend on the phases of the other dimensions.
+Traces through the peaks also keep apart lines that would overlap in a projection.
+
+Otherwise (for 1D data and for series such as pseudo-2D experiments), or when no cross peak is
+found, the spectrum itself is returned, and its phase is estimated from
+[`_referencetrace`](@ref).
+"""
+function _phasetraces(spec, di; maxtraces::Integer=64, factor::Real=8)
+    others = [j for j in 1:ndims(spec) if j != di]
+    any(j -> dims(spec, j) isa FrequencyDimension, others) || return [spec], []
+    A = parent(spec)
+    w = MulticomplexNumbers.ascomplex(A, metadata(dims(spec, di), :mcindex))
+    # complex in the unit of `di`, with a leading axis over the components of the other units
+    W = ndims(w) > ndims(A) ? w : reshape(w, 1, size(w)...)
+    M = dropdims(maximum(abs, W; dims=1); dims=1)
+    along(v) = reshape(v, ntuple(j -> j == di ? length(v) : 1, ndims(M)))
+    level = [median(selectdim(M, di, k)) for k in axes(M, di)]
+    spread = [median(abs.(selectdim(M, di, k) .- level[k])) for k in axes(M, di)]
+    Z = (M .- along(level)) ./ along(max.(spread, eps()))
+    R = CartesianIndices(Z)
+    step = oneunit(first(R))
+    ismax(I) = Z[I] > factor && all(J -> Z[J] <= Z[I], max(first(R), I - step):min(last(R), I + step))
+    peaks = sort(filter(ismax, vec(collect(R))); by=I -> -Z[I])
+    positions = unique(I -> Base.setindex(Tuple(I), 0, di), peaks)
+    isempty(positions) && return [spec], []
+    positions = first(positions, maxtraces)
+
+    # ridges along the other dimensions, left out of the line fit
+    δ = data(dims(spec, di))
+    # a ridge is a run of points more than 5 times the typical median, reaching more than 50 times
+    # it (a residual solvent line is two orders of magnitude above it, while columns crowded with
+    # cross peaks reach about ten times)
+    typical = median(level)
+    ridges = filter(r -> maximum(level[r]) > 50 * typical, _runs(level .> 5 * typical))
+    exclude = [δ[last(r)] .. δ[first(r)] for r in ridges]
+
+    traces = map(positions) do I
+        t = Tuple(I)
+        idx = ntuple(j -> j == di ? Colon() : t[j], ndims(A))
+        X = W[:, idx...]                                   # components × points
+        u = eigen(Symmetric(real(X * X'))).vectors[:, end]
+        u[1] < 0 && (u = -u)
+        trace = vec(transpose(u) * X)
+        row = spec[idx...]
+        return _setdimmetadata(rebuild(row; data=Multicomplex.(trace)), 1, :mcindex => 1)
+    end
+    return traces, exclude
+end
+
+"ranges of consecutive `true` values in a boolean vector"
+function _runs(b::AbstractVector{Bool})
+    runs = UnitRange{Int}[]
+    k = firstindex(b)
+    while k <= lastindex(b)
+        if b[k]
+            e = k
+            while e < lastindex(b) && b[e + 1]
+                e += 1
+            end
+            push!(runs, k:e)
+            k = e + 1
+        else
+            k += 1
+        end
+    end
+    return runs
+end
+
+"""
+    estimatephase(spec, [dim]; order=1, p1=nothing, maxdelay=20e-6, pivot=nothing, snr=10,
                   coupling=20, maxwidthratio=3, maxresidual=30, λ=20, edges=0.01, kw...)
         -> NamedTuple
     estimatephase([dim]; kwargs...)
@@ -193,6 +305,11 @@ the strongest group used, and `edges` lists the edge observations as
 means the estimate should not be trusted. [`autophase`](@ref) warns when strong groups are rejected.
 
 The forms without the data argument return a function for use with `|>`.
+
+For a multidimensional spectrum, the lines are taken from 1D traces along `dim` through the
+strongest cross peaks, and pooled into one fit. Each trace combines the components real and
+imaginary in the other dimensions so that it does not depend on how those dimensions are phased, and
+ridges such as t₁ noise from residual solvent are left out.
 
 Lines are found with [`estimatepoles`](@ref). Poles within a coupling constant of each other are
 grouped, because the lines of a multiplet can carry antiphase dispersive components that cancel only
@@ -219,13 +336,15 @@ about the fit (a scaled median absolute residual, so that a few noise groups do 
 
 # Keywords
 - `order`: `1` fits `p0` and `p1`; `0` fits `p0` only, with the first-order phase fixed at `p1`.
-- `p1`: expected first-order phase (degrees). Close to zero once the digital-filter group delay has
-  been removed.
+- `p1`: expected first-order phase (degrees). By default 0 for the direct dimension, which is close
+  to zero once the digital-filter group delay has been removed; for an indirect dimension both 0 and
+  -180° (a first point sampled half a dwell time after t = 0) are tried and the better fit is kept.
 - `maxdelay`: largest timing error (seconds) to allow for. A first-order phase is a shift of the time
   origin: an error of τ gives a first-order phase of 360°·SW·τ across the spectral width SW, so the
   search covers `p1 ± 360·SW·maxdelay` degrees. The default of 20 µs covers the residual dead-time
   and receiver delays of most experiments; it gives ±100° for a 14 kHz ¹H spectrum and ±950° for a
-  130 kHz ¹⁹F spectrum.
+  130 kHz ¹⁹F spectrum. If the best fit lies at the limit of this range, five times the range is
+  searched and the wider result kept if it fits better.
 - `pivot`: chemical shift (ppm) at which `p0` is reported. Defaults to the first point, as for
   TopSpin's `PHC0`/`PHC1`.
 - `snr`: minimum signal-to-noise ratio of lines used.
@@ -244,42 +363,45 @@ about the fit (a scaled median absolute residual, so that a few noise groups do 
 
 See also [`autophase`](@ref), [`phase`](@ref).
 """
-function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
+function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Union{Real,Nothing}=nothing,
                        maxdelay::Real=20e-6, pivot=nothing, snr::Real=10.0,
                        coupling::Real=20.0, maxwidthratio::Real=3.0, maxresidual::Real=30.0,
                        λ::Real=20.0, edges::Real=0.01, kw...)
     order in (0, 1) || throw(ArgumentError("estimatephase: order must be 0 or 1, got $order"))
     di = resolvedim(spec, dim)
     d = dims(spec, di)
-    poles = estimatepoles(spec, di; snr=snr, kw...)
-    isempty(poles) &&
-        throw(NMRToolsError("estimatephase: no lines found with signal-to-noise above $snr"))
-    groups = _phasegroups(poles, metadata(d, :bf), coupling, maxwidthratio)
     # first-order search range from the timing uncertainty
     swhz = something(metadata(d, :swhz), abs(data(d)[2] - data(d)[1]) * length(d) *
                                          metadata(d, :bf) * 1e-6)
     p1max = 360 * swhz * maxdelay
-    p1range = (p1 - p1max, p1 + p1max)
-
     δ = data(d)
     n = length(δ)
-    a = [sum(p.amplitude for p in g) for g in groups]
-    # group phases from integrals of the spectrum: pole phases are less reliable, since a weak
-    # line's fitted pole can absorb the dispersive tail of a strong neighbour
-    φ = _groupintegralphases(_referencetrace(spec, di), groups, δ, metadata(d, :bf))
-    # position: amplitude-weighted centre of the group, as a fraction from the first point
-    f = [(_groupcentre(g) - δ[1]) / (δ[2] - δ[1]) / n for g in groups]
-    # phase variance ∝ 1/SNR²; capped so that a few strong lines cannot dominate
-    groupsnr = [abs(a[i]) / sum(abs(p.amplitude) for p in g) * sum(p.snr for p in g)
-                for (i, g) in enumerate(groups)]
 
-    # edge observations (flat baseline), appended after the line groups
+    # Line groups, and their phases and positions, from one trace or from several traces through
+    # the cross peaks of a multidimensional spectrum (see `_phasetraces`), pooled into one fit.
+    traces, ridges = _phasetraces(spec, di)
+    single = length(traces) == 1 && traces[1] === spec
+    exclude = vcat(collect(get(kw, :exclude, ())), ridges)
+    obs = [_phaseobservations(t, single ? di : 1; snr, coupling, maxwidthratio, kw...,
+                              exclude=exclude)
+           for t in traces]
+    obs = filter(!isnothing, obs)
+    isempty(obs) &&
+        throw(NMRToolsError("estimatephase: no lines found with signal-to-noise above $snr"))
+    groups = reduce(vcat, [o.groups for o in obs])
+    φ = reduce(vcat, [o.φ for o in obs])
+    f = reduce(vcat, [o.f for o in obs])
+    groupsnr = reduce(vcat, [o.snr for o in obs])
+
+    # edge observations (flat baseline), appended after the line groups. Traces through cross
+    # peaks have no baseline signal at the edges, so these are used for a single trace only.
     nlinegroups = length(groups)
     edgeobs = []
-    if edges > 0
+    if edges > 0 && single
         s = _referencetrace(spec, di)
         edgeobs = filter(e -> e.snr >= snr,
-                         _edgeobservations(s, poles, δ, metadata(d, :bf), edges, _tracenoise(s)))
+                         _edgeobservations(s, only(obs).poles, δ, metadata(d, :bf), edges,
+                                           _tracenoise(s)))
         append!(φ, [e.phase for e in edgeobs])
         append!(f, [e.position for e in edgeobs])
         append!(groupsnr, [e.snr for e in edgeobs])
@@ -292,14 +414,14 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
     # The prior on p1 is scaled by the variance of the phase residuals: weak when the lines agree
     # closely (well-determined fit), stronger when model errors make the phases scatter. Start from
     # a scatter `σ0` and update it from each fit. `candidates` are the observations allowed in.
-    function fit(candidates, σ0)
+    function fit(candidates, σ0, p1exp, p1range)
         inl = copy(candidates)
-        p0r, p1r = 0.0, deg2rad(p1)
+        p0r, p1r = 0.0, deg2rad(p1exp)
         σ = σ0                           # scatter of the line groups about the fit
         w = weights(σ)
         for iter in 1:8
-            p1r = order == 0 ? deg2rad(p1) :
-                  _scanp1(φ[inl], f[inl], w[inl], p1range, p1, λ * σ^2)
+            p1r = order == 0 ? deg2rad(p1exp) :
+                  _scanp1(φ[inl], f[inl], w[inl], p1range, p1exp, λ * σ^2)
             p0r = _bestp0(φ[inl], f[inl], w[inl], p1r)
             r = _halfwrap.(φ .- p0r .- p1r .* f)
             used = inl .& isline
@@ -323,19 +445,41 @@ function estimatephase(spec::NMRData, dim=1; order::Integer=1, p1::Real=0.0,
     # edge (2° floor) the weight of dozens of lines. Edges are wrong when the baseline has an offset (for example from a
     # wrong first-point factor) or when a strong line has a genuinely different phase, since its
     # dispersion tail reaches the edges too.
-    p0r, p1r, inl, w, σlines = fit(isline, deg2rad(15))
-    redge = _halfwrap.(φ .- p0r .- p1r .* f)
-    gate = min(deg2rad(maxresidual), 3 * hypot(σlines, deg2rad(_EDGEFLOOR)))
-    goodedge = .!isline .& (abs.(redge) .<= gate)
-    any(goodedge) && ((p0r, p1r, inl, w, _) = fit(isline .| goodedge, σlines))
+    function solve(p1exp, halfwidth)
+        p1range = (p1exp - halfwidth, p1exp + halfwidth)
+        p0r, p1r, inl, w, σlines = fit(isline, deg2rad(15), p1exp, p1range)
+        redge = _halfwrap.(φ .- p0r .- p1r .* f)
+        gate = min(deg2rad(maxresidual), 3 * hypot(σlines, deg2rad(_EDGEFLOOR)))
+        goodedge = .!isline .& (abs.(redge) .<= gate)
+        any(goodedge) && ((p0r, p1r, inl, w, _) = fit(isline .| goodedge, σlines, p1exp, p1range))
+        rall = rad2deg.(_halfwrap.(φ .- p0r .- p1r .* f))
+        residual = sqrt(sum(w[inl] .* rall[inl] .^ 2) / sum(w[inl]))
+        atlimit = order == 1 && halfwidth - abs(rad2deg(p1r) - p1exp) < 0.5
+        return (; p0r, p1r, inl, w, rall, residual, atlimit)
+    end
+
+    # Expected first-order phases: the one given, or 0. For an indirect dimension, also -180°: a
+    # first point sampled half a dwell time after t = 0 gives a first-order phase of -180°.
+    indirect = something(metadata(d, :mcindex), 1) > 1
+    expected = isnothing(p1) ? (indirect ? (0.0, -180.0) : (0.0,)) : (Float64(p1),)
+    fits = map(expected) do p1exp
+        r = solve(p1exp, p1max)
+        # When the best first-order phase lies at the limit of the search range, the timing offset
+        # may be larger than `maxdelay`: search five times the range, and keep the result if it fits
+        # better.
+        if r.atlimit
+            wide = solve(p1exp, 5 * p1max)
+            wide.residual < r.residual && (r = wide)
+        end
+        r
+    end
+    (; p0r, p1r, inl, w, rall, residual) = fits[argmin([r.residual for r in fits])]
 
     # resolve the 180° ambiguity: most line groups positive (edges carry no sign information)
     lines = inl .& isline
     any(lines) || (lines = isline)
     sum(sign.(cos.(φ[lines] .- p0r .- p1r .* f[lines]))) < 0 && (p0r += π)
 
-    rall = rad2deg.(_halfwrap.(φ .- p0r .- p1r .* f))
-    residual = sqrt(sum(w[inl] .* rall[inl] .^ 2) / sum(w[inl]))
     # line groups left out of the fit, strongest first, with their phase disagreement (degrees)
     out = sort(findall(.!inl .& isline); by=i -> -groupsnr[i])
     maxused = maximum(groupsnr[inl .& isline]; init=maximum(groupsnr[inl]))
@@ -360,8 +504,9 @@ The total correction applied is recorded in each dimension's `:phase` metadata, 
 logged at debug level. Keywords are passed to `estimatephase`, for example `order=0` for zero-order
 only, or `exclude=[4.6 .. 4.9]` to ignore water; without `dim` they apply to every dimension.
 
-For multidimensional data the correction is estimated from a single trace along `dim` (see
-[`estimatepoles`](@ref)) and applied to the whole dataset.
+For multidimensional data the correction is estimated from traces along `dim` through the
+strongest cross peaks, pooled into one fit, and applied to the whole dataset. The traces combine the
+components of the other dimensions so that they do not depend on how those dimensions are phased.
 
 ```julia
 spec = loadfid("expt/1") |> apodize(ExponentialWindow(1.0)) |> zerofill |> ft |> autophase |> realest

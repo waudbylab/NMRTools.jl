@@ -50,11 +50,16 @@ The function accepts common NMR nucleus notation formats:
 - Element symbol followed by mass number: "H1", "C13", "N15", "F19", "P31"
 
 # Examples
-```julia
-nucleus("19F")  # returns F19
-nucleus("1H")   # returns H1
-nucleus("13C")  # returns C13
-nucleus("15N")  # returns N15
+```jldoctest
+julia> nucleus("19F")
+F19::Nucleus = 6
+
+julia> nucleus("H1")
+H1::Nucleus = 0
+
+julia> nucleus("7Li")
+ERROR: ArgumentError: Unknown nucleus: 7Li
+[...]
 ```
 
 Throws `ArgumentError` if the nucleus is not recognised or not defined in the `Nucleus` enum.

@@ -6,12 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Testing:**
 - `julia -e 'using Pkg; Pkg.test()'` — run all tests using SafeTestsets
-- Test files: `test/nmrbase_test.jl`, `test/nmrio_test.jl`, `test/plotsext_test.jl`
+- Test files: `test/nmrbase_test.jl`, `test/nmrio_test.jl`, `test/plotsext_test.jl`, `test/makieext_test.jl`, processing tests, and `test/doctest_test.jl` (runs `jldoctest` blocks in docstrings)
 
 **Documentation:**
 - `julia make-local-docs.jl` — build documentation locally (installs package in dev mode and runs docs/make.jl)
 - Documentation uses Documenter.jl with visual regression tests for plots
-- Do not add "Reference" sections (with `@docs` or `@autodocs` blocks) to doc pages — all API reference lives in `docs/src/api.md` only
+- Do not add `@docs` or `@autodocs` blocks to doc pages — all API reference lives in `docs/src/api/` (one page per topic; `api/internals.md` collects non-exported docstrings)
+- Page layout follows Diátaxis: `tutorials/` (one dataset, default route, read in order), `tools/` (sumexpts, BMRB), `howto/` (one task with its options), `concepts/`, `reference/` (tables), `experimental/`. Makie is used for every plot except `howto/plots.md`
+- `docs/src/releasenotes.md` is generated from `NEWS.md` by `docs/make.jl`; edit `NEWS.md`
+- Examples use bundled data: `exampledata(name)`, `exampledata(name; fid=true)` for raw data (1D_1H, 1D_19F, 1D_19F_titration, 2D_HN, pseudo2D_T2, pseudo2D_XSTE), `exampledata(name; path=true)`, and `exampledata("BMRB_ubiquitin")` (BMRB 17769 shifts, `data/bmr17769_3.str`)
 - Documenter.jl resolves `@ref` links in the context of the module where a docstring is defined. When a docstring in `NMRBase` references a function in `NMRIO`, the unqualified `@ref` fails. Use the fully-qualified form: `` [`name`](@ref NMRTools.NMRIO.name) ``
 
 **Package Management:**
@@ -93,7 +96,7 @@ Processing functions dispatch on dimension types — `TimeDimension`s are proces
 
 `autoprocess(fid; window, zerofill, solvent, phase, rebuild)` chains solvent filter (¹H in H₂O), apodize (`Cos2Window` default), zerofill, ft and autophase for 1D/2D; per-dimension settings via `Dict`. `loadfid` scales raw data by `2^NC` so intensities match TopSpin. `phase`, `extract` and `ft` refresh `:noise`. `Cos2Window` (alias `Cos²Window`).
 
-Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases), `autophase` (estimate + apply). `phase` accumulates the total correction in the dimension's `:phase` metadata.
+Automatic phasing: `estimatepoles` (band-wise HSVD → `Vector{Pole}`), `estimatephase` (doubled-angle circular regression of multiplet-grouped pole phases; for nD, groups pooled from traces through the strongest cross peaks, each a phase-independent combination of the other dimensions' components; indirect dims try p1 = 0 and −180°; at-limit p1 fits retried over 5× `maxdelay`), `autophase` (estimate + apply). `solventfilter` removes the group delay before filtering and restores it after; `autoprocess` phases a filtered 1D from the unfiltered spectrum with the solvent excluded. `phase` accumulates the total correction in the dimension's `:phase` metadata.
 
 Dimension defaults: without a dimension argument, `apodize`, `zerofill`, `ft`, `autophase` and `autophase0` act on each Fourier (for phasing, frequency) dimension in turn with the same settings; `linearpredict` on the indirect dimensions; `solventfilter`, `estimatepoles` and `estimatephase` on the direct dimension. Multi-dimension `autophase` warns and skips a dimension with no lines. Every processing function has a spectrum-first form and a curried form for `|>`, except `extract`, which is curried only (index with chemical shift selectors otherwise). Analysis, referencing and saving functions have curried forms too (`detectpeaks`, `findpeak`, `register`/`register!` (curried on the spectrum, taking the peak list), `estimatepoles`, `estimatephase`, `reference`, `shiftdim`, `setrelaxtimes`, `setkinetictimes`, `setgradientlist`, `replacedimension`, `decimate`, `savenmr`, `savefid`, `savepeaks` (curried on the path)); add one for any new function that takes the data as its first argument.
 

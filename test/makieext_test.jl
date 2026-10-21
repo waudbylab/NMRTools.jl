@@ -34,6 +34,19 @@ function save_rgb(filename, fig)
     return nothing
 end
 
+@testset "MakieExt: FIDs are drawn as lines" begin
+    fid = exampledata("1D_1H"; fid=true)
+    fig, ax, plt = nmrplot(fid)
+    @test plt isa Lines
+    plt2 = nmrplot!(ax, imag.(fid))
+    @test plt2 isa Lines
+
+    # other non-frequency data (e.g. a relaxation curve) stay as points
+    relax = exampledata("pseudo2D_T2")
+    fig, ax, plt = nmrplot(relax[Near(0.85), :])
+    @test plt isa Scatter
+end
+
 @testset "MakieExt: 1D 19F" begin
     dat = exampledata("1D_19F")
     fig, ax, plt = nmrplot(dat)

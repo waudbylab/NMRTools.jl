@@ -701,3 +701,51 @@ end
     tokens = NMRTools.NMRIO._startokens("a 'b c' \"d'e\" it's # note\n;\nline 1\nline 2\n;\nf")
     @test tokens == ["a", "b c", "d'e", "it's", "\nline 1\nline 2", "f"]
 end
+
+@testset "exampledata: raw data, paths and BMRB shifts" begin
+    fid = exampledata("2D_HN"; fid=true)
+    @test fid isa NMRData{<:NMRTools.Multicomplex{Float64,2,4},2}
+    @test dims(fid, 1) isa T1Dim
+    @test dims(fid, 2) isa T2Dim
+
+    series = exampledata("1D_19F_titration"; fid=true)
+    @test length(series) == 11
+    @test dims(first(series), 1) isa T1Dim
+
+    @test isdir(exampledata("2D_HN"; path=true))
+    @test length(exampledata("1D_19F_titration"; path=true)) == 11
+    @test endswith(exampledata("3D_HNCA_pipe"; path=true), "test%03d.ft3")
+    @test size(exampledata("3D_HNCA_ucsf")) == size(exampledata("3D_HNCA_pipe"))
+
+    @test_throws ArgumentError exampledata("2D_HN_titration"; fid=true)
+    @test_throws NMRToolsError exampledata("no such data")
+
+    shifts = exampledata("BMRB_ubiquitin")
+    @test shifts isa Vector{ChemicalShift}
+    @test length(shifts) == 1001
+    @test isfile(exampledata("BMRB_ubiquitin"; path=true))
+    @test length(peaklist(shifts, "H", "N")) == 72
+end
+
+@testset "sumexpts and savefid with read-only sources" begin
+    src = dirname(exampledata("1D_19F_titration"; path=true)[1])
+    mktempdir() do dir
+        for i in 1:3
+            cp(joinpath(src, string(i)), joinpath(dir, string(i)))
+            chmod(joinpath(dir, string(i)), 0o555; recursive=true)    # read-only copies
+        end
+        cd(dir) do
+            redirect_stdout(devnull) do
+                sumexpts(1, 2, 3; out=101, weights=[0.5, 1.0, 2.0])   # integer data, fractional weights
+            end
+        end
+        summed = loadfid(joinpath(dir, "101"))
+        fids = [loadfid(joinpath(dir, string(i))) for i in 1:3]
+        expected = 0.5 * fids[1] + fids[2] + 2 * fids[3]
+        @test maximum(abs, data(summed) - data(expected)) / maximum(abs, data(expected)) < 1e-4    # rounded to Int32
+
+        savefid(joinpath(dir, "102"), fids[1])          # parameter files copied from a read-only source
+        @test data(loadfid(joinpath(dir, "102"))) ≈ data(fids[1])
+        foreach(i -> chmod(joinpath(dir, string(i)), 0o755; recursive=true), 1:3)
+    end
+end

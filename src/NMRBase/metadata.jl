@@ -119,18 +119,20 @@ If present, the contents of auxilliary files such as `vclist` and `vdlist` can
 be accessed using this function.
 
 # Examples
-```julia-repl
-julia> acqus(expt, :pulprog)
-"zgesgp"
-julia> acqus(expt, "TE")
+```jldoctest
+julia> spec = exampledata("2D_HN");
+
+julia> acqus(spec, :pulprog)
+"sfhmqcf3gpph.cw"
+
+julia> acqus(spec, "TE")
 276.9988
-julia> acqus(expt, :p, 1)
+
+julia> round(acqus(spec, :p, 1) * 1e6; digits=2)    # pulse length p1, in µs
 9.2
-julia> acqus(expt, "D", 1)
+
+julia> acqus(spec, "D", 1)
 0.1
-julia> acqus(expt, :vclist)
-11-element Vector{Int64}:
-[...]
 ```
 
 See also [`metadata`](@ref).
@@ -168,12 +170,14 @@ This is the recommended way to obtain the frequency of a nucleus that has no det
 axis, e.g. the carbon channel in a ¹³C-edited experiment read out on ¹H.
 
 # Examples
-```julia-repl
+```jldoctest
+julia> spec = exampledata("2D_HN");
+
 julia> channels(spec, C13)[:bf]
-1.5078e8
+1.5092041e8
 
 julia> channels(spec, :f1)[:nucleus]
-H1
+H1::Nucleus = 0
 ```
 
 See also [`acqus`](@ref), [`metadata`](@ref).

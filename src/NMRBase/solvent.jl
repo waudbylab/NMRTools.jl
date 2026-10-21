@@ -57,6 +57,13 @@ function _lowpassestimate(data::AbstractArray, di::Integer, w::AbstractVector, f
     return permutedims(reshape(out, size(dp)...), invperm(perm))
 end
 
+"move the time origin of `A` along `di` forward by `g` points (a circular shift, by Fourier transform)"
+function _shiftorigin!(A, mcindex, di, g)
+    _mcfft!(A, mcindex, di)
+    _removegroupdelay!(A, mcindex, di, g)
+    return _mcfft!(A, mcindex, di; inverse=true)
+end
+
 "resolve a `shift` spec (`:carrier` or a ppm value) to a frequency offset (Hz) from the carrier"
 function _shifthz(shift, d)
     shift === :carrier && return 0.0
@@ -87,7 +94,9 @@ direct dimension is filtered.
 - `band`: width (Hz) of the region removed by `:hsvd`. Defaults to `width`.
 - `ncoef`: number of oscillations fitted by `:hsvd`. `:auto` uses `clamp(td ÷ 16, 16, 48)`.
 
-Use on time-domain data, before [`apodize`](@ref).
+Use on time-domain data, before [`apodize`](@ref). The digital-filter group delay recorded by
+[`loadfid`](@ref NMRTools.NMRIO.loadfid) is taken into account: the FID is filtered from t = 0,
+with the build-up points before t = 0 treated as negative time, as in `ft`.
 
 # Examples
 ```julia
@@ -109,21 +118,34 @@ function solventfilter(spec::NMRData, dim; shift=:carrier, method::Symbol=:lowpa
     Δ = _shifthz(shift, d)                       # Hz offset of target from carrier
     sp = Δ == 0 ? spec : frequencyshift(spec, di, Δ)   # move target on resonance
 
+    # Filter a FID whose time origin is its first point. The digital filter's build-up points
+    # before t = 0 are not part of the decay: left in place, they bias the low-pass average and
+    # the HSVD fit at the start of the array, and the error appears after the group-delay
+    # correction in `ft` as a baseline ripple with period 1/(group delay). The delay is removed
+    # here exactly as `ft` removes it, which moves the build-up points to the end of the array
+    # (negative time), and restored after filtering.
+    g = _groupdelaypoints(d)
+    A = copy(parent(sp))
+    g == 0 || _shiftorigin!(A, mcindex, di, g)
     if method === :lowpass
-        fl = clamp(round(Int, swhz / width), 1, size(sp, di) ÷ 2)
+        fl = clamp(round(Int, swhz / width), 1, size(A, di) ÷ 2)
         w = _lowpasswindow(fl, shape)
-        lowfreq = _lowpassestimate(parent(sp), di, w, fl)
-        out = rebuild(sp; data=parent(sp) .- lowfreq)
+        A .-= _lowpassestimate(A, di, w, fl)
     elseif method === :hsvd
         dt = 1 / swhz
         bandhz = isnothing(band) ? Float64(width) : Float64(band)
-        n = size(sp, di)
-        nc = ncoef === :auto ? clamp(n ÷ 16, 16, 48) : ncoef
-        kernel = _percolumn(x -> _hsvdsubtract(x; dt=dt, targethz=0.0, bandhz=bandhz, ncoef=nc))
-        out = rebuild(sp; data=_maptransform(parent(sp), di, mcindex, kernel))
+        nc = ncoef === :auto ? clamp(size(A, di) ÷ 16, 16, 48) : ncoef
+        # fit the decay from t = 0 only: the build-up points now at the end of the array are not
+        # part of it, and are left unchanged
+        L = size(A, di) - ceil(Int, max(g, 0))
+        hsvd(x) = _hsvdsubtract(x; dt=dt, targethz=0.0, bandhz=bandhz, ncoef=nc)
+        kernel = _percolumn(x -> vcat(hsvd(x[1:L]), x[(L + 1):end]))
+        A = _maptransform(A, di, mcindex, kernel)
     else
         throw(ArgumentError("solventfilter: method must be :lowpass or :hsvd, got $method"))
     end
+    g == 0 || _shiftorigin!(A, mcindex, di, -g)
+    out = rebuild(sp; data=A)
 
     return Δ == 0 ? out : frequencyshift(out, di, -Δ)
 end

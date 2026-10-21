@@ -78,7 +78,7 @@ function NMRTools.nmrplot!(ax::Makie.Axis, spec::_Spec1DFreq;
 end
 
 # ─────────────────────────────────────────────────────────────────────────
-# 1D non-frequency-domain spectra → scatter
+# 1D non-frequency-domain data → lines for FIDs, scatter otherwise
 # ─────────────────────────────────────────────────────────────────────────
 
 function NMRTools.nmrplot(spec::_Spec1DNonFreq; figure=NamedTuple(), kwargs...)
@@ -120,10 +120,14 @@ function NMRTools.nmrplot!(ax::Makie.Axis, spec::_Spec1DNonFreq;
     sf = _normalization_divisor(Afwd, normalize)
     x = data(dims(Afwd, 1))
     y = _realdata(Afwd) ./ sf
-    return Makie.scatter!(ax, x, y;
-                          label=string(something(NMRTools.label(Afwd), "")),
-                          kwargs...)
+    plotfn! = _isfid(dims(Afwd, 1)) ? Makie.lines! : Makie.scatter!
+    return plotfn!(ax, x, y;
+                   label=string(something(NMRTools.label(Afwd), "")),
+                   kwargs...)
 end
+
+# a time dimension with an imaginary unit holds an FID, which is drawn as a line
+_isfid(dim) = dim isa TimeDimension && !isnothing(get(metadata(dim), :mcindex, nothing))
 
 # ─────────────────────────────────────────────────────────────────────────
 # Vector of 1D spectra (overlay or vertical stack)

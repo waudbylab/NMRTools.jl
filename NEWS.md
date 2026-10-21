@@ -1,5 +1,38 @@
 # NMRTools.jl release notes
 
+## Unreleased
+
+- **Example data.** `exampledata(name; fid=true)` loads the raw data of an example data set with
+  `loadfid`, and `exampledata(name; path=true)` returns its path. `3D_HNCA_pipe` and
+  `3D_HNCA_ucsf` are now available through `exampledata`, and `BMRB_ubiquitin` returns the
+  assigned chemical shifts of ubiquitin (BMRB entry 17769), which match the ubiquitin example
+  spectra.
+- **Plotting FIDs.** `nmrplot` draws time-domain data with an imaginary unit (an FID) as a line
+  rather than as points.
+- **Automatic phasing of multidimensional spectra.** `estimatephase` and `autophase` now estimate
+  the phase of a dimension from 1D traces through the strongest cross peaks, pooled into one fit,
+  instead of from a single trace summed over the other dimensions. Each trace combines the
+  components of the other dimensions so that it does not depend on how they are phased, and ridges
+  such as t₁ noise from residual water are left out. On the ¹H,¹⁵N example (`2D_HN`) the estimates
+  are within 10° and 5° of TopSpin's phases, where they were wrong by up to 90° before.
+- **First-order phase search.** `estimatephase` searches five times the `maxdelay` range when the
+  best fit lies at its limit, and keeps the wider result if it fits better. For indirect dimensions
+  the default `p1` is now `nothing`: first-order phases of 0 and -180° (a first point half a dwell
+  time after t = 0) are both tried.
+- **Solvent filtering.** `solventfilter` takes the digital-filter group delay into account, filtering
+  the FID from t = 0. Previously the build-up points before t = 0 were filtered as part of the
+  decay, which left a baseline ripple with a period of 1/(group delay) across the spectrum.
+  `method=:hsvd` no longer returns NaNs for FIDs with a group delay. When `autoprocess` filters the
+  solvent from a 1D spectrum, it estimates the phase from the unfiltered spectrum (leaving out
+  ±0.2 ppm around the solvent), since the solvent's dispersion tails help the estimate.
+- **Fixes.** `sumexpts` no longer fails on integer (`DTYPA = 0`) data with non-integer weights.
+  `sumexpts`, `savefid` and `savenmr` no longer fail when the source experiment's files are
+  read-only.
+- **Documentation** reorganised into tutorials, tools, how-to guides, concepts and reference
+  pages, with executed examples for processing, combining experiments and BMRB peak lists, and
+  an API reference split by topic. Docstring examples for `nucleus`, `Power`, `Peak`, `finddim`,
+  `acqus` and `channels` are now doctests, run by the test suite.
+
 ## v0.3.0
 
 This release adds loading and processing of raw time-domain data, writing of Bruker data, a new

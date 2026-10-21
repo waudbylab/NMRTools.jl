@@ -19,11 +19,21 @@ indexing all work as usual. Peak lists are also Tables.jl tables, so `DataFrame(
 works directly.
 
 # Examples
-```julia
-p = Peak(8.21, 120.4; label="G10")      # a 2D peak with only a position and label
-ppm(p)                                    # (8.21, 120.4)
-p = Peak(p; label="G10N")                 # a copy with a new label
+```jldoctest
+julia> p = Peak(8.21, 120.4; label="G10")      # a 2D peak with only a position and label
+Peak{2} G10
+  position (ppm): 8.21, 120.4
+  linewidth (Hz): NA, NA
+  intensity:      NA
 
+julia> ppm(p)
+(8.21, 120.4)
+
+julia> label(Peak(p; label="G10N"))            # a copy with a new label
+"G10N"
+```
+
+```julia
 pks = detectpeaks(spec)                   # Vector{Peak{2}}
 sort(pks; by=intensity, rev=true)
 ```

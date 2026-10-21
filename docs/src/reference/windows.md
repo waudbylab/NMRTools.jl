@@ -1,6 +1,6 @@
 # Window functions
 
-Window functions (also called apodization functions) are applied to time-domain NMR data before Fourier transformation to modify the lineshape and signal-to-noise characteristics of the resulting spectrum. NMRTools automatically detects and stores the window function used during processing, whether by TopSpin or NMRPipe for loaded spectra, or by [`apodize`](@ref) for raw data processed in NMRTools (see [Processing raw data](@ref)). When a window is passed to `apodize` without `tmax`, for example `Cos2Window()`, its length is set from the acquisition time of each dimension.
+Window functions (also called apodization functions) are applied to time-domain NMR data before Fourier transformation to modify the lineshape and signal-to-noise characteristics of the resulting spectrum. NMRTools automatically detects and stores the window function used during processing, whether by TopSpin or NMRPipe for loaded spectra, or by [`apodize`](@ref) for raw data processed in NMRTools (see [Processing a 1D spectrum](../tutorials/processing.md)). When a window is passed to `apodize` without `tmax`, for example `Cos2Window()`, its length is set from the acquisition time of each dimension.
 
 ## Overview
 

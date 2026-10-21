@@ -1,6 +1,10 @@
-# Animating spectra
+# Animate plots
 
-Makie's `record` function can create animations of spectral data, saving directly to GIF or video formats. A couple of examples are provided below.
+Makie's `record` function makes animations, saving directly to GIF or video formats. It calls a
+function once per frame; inside it, clear the axis with `empty!` and redraw with `nmrplot!`.
+
+For interactive use with GLMakie, the same `record` approach works, or you can update the plot
+live by calling `nmrplot!` in response to user events.
 
 ## Phosphorylation kinetics
 
@@ -71,3 +75,21 @@ nothing # hide
     comparable across the different spectra. This normalization automatically compensates for
     differences in acquisition parameters such as number of scans and receiver gain that would
     otherwise affect absolute intensities.
+
+
+## 1D titration
+
+The same approach works for 1D spectra:
+
+```@example 1
+spectra1d = exampledata("1D_19F_titration")
+fig, ax, _ = nmrplot(spectra1d[1]; xlims=(-122, -125), title="")
+record(fig, "titration1d.gif", spectra1d; framerate=4) do s
+    empty!(ax)
+    nmrplot!(ax, s)
+    ax.title[] = label(s)
+end
+nothing # hide
+```
+
+![](titration1d.gif)

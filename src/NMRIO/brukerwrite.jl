@@ -83,12 +83,25 @@ function _copyparameters(src, dest)
     for f in readdir(src)
         path = joinpath(src, f)
         if isfile(path) && f ∉ ("fid", "ser")
-            cp(path, joinpath(dest, f); force=true)
+            _makewritable(cp(path, joinpath(dest, f); force=true))
         elseif isdir(path) && f == "lists"
-            cp(path, joinpath(dest, f); force=true)
+            _makewritable(cp(path, joinpath(dest, f); force=true))
         end
     end
     return dest
+end
+
+# copies keep the permissions of the source, which may be read-only (e.g. archived data or
+# Julia artifacts); give the owner write access so the copies can be updated
+function _makewritable(path)
+    chmod(path, filemode(path) | 0o200)
+    if isdir(path)
+        for (root, dirs, files) in walkdir(path), name in vcat(dirs, files)
+            p = joinpath(root, name)
+            chmod(p, filemode(p) | 0o200)
+        end
+    end
+    return path
 end
 
 _mhz(hz) = isnothing(hz) ? 0.0 : hz * 1e-6

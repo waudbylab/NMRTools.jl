@@ -200,10 +200,17 @@ Find the dimension index in an NMRData object that corresponds to the given nucl
 Returns the dimension index (1-based) or `nothing` if not found.
 
 # Examples
-```julia
-spec = loadnmr("hsqc.ft2")
-finddim(spec, H1)   # Returns 1 for a 1H-15N HSQC
-finddim(spec, N15)  # Returns 2 for a 1H-15N HSQC
+```jldoctest
+julia> spec = exampledata("2D_HN");     # a ¹H,¹⁵N spectrum
+
+julia> finddim(spec, H1)
+1
+
+julia> finddim(spec, N15)
+2
+
+julia> isnothing(finddim(spec, C13))
+true
 ```
 
 See also [`shiftdim`](@ref), [`reference`](@ref).

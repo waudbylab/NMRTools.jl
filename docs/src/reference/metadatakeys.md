@@ -1,60 +1,9 @@
-# Metadata
+# Metadata keys
 
-[`NMRData`](@ref) objects can store various metadata associated with the spectrum and each of the dimensions.
+The standard metadata keys set when data are loaded and processed. See [Metadata](../concepts/metadata.md)
+for how metadata are organised and looked up.
 
-Metadata are stored as dictionaries using symbols as keys (e.g. `:ns`). They can be accessed using the `metadata` function, or directly from an `NMRData` object using a dictionary-style lookup. Metadata associated with axes are accessed by providing an additional reference, either as a dimension number or type (e.g. `F1Dim`, `F2Dim` etc.).
-
-```julia
-metadata(nmrdata, key) # spectrum metadata
-nmrdata[key]
-
-metadata(nmrdata, dimension, key) # axis metadata
-nmrdata[dimension, key]
-```
-
-```@docs; canonical=false
-metadata
-```
-
-## Labels
-
-```@docs; canonical=false
-label
-label!
-units
-```
-
-## Acquisition data
-
-When spectra are loaded, the contents of the `acqus` file  are parsed (as are the `acqu2s` files etc. too, if present). These can be accessed with `:acqus` and `:acqu2s` keys, etc. For convenience though, the additional function [`acqus`](@ref) is provided to access acquisition data directly.
-
-```@docs; canonical=false
-acqus
-```
-
-## Auxiliary files
-
-`acqus` can also be used to access the contents of auxiliary files (and if not present, `nothing` will be returned). Note that NMRTools will perform automatic unit conversion as follows:
-- `:vclist`: variable loopcounter
-- `:vdlist`: variable delays, in seconds
-- `:valist`: variable amplitude, in dB (converted from Watts if necessary)
-- `:vplist`: variable pulse lengths, in seconds
-- `:fq1list` up to `:fq8list`: frequency lists – see the [Frequency lists](../metadata/fqlists.md) page for more information.
-
-## Frequency list API
-
-Frequency lists can be specified on the spectrometer in a number of ways - in Hz, in ppm, and relative to the spectrometer frequency or the base frequency (0 ppm). Frequency lists are therefore stored in NMRTools as `FQList` structures which encode this additional information.
-
-```@docs; canonical=false
-FQList
-ppm
-hz
-```
-
-Raw numerical data can be accessed using the `data()` function, but it is recommended to use `ppm` and `hz` functions to access frequency data safely. See the [Frequency lists](../metadata/fqlists.md) page for detailed examples.
-
-
-## Standard metadata: spectra
+## Spectra
 
 | Key                  | Description                                                         |
 |:-------------------- |:------------------------------------------------------------------- |
@@ -78,7 +27,7 @@ Raw numerical data can be accessed using the `data()` function, but it is recomm
 | `:title`             | spectrum title (contents of title pdata file)                       |
 | `:topspin`           | TopSpin version used for acquisition                                |
 
-## Standard metadata: frequency and time dimensions
+## Frequency and time dimensions
 
 Keys marked † are set on time dimensions by [`loadfid`](@ref NMRTools.NMRIO.loadfid) and carried
 over to the frequency dimension by [`ft`](@ref).
@@ -106,3 +55,19 @@ over to the frequency dimension by [`ft`](@ref).
 | `:td`                | number of **complex** points acquired, including LP                        |
 | `:tdzf`              | number of **complex** points when FT executed, including LP and ZF         |
 | `:window`            | [`WindowFunction`](@ref) encoding applied apodization                      |
+
+
+## Auxiliary files
+
+Auxiliary files in the experiment folder are read when data are loaded and returned by
+[`acqus`](@ref), with their values converted to NMRTools units:
+
+| Key | Contents |
+|:--- |:-------- |
+| `:vclist` | variable loop counters (dimensionless) |
+| `:vdlist` | variable delays, in seconds |
+| `:valist` | variable amplitudes, in dB (converted from W if necessary) |
+| `:vplist` | variable pulse lengths, in seconds |
+| `:fq1list` … `:fq8list` | frequency lists, as [`FQList`](@ref) (see [Frequency lists](fqlists.md)) |
+
+`acqus` returns `nothing` for a list that is not present.

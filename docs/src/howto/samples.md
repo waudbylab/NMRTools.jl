@@ -1,4 +1,4 @@
-# Sample metadata
+# Find sample information
 
 Sample metadata can be automatically loaded when present, following the schema defined at [nmrsamples.github.io](https://nmrsamples.github.io). This provides structured information about the physical sample, buffer composition, NMR tube characteristics, and personnel involved in the experiment.
 
@@ -67,13 +67,9 @@ sample(spec, :buffer, :solvent)
 # "95% H2O / 5% D2O + glycerol"
 ```
 
-## Schema
-
-For the complete schema specification, including all available fields and their meanings, see [nmrsamples.github.io](https://nmrsamples.github.io).
-
 ## Scanning directories
 
-For workflows that process many experiments at once, use the scanning API to avoid loading full binary data:
+To work with many experiments at once, scan a directory for experiments and sample files without loading any spectra:
 
 ```julia
 # Scan all experiments in a directory (metadata only, no binary data loaded)
@@ -96,3 +92,5 @@ s = findsample(expts[1], samples)   # faster — uses pre-scanned list
 # Find all experiments for a given sample
 group = findexperiments(samples[1], expts)
 ```
+
+The fields available are listed in [Sample metadata schema](../reference/samples.md).

@@ -1,8 +1,8 @@
-# Plotting with Plots
+# Plot with Plots.jl
 
 NMRTools contains recipes for plotting common types of spectra, using the `Plots` package.
 
-For Makie-based plotting with `nmrplot` and `nmrplot!`, see [Plotting with Makie](@ref).
+Everywhere else in this documentation, plots use Makie (see [Plot 1D spectra](plot1d.md) and [Plot 2D spectra](plot2d.md)). This page shows the same plots with Plots.jl.
 
 
 ## Plotting a 1D spectrum
