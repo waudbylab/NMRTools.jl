@@ -246,7 +246,7 @@ When loading annotated data with `loadnmr`, NMRTools automatically applies seman
 The annotation system automatically performs unit conversions:
 
 - **Power → Hz**: Power values (from `VALIST`) are converted to RF field strength in Hz using the reference pulse calibration
-- **FQList → ppm**: Frequency lists (from `FQ1LIST` etc.) are converted from Hz offsets to absolute ppm values. The `channel` of the block is resolved against the spectrometer [channel model](@ref "Spectrometer channels"): if the channel's nucleus has a detected axis, its referencing is used; otherwise the channel's own base/carrier frequencies are used. This means an offset list still converts to ppm when the manipulated nucleus is never detected — for example a ¹³C CEST profile read out on a ¹H axis.
+- **FQList → ppm**: Frequency lists (from `FQ1LIST` etc.) are converted from Hz offsets to absolute ppm values. The `channel` of the block is resolved against the spectrometer [channel model](../howto/acqus.md#Powers-and-channels): if the channel's nucleus has a detected axis, its referencing is used; otherwise the channel's own base/carrier frequencies are used. This means an offset list still converts to ppm when the manipulated nucleus is never detected — for example a ¹³C CEST profile read out on a ¹H axis.
 - **Gradient scaling**: Gradient values are scaled by `gmax` to give actual field strengths
 
 ### Example

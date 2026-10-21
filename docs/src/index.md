@@ -7,8 +7,13 @@ of a multidimensional experiment has its own imaginary unit.
 
 ```@example home
 using NMRTools, CairoMakie
-spec = exampledata("2D_HN")
-fig, ax, _ = nmrplot(spec; xlims=(6.5, 9.6), title="")
+
+spec1d = exampledata("1D_1H"; fid=true) |> autoprocess    # process a raw FID
+spec2d = exampledata("2D_HN")                             # load a processed spectrum
+
+fig = Figure(size=(1000, 400))
+nmrplot(fig[1, 1], spec1d; xlims=(-1, 10), title="¹H 1D, processed from the FID")
+nmrplot(fig[1, 2], spec2d; xlims=(6.5, 9.6), title="¹H,¹⁵N SOFAST-HMQC")
 save("home.svg", fig); nothing # hide
 ```
 

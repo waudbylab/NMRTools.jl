@@ -7,18 +7,31 @@ it, and saved as the starting point for an analysis.
 
 For a worked example, see [Assigning ubiquitin from the BMRB](../tutorials/bmrb.md).
 
-## In one line
+## Predicting a spectrum
 
-Give the BMRB entry number and the atoms correlated in each dimension, direct dimension first:
+Give the BMRB entry number and the atoms correlated in each dimension, direct dimension first, and
+plot the result:
 
 ```julia
-using NMRTools
-hsqc = loadbmrb(17769, "H", "N")             # backbone ¹H,¹⁵N HSQC peaks of ubiquitin
+using NMRTools, CairoMakie
+hsqc = loadbmrb(17769, "H", "N")      # backbone ¹H,¹⁵N HSQC peaks of ubiquitin
+nmrplot(hsqc)
 ```
 
-This downloads the entry and returns a peak list, labelled by residue, that can be plotted on a
-spectrum with `nmrplot!`, registered onto it with [`register!`](@ref), or saved with
-[`savepeaks`](@ref).
+This downloads the entry from bmrb.io. The shifts of entry 17769 come with NMRTools, so here we
+read the bundled copy instead:
+
+```@example tools-bmrb
+using NMRTools, CairoMakie
+hsqc = loadbmrb(exampledata("BMRB_ubiquitin"; path=true), "H", "N")
+fig = nmrplot(hsqc; title="predicted ¹H,¹⁵N HSQC of ubiquitin")
+save("tools-bmrb-quick.svg", fig); nothing # hide
+```
+
+![](tools-bmrb-quick.svg)
+
+The peaks are labelled by residue, and can be overlaid on a spectrum with `nmrplot!`, registered
+onto it with [`register!`](@ref), or saved with [`savepeaks`](@ref).
 
 ## Loading shifts
 
@@ -38,7 +51,6 @@ is used, with a warning, unless the `list` keyword selects another by its ID.
 The examples on this page use the shifts of ubiquitin (entry 17769), which come with NMRTools:
 
 ```@example tools-bmrb
-using NMRTools, CairoMakie
 shifts = exampledata("BMRB_ubiquitin")
 length(shifts)
 ```

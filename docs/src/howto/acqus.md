@@ -3,105 +3,71 @@
 When a spectrum or FID is loaded, the Bruker acquisition files (`acqus`, `acqu2s`, …), the pulse
 programme and any lists in the experiment folder are read. [`acqus`](@ref) looks up their values.
 
-```@example acq
+```@setup acq
 using NMRTools
 spec = exampledata("2D_HN")
-nothing # hide
+relax = exampledata("pseudo2D_T2")
 ```
 
 ## Parameters
 
-Give a parameter name, as a string in any case (`"TE"`, `"te"`) or a lowercase symbol (`:te`):
+Give `acqus` a Bruker parameter name, as a string in any case or as a lowercase symbol. Arrayed
+parameters (pulse lengths, delays, powers, …) take an index, numbered as in TopSpin. Times are
+converted to seconds and frequencies to Hz (see [Time and frequency units](../concepts/units.md)):
 
-```@example acq
-acqus(spec, :te), acqus(spec, "PULPROG"), acqus(spec, :ns)
+```@repl acq
+spec = exampledata("2D_HN");
+acqus(spec, :pulprog)
+acqus(spec, "TE")          # temperature, K
+acqus(spec, :ns)
+acqus(spec, :p, 1)         # pulse length P1, s
+acqus(spec, :d, 1)         # delay D1, s
 ```
 
-Times are converted to seconds and frequencies to Hz (see
-[Time and frequency units](../concepts/units.md)).
+Without an index, an arrayed parameter is returned whole, as a dictionary keyed by the TopSpin
+index (so `acqus(spec, :d)[0]` is `D0`), which avoids confusing Bruker's zero-based arrays with
+Julia's one-based ones. The parameters of indirect dimensions, from `acqu2s`, `acqu3s`, …, are in
+the spectrum metadata under `:acqu2s`, `:acqu3s`, …, and the values that describe each dimension
+are also in its own metadata:
 
-## Arrayed parameters
-
-Pulse lengths, delays, powers and other arrayed parameters take an index, as numbered in TopSpin:
-
-```@example acq
-acqus(spec, :p, 1), acqus(spec, :d, 1)
-```
-
-Without an index the whole array is returned, as a dictionary keyed by the TopSpin index, so `d[0]`
-is `D0`:
-
-```@example acq
-d = acqus(spec, :d)
-d[0], d[1]
-```
-
-Arrays are dictionaries rather than vectors to avoid confusion between Bruker arrays, which count
-from zero, and Julia arrays, which count from one.
-
-## Indirect dimensions
-
-Parameters from `acqu2s`, `acqu3s`, … are under the keys `:acqu2s`, `:acqu3s` of the spectrum
-metadata:
-
-```@example acq
+```@repl acq
 spec[:acqu2s][:td]
+spec[F2Dim, :td], spec[F2Dim, :swhz]
 ```
 
-Most dimension-specific values are also in each dimension's metadata, for example
-`spec[F2Dim, :td]` or `spec[F2Dim, :swhz]`.
+## Powers and channels
 
-## Power levels
+Power levels are returned as [`Power`](@ref) objects, which convert between dB and W (see
+[Power levels](../reference/power.md), which also covers RF field strengths). The RF channels
+(`:f1`…`:f8`) are described by `channels`, which gives the frequencies of every nucleus pulsed in
+the experiment, including those without a detected axis, such as the carbon channel of an
+experiment read out on ¹H and ¹⁵N:
 
-Power levels are returned as [`Power`](@ref) objects, which convert between dB and W:
-
-```@example acq
-p = acqus(spec, :plw, 1)
+```@repl acq
+p = acqus(spec, :plw, 1);
 watts(p), db(p)
+channels(spec, :f1)[:nucleus]
+channels(spec, "13C")[:bf]     # Hz
 ```
 
-See [Power levels](../reference/power.md), including conversion to RF field strength.
+A channel can be looked up by label (`:f1`), by `Nucleus` (`C13`) or by a string (`"13C"`), and its
+dictionary has keys `:label`, `:nucleus`, `:bf` (base frequency), `:sfo` (carrier frequency),
+`:offsethz` and `:offsetppm`.
 
-## Spectrometer channels
+## Lists and other files
 
-Frequency dimensions carry their own `:bf`, `:sf` and `:nucleus` metadata, but only for detected
-nuclei. To reach a nucleus that was pulsed but never detected, such as the carbon channel of a
-¹³C-edited experiment read out on ¹H, use the channel model. `channels(spec)` returns all the RF
-channels (`:f1`…`:f8`), and `channels(spec, ...)` one channel, by label, by `Nucleus` or by a
-string:
+`vclist`, `vdlist`, `valist`, `vplist` and frequency lists (`fq1list`…) are read with `acqus` too,
+in NMRTools units: delays and pulse lengths in seconds, amplitudes in dB, and frequency lists as
+[`FQList`](@ref) objects (see [Frequency lists](../reference/fqlists.md)). `acqus` returns
+`nothing` for a list that is not present.
 
-```@example acq
-channels(spec, :f1)
-```
-
-```@example acq
-channels(spec, "13C")[:bf]     # carbon base frequency, with no carbon axis
-```
-
-Each channel dictionary has keys `:label`, `:nucleus`, `:bf` (base frequency, Hz), `:sfo` (carrier
-frequency, Hz), `:offsethz` and `:offsetppm`.
-
-## Lists
-
-`vclist`, `vdlist`, `valist`, `vplist` and frequency lists (`fq1list`…) in the experiment folder are
-read too:
-
-```@example acq
-relax = exampledata("pseudo2D_T2")
+```@repl acq
+relax = exampledata("pseudo2D_T2");
 acqus(relax, :vclist)
 ```
 
-Values are converted to NMRTools units: delays and pulse lengths in seconds, amplitudes in dB, and
-frequency lists as [`FQList`](@ref) objects (see [Frequency lists](../reference/fqlists.md)).
-`acqus` returns `nothing` for a list that is not present.
-
-## Pulse programme annotations
-
-Pulse programmes annotated with NMRTools' annotation format describe their own parameters; see
+Pulse programmes written with NMRTools' annotation format describe their own parameters; see
 [Pulse programme annotations](../experimental/annotations.md).
-
-## Without loading the data
-
-[`loadmetadata`](@ref NMRTools.NMRIO.loadmetadata) reads the acquisition metadata of an experiment
-folder without loading any spectrum, and [`scanexperiments`](@ref NMRTools.NMRIO.scanexperiments)
-does this for every experiment in a folder (see [Find sample information](samples.md)).
+[`loadmetadata`](@ref NMRTools.NMRIO.loadmetadata) reads all of this from an experiment folder
+without loading the data, and [`scanexperiments`](@ref NMRTools.NMRIO.scanexperiments) does so for
+every experiment in a folder (see [Find sample information](samples.md)).

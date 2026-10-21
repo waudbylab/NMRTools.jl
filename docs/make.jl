@@ -69,6 +69,19 @@ makedocs(;
          checkdocs=:exports,
          warnonly=[:missing_docs],)
 
+# `@repl` blocks show errors instead of failing the build: fail if any page outside the API
+# reference (whose doctests show intended errors) contains one
+let build = joinpath(@__DIR__, "build")
+    failed = String[]
+    for (root, _, files) in walkdir(build), f in files
+        endswith(f, ".html") || continue
+        path = joinpath(root, f)
+        startswith(relpath(path, build), "api") && continue
+        occursin("ERROR: ", read(path, String)) && push!(failed, relpath(path, build))
+    end
+    isempty(failed) || error("errors in the output of example blocks on: $(join(failed, ", "))")
+end
+
 deploydocs(;
            repo="github.com/waudbylab/NMRTools.jl.git",
            devbranch="main",)

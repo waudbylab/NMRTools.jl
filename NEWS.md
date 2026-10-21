@@ -1,6 +1,10 @@
 # NMRTools.jl release notes
 
-## Unreleased
+## v0.3.1
+
+This release fixes solvent filtering and automatic phasing of multidimensional spectra, adds raw
+example data and BMRB shifts of ubiquitin, and reorganises the documentation. `autoprocess` now
+returns the real spectrum.
 
 - **Breaking: `autoprocess` returns the real spectrum** (as from `realest`). Pass `real=false` to
   keep the `Multicomplex` spectrum, for example to phase it further.

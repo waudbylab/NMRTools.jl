@@ -29,6 +29,10 @@ Coherences are described by [`SQ`](@ref) (single quantum, on one nucleus) and [`
 (multiple quantum, a combination of nuclei with coherence orders), both subtypes of
 [`Coherence`](@ref). [`coherenceorder`](@ref) gives the total order:
 
+```@setup nuclei
+using NMRTools
+```
+
 ```@repl nuclei
 coherenceorder(SQ(H1))
 coherenceorder(MQ(((H1, 1), (C13, 1))))     # double quantum
