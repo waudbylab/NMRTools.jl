@@ -1,6 +1,4 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Test
 
 @testset "NMRBase: NMRData" begin
@@ -584,20 +582,20 @@ end
 end
 
 @testset "NMRBase: stack" begin
-    specs = [loadnmr(joinpath(artifact"1D_19F_titration", "1")),
-             loadnmr(joinpath(artifact"1D_19F_titration", "2")),
-             loadnmr(joinpath(artifact"1D_19F_titration", "3"))]
+    specs = [loadnmr(exampledata("1D_19F_titration"; path=true)[1]),
+             loadnmr(exampledata("1D_19F_titration"; path=true)[2]),
+             loadnmr(exampledata("1D_19F_titration"; path=true)[3])]
     stacked = stack(specs)
     @test size(stacked) == (32768, 3)
 
-    specs2 = [loadnmr(joinpath(artifact"1D_19F_titration", "1")),
+    specs2 = [loadnmr(exampledata("1D_19F_titration"; path=true)[1]),
               exampledata("2D_HN")]
     @test_throws DimensionMismatch stack(specs2)
 
-    specs3 = [loadnmr(joinpath(artifact"2D_HN_titration", "1/test.ft2")),
-              loadnmr(joinpath(artifact"2D_HN_titration", "2/test.ft2")),
-              loadnmr(joinpath(artifact"2D_HN_titration", "3/test.ft2")),
-              loadnmr(joinpath(artifact"2D_HN_titration", "4/test.ft2"))]
+    specs3 = [loadnmr(exampledata("2D_HN_titration"; path=true)[1]),
+              loadnmr(exampledata("2D_HN_titration"; path=true)[2]),
+              loadnmr(exampledata("2D_HN_titration"; path=true)[3]),
+              loadnmr(exampledata("2D_HN_titration"; path=true)[4])]
     # expect warning that experiments do not have same rg
     @test (@test_logs (:warn,) size(stack(specs3))) == (768, 512, 4)
 end

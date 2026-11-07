@@ -1,11 +1,9 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Test
 using Dates
 
 @testset "NMRIO: 1D 19F (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"1D_19F", "test.ft1"))
+    dat = loadnmr(joinpath(exampledata("1D_19F"; path=true), "test.ft1"))
 
     @test size(dat) == (8751,)
     @test length(dat) == 8751
@@ -53,7 +51,7 @@ using Dates
 end
 
 @testset "NMRIO: 2D HN (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"2D_HN", "test.ft2"))
+    dat = loadnmr(joinpath(exampledata("2D_HN"; path=true), "test.ft2"))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -142,7 +140,7 @@ end
 end
 
 @testset "NMRIO: pseudo-2D XSTE (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"pseudo2D_XSTE", "test.ft1"))
+    dat = loadnmr(joinpath(exampledata("pseudo2D_XSTE"; path=true), "test.ft1"))
 
     @test size(dat) == (206, 10)
     @test length(dat) == 2060
@@ -264,7 +262,7 @@ end
     @test dat[1, :pseudodim] == false
 
     # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
-    dat2 = loadnmr(artifact"1D_19F"; allcomponents=true)
+    dat2 = loadnmr(exampledata("1D_19F"; path=true); allcomponents=true)
     @test dat2[100] == Multicomplex(4920.725646972656, 17351.53515625)
     @test metadata(dat2, 1, :mcindex) == 1
     # loaded data can be phased like processed data
@@ -381,7 +379,7 @@ end
     @test 14.0 < dat[:field] < 14.2  # ~600 MHz spectrometer ≈ 14.1 T
 
     # load multicomplex spectrum (bicomplex for 2D)
-    datMC = loadnmr(artifact"2D_HN"; allcomponents=true)
+    datMC = loadnmr(exampledata("2D_HN"; path=true); allcomponents=true)
     @test size(datMC) == (1216, 512)
     @test parent(datMC) isa Matrix{<:Multicomplex}
     @test order(datMC[1, 1]) == 2  # bicomplex
@@ -392,7 +390,7 @@ end
 
 @testset "NMRIO: pseudo-2D (Bruker pdata)" begin
     dat = exampledata("pseudo2D_XSTE")
-    datC = loadnmr(artifact"pseudo2D_XSTE"; allcomponents=true)
+    datC = loadnmr(exampledata("pseudo2D_XSTE"; path=true); allcomponents=true)
 
     @test size(dat) == (2048, 10)
 
@@ -432,8 +430,8 @@ end
     @test dims(spec, 2)[end] ≈ 107.84188874936109
     @test dims(spec, 3)[Near(45)] ≈ 44.99702749174231
 
-    spec13 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "131"))
-    spec23 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "231"))
+    spec13 = loadnmr(joinpath(exampledata("3D_HNCA"; path=true), "pdata", "131"))
+    spec23 = loadnmr(joinpath(exampledata("3D_HNCA"; path=true), "pdata", "231"))
     @test size(spec13) == (512, 256)
     @test size(spec23) == (512, 128)
     @test spec23[Near(7.2), Near(122)] ≈ 19735.930053710938
@@ -442,7 +440,7 @@ end
 end
 
 @testset "3D data (nmrPipe)" begin
-    spec = loadnmr(joinpath(artifact"3D_HNCA_pipe", "smile", "test%03d.ft3"))
+    spec = loadnmr(exampledata("3D_HNCA_pipe"; path=true))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
     @test dims(spec, 1)[1] ≈ 9.703234081887576
@@ -456,7 +454,7 @@ end
 end
 
 @testset "NMRIO: 2D HN (ucsf)" begin
-    dat = loadnmr(joinpath(artifact"2D_HN", "hmqc.ucsf"))
+    dat = loadnmr(joinpath(exampledata("2D_HN"; path=true), "hmqc.ucsf"))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -476,7 +474,7 @@ end
 end
 
 @testset "3D data (ucsf)" begin
-    spec = loadnmr(joinpath(artifact"3D_HNCA_ucsf", "hnca.ucsf"))
+    spec = loadnmr(exampledata("3D_HNCA_ucsf"; path=true))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
     @test dims(spec, 1)[1] ≈ 9.703234542832309
@@ -723,13 +721,34 @@ end
     @test eltype(exampledata("1D_19F"; allcomponents=true)) <: NMRTools.Multicomplex
 
     @test_throws ArgumentError exampledata("2D_HN_titration"; fid=true)
-    @test_throws NMRToolsError exampledata("no such data")
+    @test_throws ArgumentError exampledata("no such data")
 
     shifts = exampledata("BMRB_ubiquitin")
     @test shifts isa Vector{ChemicalShift}
     @test length(shifts) == 1001
     @test isfile(exampledata("BMRB_ubiquitin"; path=true))
     @test length(peaklist(shifts, "H", "N")) == 72
+    @test_throws ArgumentError exampledata("BMRB_ubiquitin"; fid=true)
+end
+
+@testset "exampledata: credit, information and the list" begin
+    # who to credit is shown the first time a dataset is used in a session, and only then
+    empty!(NMRTools.NMRIO.CREDITED)
+    @test_logs (:info, r"^Example data .*\nCredit: ") exampledata("2D_HN"; path=true)
+    @test_logs exampledata("2D_HN"; path=true)
+
+    info = exampleinfo("2D_HN")
+    @test !isempty(info.title)
+    @test "2D_HN" in info.aliases || startswith(info.name, "2d_hn")
+
+    # outside an interactive session, exampledata() lists the datasets
+    listing = mktemp() do path, io
+        redirect_stdout(() -> exampledata(), io)
+        close(io)
+        read(path, String)
+    end
+    @test occursin(info.name, listing)
+    @test occursin("BMRB_ubiquitin", listing)
 end
 
 @testset "sumexpts and savefid with read-only sources" begin

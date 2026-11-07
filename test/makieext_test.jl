@@ -1,6 +1,4 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Test
 using CairoMakie
 using FileIO
@@ -249,7 +247,7 @@ end
 end
 
 @testset "MakieExt: Multicomplex 1D slice" begin
-    datMC2D = loadnmr(artifact"2D_HN"; allcomponents=true)
+    datMC2D = loadnmr(exampledata("2D_HN"; path=true); allcomponents=true)
     datMC = datMC2D[:, 1]
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 

@@ -12,6 +12,7 @@ loadfid
 loadmetadata
 loadjdx
 exampledata
+exampleinfo
 ```
 
 ## Saving

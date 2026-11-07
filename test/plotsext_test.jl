@@ -1,6 +1,4 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Plots
 using Test
 using VisualRegressionTests
@@ -77,7 +75,7 @@ end
 # end
 
 @testset "PlotsExt: Multicomplex 2D" begin
-    datMC = loadnmr(artifact"2D_HN"; allcomponents=true)
+    datMC = loadnmr(exampledata("2D_HN"; path=true); allcomponents=true)
     @test parent(datMC) isa Matrix{<:Multicomplex}
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), datMC)
@@ -87,7 +85,7 @@ end
 end
 
 @testset "PlotsExt: Multicomplex 1D (slice)" begin
-    datMC2D = loadnmr(artifact"2D_HN"; allcomponents=true)
+    datMC2D = loadnmr(exampledata("2D_HN"; path=true); allcomponents=true)
     datMC = datMC2D[:, 1]
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 

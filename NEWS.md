@@ -1,5 +1,19 @@
 # NMRTools.jl release notes
 
+## v0.3.2
+
+Example data now come from [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/),
+shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artifacts.
+
+- **`exampledata`** loads any dataset in NMRExampleData. The names used before still work, as
+  aliases, and names can be shortened to the start of the full name or of any part of it.
+  The first time a dataset is used in a session, who to credit, what to cite and the licence
+  are shown.
+- **`exampledata()`** offers a menu of the datasets in an interactive session, and lists them
+  otherwise.
+- **`exampleinfo(name)`** gives a dataset's title, description, credit, citation and licence.
+- An unknown name now throws an `ArgumentError` rather than an `NMRToolsError`.
+
 ## v0.3.1
 
 This release fixes solvent filtering and automatic phasing of multidimensional spectra, adds raw

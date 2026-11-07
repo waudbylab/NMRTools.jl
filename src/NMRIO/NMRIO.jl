@@ -2,12 +2,12 @@ module NMRIO
 
 using ..NMRBase
 import ..NMRBase: NMRSample, NMRExperiment
-using Artifacts
 using Dates
 using Downloads
-using LazyArtifacts
 using JSON
 using MulticomplexNumbers
+using NMRExampleData: examples, exampleinfo, examplepath
+using REPL.TerminalMenus: RadioMenu, request
 using YAML
 
 include("../sample-schemas/migration-code/migrate.jl")
@@ -47,6 +47,6 @@ export findsample
 export findexperiments
 
 # examples
-export exampledata
+export exampledata, exampleinfo
 
 end
