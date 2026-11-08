@@ -7,8 +7,10 @@ shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artif
 
 - **Breaking: `exampledata` is replaced by `example`.** `example(name)` gives the path of an
   example dataset, downloading it the first time, and the usual loaders load it:
-  `loadnmr(example("2D_HN"))`, `loadfid(example("2D_HN"))`. The names used before still work, as
-  aliases, and names can be shortened to the start of the full name or of any part of it. The
+  `loadnmr(example("2d_hn_ubq"))`, `loadfid(example("2d_hn_ubq"))`. The datasets have new names,
+  given in the [catalogue](https://waudbylab.org/NMRExampleData.jl/stable/catalogue/): `2D_HN` is
+  now `2d_hn_ubq`, for example. Names can be shortened to the start of the full name or of any
+  part of it. The
   first time a dataset is used in a session, who to credit, what to cite and the licence are
   shown. `example()` offers a menu of the datasets, `exampleinfo(name)` describes one, and
   `exampleanalysis(name)` gives the analysis saved with it.

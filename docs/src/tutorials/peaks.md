@@ -11,7 +11,7 @@ spectrum, looks at them, and saves them.
 
 ```@example peaks
 using NMRTools, CairoMakie
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 pks = detectpeaks(spec; sign=:positive)
 ```
 

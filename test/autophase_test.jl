@@ -295,7 +295,7 @@ end
                                    ph.p0 + ph.p1 - ref[1] - ref[2]]))) ./ 2))
 
     # solvent filtering leaves no baseline ripple from the digital-filter build-up points
-    fid = loadfid(example("1D_1H"))
+    fid = loadfid(example("1d_1h_ubq"))
     proc(f) = realest(f |> apodize(Cos2Window()) |> zerofill |> ft |> phase(F1Dim, 16.8, 0.0))
     ref = proc(fid)
     scale = maximum(abs, data(ref[6 .. 10]))
@@ -315,7 +315,7 @@ end
     # 2D: both dimensions phased from traces through the cross peaks, including a large
     # first-order phase in the direct dimension and the -180° of a half-dwell indirect dimension
     # (whose first point is not a t = 0 point, so is not halved)
-    spec2d = autoprocess(loadfid(example("2D_HN"); firstpoint=Dict(T2Dim => 1.0)))
+    spec2d = autoprocess(loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0)))
     @test edgeerror(metadata(spec2d, 1, :phase), (-247.89, 218.4)) < 10
     @test edgeerror(metadata(spec2d, 2, :phase), (90.0, -180.0)) < 10
 end

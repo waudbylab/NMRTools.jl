@@ -115,7 +115,7 @@ observed[1:3]
 Atom names select specific atoms: `"H", "N"` gives only backbone amides. Passing nuclei instead
 gives every directly bonded N–H pair, which is what an HSQC shows, including the side-chain NH₂
 groups of Asn and Gln and the side-chain NH of Arg and Trp. Side chains do not appear in the HNCA,
-so we compare with the ¹H,¹⁵N spectrum `2D_HN` instead:
+so we compare with the ¹H,¹⁵N spectrum `2d_hn_ubq` instead:
 
 ```@example bmrb
 allnh = peaklist(shifts, H1, N15)
@@ -125,7 +125,7 @@ length(predicted), length(allnh)
 
 ```@example bmrb
 nh2(p) = 6.4 < ppm(p, 1) < 7.9 && 108.5 < ppm(p, 2) < 114.5
-hsqc = loadnmr(example("2D_HN"))
+hsqc = loadnmr(example("2d_hn_ubq"))
 fig, ax, _ = nmrplot(hsqc[6.4 .. 7.9, 108.5 .. 114.5]; title="side-chain NH₂ region")
 nmrplot!(ax, filter(nh2, register(sidechains, hsqc)); color=:red)
 save("bmrb-sidechains.svg", fig); nothing # hide
@@ -171,18 +171,18 @@ Dashed black lines mark the predicted Cα(i), dotted red lines Cα(i−1).
 
 ## A spectrum at a different temperature
 
-The ¹H,¹⁵N spectrum `2D_HN` was recorded at 277 K, 21 K below the BMRB entry. Amide shifts change
+The ¹H,¹⁵N spectrum `2d_hn_ubq` was recorded at 277 K, 21 K below the BMRB entry. Amide shifts change
 with temperature by different amounts for each residue, so a uniform offset cannot match every
 peak:
 
 ```@example bmrb
-cold = loadnmr(example("2D_HN"))
+cold = loadnmr(example("2d_hn_ubq"))
 cold[:temperature]
 ```
 
 ```@example bmrb
 moved = register(predicted, cold)
-fig, ax, _ = nmrplot(cold; title="2D_HN at 277 K with registered BMRB peaks")
+fig, ax, _ = nmrplot(cold; title="2d_hn_ubq at 277 K with registered BMRB peaks")
 nmrplot!(ax, moved)
 save("bmrb-cold.svg", fig); nothing # hide
 ```

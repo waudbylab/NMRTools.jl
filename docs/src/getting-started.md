@@ -51,7 +51,7 @@ Two-dimensional spectra are plotted in the same way. Contour levels start at fiv
 level:
 
 ```@example gs
-spec2d = loadnmr(example("2D_HN"))
+spec2d = loadnmr(example("2d_hn_ubq"))
 fig = nmrplot(spec2d)
 save("gs-2d.svg", fig); nothing # hide
 ```
@@ -88,7 +88,7 @@ spec2d[:ns], spec2d[F2Dim, :nucleus]   # number of scans; nucleus of the second 
 transformation and automatic phasing.
 
 ```@example gs
-fid = loadfid(example("1D_1H"))
+fid = loadfid(example("1d_1h_ubq"))
 spec1h = autoprocess(fid)
 fig = nmrplot(spec1h[-1 .. 10]; title="")
 save("gs-fid.svg", fig); nothing # hide

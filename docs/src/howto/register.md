@@ -8,7 +8,7 @@ moves the list by it. `register` returns a moved copy instead.
 
 ```@example reg
 using NMRTools, CairoMakie
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 nothing # hide
 ```
 
@@ -29,7 +29,7 @@ A list picked in one spectrum can be registered onto another, for example the ne
 titration:
 
 ```@example reg
-series = loadnmr(example("2D_HN_titration"))
+series = loadnmr(example("titration2d_fir_nbox"))
 pks = detectpeaks(series[1]; snr=20, sign=:positive)
 moved = register(pks, series[end])
 fig, ax, _ = nmrplot(series[end][7.5 .. 8.7, 116 .. 126]; title="")

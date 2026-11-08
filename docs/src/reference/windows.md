@@ -14,7 +14,7 @@ Window functions are stored as axis metadata and can be accessed through the `:w
 using NMRTools
 
 # Load example spectrum
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 
 # Get the window function for a specific dimension
 window = spec[F2Dim, :window]
@@ -48,7 +48,7 @@ Window function objects store their parameters as fields:
 
 ```julia
 # Load spectrum
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 
 # Get window for F2 dimension
 win = spec[F2Dim, :window]
@@ -71,7 +71,7 @@ The [`apod`](@ref) function returns the time-domain apodization vector:
 
 ```@example windows
 # Load a spectrum
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 
 # Get apodization function for F2 dimension
 apod_function = apod(spec, F2Dim)

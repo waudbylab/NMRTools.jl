@@ -1,10 +1,8 @@
 # Moving the example data to NMRExampleData.jl
 
 NMRTools 0.3.2 finds its example data with NMRExampleData.jl's `example(name)`, loads them with
-`loadnmr` and `loadfid`, and no longer has an `Artifacts.toml`. Its tests and documentation still use the old names (`"2D_HN"` and so on),
-which must therefore exist in NMRExampleData as **aliases** of the new datasets. An alias is an
-exact match, so these names keep meaning the same data however many datasets are added. Once the
-data are in place, the documentation can move to the new names in one sweep.
+`loadnmr` and `loadfid`, and no longer has an `Artifacts.toml`. Its tests and documentation use
+the datasets' new names.
 
 This branch cannot pass its tests until NMRExampleData has been released and registered with
 these datasets. Merge it after that.
@@ -18,18 +16,21 @@ documentation reach them as `example(name, :nmrpipe)` and `example(name, :ucsf)`
 by file name. `loadfid(example(name))` finds the raw data in the experiment folder holding
 `path`.
 
-| Old name (alias) | Suggested name | `path` must give | Raw data | `formats` |
+| Old name | Dataset | `path` | Raw data | `formats` |
 |:--|:--|:--|:--|:--|
-| `1D_1H` | `1d_1h_ubq` | the experiment folder | yes | |
-| `1D_19F` | `1d_19f_<sample>` | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
-| `1D_19F_titration` | `titration1d_<sample>` | 11 experiment folders, in order | yes | the folders named `1` to `11`, side by side (the `sumexpts` tests copy `1` to `3` from their parent) |
-| `2D_HN` | `2d_hn_ubq` | the experiment folder | yes | `nmrpipe`: its `test.ft2`; `ucsf`: its `hmqc.ucsf` |
+| `1D_1H` | `1d_1h_ubq` (added) | the experiment folder | yes | |
+| `1D_19F` | to be added | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
+| `1D_19F_titration` | `1d_19f_titration_sh3` (added) | 11 experiment folders, in order | yes | |
+| `2D_HN` | `2d_hn_ubq` (added) | the experiment folder | yes | `nmrpipe`: its `test.ft2`; `ucsf`: its `hmqc.ucsf` |
 | `2D_HN_titration` | `titration2d_fir_nbox` (added) | 11 experiment folders, in order | yes | |
-| `pseudo2D_T2` | `relaxation1d_<sample>` | the experiment folder | yes | |
-| `pseudo2D_XSTE` | `diffusion1d_<sample>` | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
-| `pseudo3D_HN_R2` | `relaxation2d_ubq` | the experiment folder | | |
-| `pseudo3D_kinetics` | `kinetics2d_<sample>` | the experiment folder | | |
-| `3D_HNCA` | `3d_hnca_ubq` | the experiment folder, with `pdata/131` and `pdata/231` | | `nmrpipe`: the old `3D_HNCA_pipe`'s `smile/test%03d.ft3`; `ucsf`: the old `3D_HNCA_ucsf`'s `hnca.ucsf`, the two the same size |
+| `pseudo2D_T2` | `relaxation1d_aas` (added) | the experiment folder | yes | |
+| `pseudo2D_XSTE` | `diffusion1d_asyn` (added) | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
+| `pseudo3D_HN_R2` | `relaxation2d_asyn` (added) | the experiment folder | no | |
+| `pseudo3D_kinetics` | to be added | the experiment folder | | |
+| `3D_HNCA` | to be added, as `3d_hnca_ubq` | the experiment folder, with `pdata/131` and `pdata/231` | | `nmrpipe`: the old `3D_HNCA_pipe`'s `smile/test%03d.ft3`; `ucsf`: the old `3D_HNCA_ucsf`'s `hnca.ucsf`, the two the same size |
+
+The tests and documentation still use the old names `1D_19F`, `pseudo3D_kinetics` and `3D_HNCA`
+until those datasets are added.
 
 The BMRB shifts of ubiquitin are no longer bundled: the docs call `loadbmrb(17769)`.
 
@@ -44,7 +45,7 @@ Where a shortened name matches several datasets, the first added wins. Add `1d_1
 `"1d_1h"`, `"1d_19f"`, `"2d_hn"` and `"3d_hnca"` find them.
 
 The old `3D_HNCA_pipe` and `3D_HNCA_ucsf` become formats of `3d_hnca_ubq`, and are no longer
-names of their own: the tests and documentation use `example("3D_HNCA", :nmrpipe)`. Copy
+names of their own: the tests and documentation use `example("3d_hnca_ubq", :nmrpipe)` once it is added. Copy
 their files into the dataset beside the experiment, processed over a narrow region if their
 size is a problem, and add them to `formats` by hand.
 
@@ -52,6 +53,6 @@ size is a problem, and add them to `formats` by hand.
 
 1. Add the datasets to NMRExampleData and push to `main`. The Release workflow uploads them and
    registers the new version.
-2. Run the NMRTools tests and build the documentation against that version, then merge this
-   branch and register NMRTools 0.3.2.
-3. Move the documentation and tests to the new names, keeping the aliases for users' code.
+2. Move the documentation and tests to the names of the datasets still to be added.
+3. Run the NMRTools tests and build the documentation against that version, then merge this
+   branch and register NMRTools.

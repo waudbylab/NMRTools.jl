@@ -45,7 +45,7 @@ and [`apodize`](@ref) read it to find which unit to act on: Fourier transforming
 
 ```@example mc
 using NMRTools
-fid = loadfid(example("2D_HN"); firstpoint=Dict(T2Dim => 1.0))
+fid = loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0))
 eltype(fid), fid[T1Dim, :mcindex], fid[T2Dim, :mcindex]
 ```
 

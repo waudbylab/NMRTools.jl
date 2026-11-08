@@ -6,7 +6,7 @@ as a `Vector{Peak{N}}`, strongest first. For an introduction, see the tutorial
 
 ```@example detect
 using NMRTools, CairoMakie
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 nothing # hide
 ```
 

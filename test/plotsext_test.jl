@@ -28,7 +28,7 @@ using NMRTools, Plots
 end
 
 @testset "PlotsExt: 2D HN" begin
-    dat = loadnmr(example("2D_HN"))
+    dat = loadnmr(example("2d_hn_ubq"))
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
@@ -39,8 +39,8 @@ end
 end
 
 # @testset "PlotsExt: normalize parameter with reference spectrum" begin
-#     dat1 = loadnmr(example("2D_HN"))
-#     dat2 = loadnmr(example("2D_HN")) * 2  # scaled version
+#     dat1 = loadnmr(example("2d_hn_ubq"))
+#     dat2 = loadnmr(example("2d_hn_ubq")) * 2  # scaled version
 
 #     # Test single 2D spectrum with reference normalization
 #     pr_ref = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(:normalize => dat1), dat2)
@@ -75,7 +75,7 @@ end
 # end
 
 @testset "PlotsExt: Multicomplex 2D" begin
-    datMC = loadnmr(example("2D_HN"); allcomponents=true)
+    datMC = loadnmr(example("2d_hn_ubq"); allcomponents=true)
     @test parent(datMC) isa Matrix{<:Multicomplex}
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), datMC)
@@ -85,7 +85,7 @@ end
 end
 
 @testset "PlotsExt: Multicomplex 1D (slice)" begin
-    datMC2D = loadnmr(example("2D_HN"); allcomponents=true)
+    datMC2D = loadnmr(example("2d_hn_ubq"); allcomponents=true)
     datMC = datMC2D[:, 1]
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
@@ -101,7 +101,7 @@ end
         plot(dat1)
     end "plots-images/plot_1D_19F.png" false 0.02
 
-    dat2 = loadnmr(example("2D_HN"))
+    dat2 = loadnmr(example("2d_hn_ubq"))
     @plottest begin
         plot(dat2)
     end "plots-images/plot_2D_HN.png" false 0.02
@@ -118,7 +118,7 @@ end
         plot(dat2; poscolor=:limegreen, negcontours=false)
     end "plots-images/plot_2D_noneg.png" false 0.02
 
-    dat3 = loadnmr(example("pseudo2D_XSTE"))
+    dat3 = loadnmr(example("diffusion1d_asyn"))
     dat3 = setgradientlist(dat3, LinRange(0.05, 0.95, 10), 0.55)
     @plottest begin
         plot(dat3[7 .. 9, :])
@@ -127,7 +127,7 @@ end
         heatmap(dat3[7 .. 9, :])
     end "plots-images/plot_pseudo2D_XSTE_heatmap.png" false 0.02
 
-    dat4 = loadnmr(example("1D_19F_titration"))
+    dat4 = loadnmr(example("1d_19f_titration_sh3"))
     @plottest begin
         plot(dat4; xlims=(-125, -122))
     end "plots-images/plot_1D_19F_titration.png" false 0.02
@@ -138,7 +138,7 @@ end
         plot(dat4; xlims=(-125, -121), vstack=5)
     end "plots-images/plot_1D_19F_titration_vstack_5.png" false 0.02
 
-    dat5 = loadnmr(example("2D_HN_titration"))
+    dat5 = loadnmr(example("titration2d_fir_nbox"))
     @plottest begin
         plot(dat5)
     end "plots-images/plot_2D_HN_titration.png" false 0.02

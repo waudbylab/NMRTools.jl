@@ -18,7 +18,7 @@ spec = loadnmr("path/to/experiment/1/pdata/101")     # pdata/101
 ```
 
 ```@example load
-dir = example("2D_HN")
+dir = example("2d_hn_ubq")
 spec = loadnmr(dir)
 size(spec)
 ```

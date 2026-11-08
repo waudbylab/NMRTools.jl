@@ -58,7 +58,7 @@ save("spectra-region.svg", fig); nothing # hide
 The same works in two dimensions. A range in both dimensions gives a smaller 2D spectrum:
 
 ```@example spectra
-spec2d = loadnmr(example("2D_HN"))
+spec2d = loadnmr(example("2d_hn_ubq"))
 fig = nmrplot(spec2d[7.5 .. 8.7, 116 .. 126])
 save("spectra-2d-region.svg", fig); nothing # hide
 ```
@@ -104,7 +104,7 @@ A pseudo-2D experiment, such as a relaxation series, has a frequency dimension a
 non-frequency dimension:
 
 ```@example spectra
-relax = loadnmr(example("pseudo2D_T2"))
+relax = loadnmr(example("relaxation1d_aas"))
 dims(relax)
 ```
 

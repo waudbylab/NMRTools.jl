@@ -8,8 +8,8 @@ of a multidimensional experiment has its own imaginary unit.
 ```@example home
 using NMRTools, CairoMakie
 
-spec1d = loadfid(example("1D_1H")) |> autoprocess    # process a raw FID
-spec2d = loadnmr(example("2D_HN"))                             # load a processed spectrum
+spec1d = loadfid(example("1d_1h_ubq")) |> autoprocess    # process a raw FID
+spec2d = loadnmr(example("2d_hn_ubq"))                             # load a processed spectrum
 
 fig = Figure(size=(1000, 400))
 nmrplot(fig[1, 1], spec1d; xlims=(-1, 10), title="¹H 1D, processed from the FID")

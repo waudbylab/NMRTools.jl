@@ -51,7 +51,7 @@ using Dates
 end
 
 @testset "NMRIO: 2D HN (nmrPipe)" begin
-    dat = loadnmr(example("2D_HN", :nmrpipe))
+    dat = loadnmr(example("2d_hn_ubq", :nmrpipe))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -140,7 +140,7 @@ end
 end
 
 @testset "NMRIO: pseudo-2D XSTE (nmrPipe)" begin
-    dat = loadnmr(example("pseudo2D_XSTE", :nmrpipe))
+    dat = loadnmr(example("diffusion1d_asyn", :nmrpipe))
 
     @test size(dat) == (206, 10)
     @test length(dat) == 2060
@@ -270,7 +270,7 @@ end
 end
 
 @testset "NMRIO: 2D HN (Bruker pdata)" begin
-    dat = loadnmr(example("2D_HN"))
+    dat = loadnmr(example("2d_hn_ubq"))
 
     @test size(dat) == (1216, 512)
     @test length(dat) == 622592
@@ -379,7 +379,7 @@ end
     @test 14.0 < dat[:field] < 14.2  # ~600 MHz spectrometer ≈ 14.1 T
 
     # load multicomplex spectrum (bicomplex for 2D)
-    datMC = loadnmr(example("2D_HN"); allcomponents=true)
+    datMC = loadnmr(example("2d_hn_ubq"); allcomponents=true)
     @test size(datMC) == (1216, 512)
     @test parent(datMC) isa Matrix{<:Multicomplex}
     @test order(datMC[1, 1]) == 2  # bicomplex
@@ -389,8 +389,8 @@ end
 end
 
 @testset "NMRIO: pseudo-2D (Bruker pdata)" begin
-    dat = loadnmr(example("pseudo2D_XSTE"))
-    datC = loadnmr(example("pseudo2D_XSTE"); allcomponents=true)
+    dat = loadnmr(example("diffusion1d_asyn"))
+    datC = loadnmr(example("diffusion1d_asyn"); allcomponents=true)
 
     @test size(dat) == (2048, 10)
 
@@ -413,7 +413,7 @@ end
 end
 
 @testset "pseudo3D data (Bruker pdata)" begin
-    dat = loadnmr(example("pseudo3D_HN_R2"))
+    dat = loadnmr(example("relaxation2d_asyn"))
     @test size(dat) == (512, 512, 11)
     @test dat[5, 6, 7] ≈ 2370.09375
     @test acqus(dat, :vclist) == [0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16]
@@ -454,7 +454,7 @@ end
 end
 
 @testset "NMRIO: 2D HN (ucsf)" begin
-    dat = loadnmr(example("2D_HN", :ucsf))
+    dat = loadnmr(example("2d_hn_ubq", :ucsf))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -556,7 +556,7 @@ end
     @test found[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
 end
 @testset "NMRIO: peak lists" begin
-    spec = loadnmr(example("2D_HN"))
+    spec = loadnmr(example("2d_hn_ubq"))
     pks = detectpeaks(spec; sign=:positive)[1:5]
     pks[2] = Peak(pks[2]; label="G10")
 
@@ -701,29 +701,29 @@ end
 end
 
 @testset "Example data: loading spectra, series and raw data" begin
-    fid = loadfid(example("2D_HN"))
+    fid = loadfid(example("2d_hn_ubq"))
     @test fid isa NMRData{<:NMRTools.Multicomplex{Float64,2,4},2}
     @test dims(fid, 1) isa T1Dim
     @test dims(fid, 2) isa T2Dim
 
-    series = loadfid(example("1D_19F_titration"))
+    series = loadfid(example("1d_19f_titration_sh3"))
     @test length(series) == 11
     @test dims(first(series), 1) isa T1Dim
-    @test length(loadnmr(example("1D_19F_titration"))) == 11
+    @test length(loadnmr(example("1d_19f_titration_sh3"))) == 11
 
-    @test isdir(example("2D_HN"))
+    @test isdir(example("2d_hn_ubq"))
     @test endswith(example("3D_HNCA", :nmrpipe), "test%03d.ft3")
 
     # loader keywords are passed through, to every spectrum of a series too
-    @test loadfid(example("2D_HN"); firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
+    @test loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
     @test fid[T2Dim, :firstpoint] == 0.5
     @test eltype(loadnmr(example("1D_19F"); allcomponents=true)) <: NMRTools.Multicomplex
 
     # loadfid finds the experiment from inside it: a pdata folder, or a processed file
-    @test size(loadfid(joinpath(example("2D_HN"), "pdata", "1"))) == size(fid)
-    @test size(loadfid(example("2D_HN", :nmrpipe))) == size(fid)
+    @test size(loadfid(joinpath(example("2d_hn_ubq"), "pdata", "1"))) == size(fid)
+    @test size(loadfid(example("2d_hn_ubq", :nmrpipe))) == size(fid)
     # a dataset without its raw data
-    @test_throws NMRToolsError loadfid(example("pseudo3D_HN_R2"))
+    @test_throws NMRToolsError loadfid(example("relaxation2d_asyn"))
 
     @test_throws ArgumentError example("no such data")
     @test !isempty(exampleinfo("2D_HN").title)
@@ -737,11 +737,11 @@ end
     for name in examples(:nmrpipe) ∩ examples(:ucsf)
         @test size(loadnmr(example(name, :nmrpipe))) == size(loadnmr(example(name, :ucsf)))
     end
-    @test_throws ArgumentError example("2D_HN_titration", :ucsf)
+    @test_throws ArgumentError example("titration2d_fir_nbox", :ucsf)
 end
 
 @testset "sumexpts and savefid with read-only sources" begin
-    src = dirname(example("1D_19F_titration")[1])
+    src = dirname(example("1d_19f_titration_sh3")[1])
     mktempdir() do dir
         for i in 1:3
             cp(joinpath(src, string(i)), joinpath(dir, string(i)))

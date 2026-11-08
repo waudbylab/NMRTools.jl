@@ -6,7 +6,7 @@ plotting and peak picking all take and return `NMRData`.
 
 ```@example nmrdata
 using NMRTools
-spec = loadnmr(example("2D_HN"))
+spec = loadnmr(example("2d_hn_ubq"))
 size(spec), eltype(spec)
 ```
 

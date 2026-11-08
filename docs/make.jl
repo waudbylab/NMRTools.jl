@@ -7,8 +7,8 @@ DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 # The example data used in these pages. Fetch them before building: on a fresh machine the first
 # use of each dataset prints a download message, and the first use in a session shows who to
 # credit, which would otherwise end up in example and doctest output.
-const EXAMPLES = ["1D_1H", "1D_19F", "1D_19F_titration", "2D_HN", "2D_HN_titration",
-                  "pseudo2D_T2", "pseudo2D_XSTE", "pseudo3D_HN_R2", "pseudo3D_kinetics",
+const EXAMPLES = ["1d_1h_ubq", "1D_19F", "1d_19f_titration_sh3", "2d_hn_ubq", "titration2d_fir_nbox",
+                  "relaxation1d_aas", "diffusion1d_asyn", "relaxation2d_asyn", "pseudo3D_kinetics",
                   "3D_HNCA"]
 foreach(example, EXAMPLES)
 

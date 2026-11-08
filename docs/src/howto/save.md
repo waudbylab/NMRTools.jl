@@ -6,7 +6,7 @@ data, and [`savefid`](@ref NMRTools.NMRIO.savefid) writes time-domain data as a 
 
 ```@example save
 using NMRTools
-fid = loadfid(example("1D_1H"))
+fid = loadfid(example("1d_1h_ubq"))
 spec = autoprocess(fid)
 out = mktempdir()
 nothing # hide
