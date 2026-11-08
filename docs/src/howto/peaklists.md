@@ -5,7 +5,7 @@ chosen from the file extension.
 
 ```@example pl
 using NMRTools
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2D_HN"))
 pks = detectpeaks(spec; snr=20, sign=:positive)
 dir = mktempdir()
 nothing # hide

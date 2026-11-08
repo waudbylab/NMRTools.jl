@@ -70,6 +70,7 @@ are used as the reference.
   - direct_saturation
   - indirect_saturation
   - zz_saturation
+- hetnoe
 
 ## Parameter blocks
 
@@ -98,6 +99,10 @@ are used as the reference.
   - offset
   - reference = first | X
     X = value to indicate reference plane
+- hetnoe
+  - channel: the saturated channel, e.g. f1 for ¹H
+  - saturated: true | false for an experiment recording one condition, or one value per
+    plane, e.g. [false, true], for an interleaved series
 - calibration.nutation
   - channel
   - power

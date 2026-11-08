@@ -9,8 +9,8 @@ apply it to one dimension of multidimensional data. For an introduction, see the
 
 ```@example process
 using NMRTools, CairoMakie
-fid = exampledata("1D_1H"; fid=true)
-fid2d = exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))
+fid = loadfid(example("1D_1H"))
+fid2d = loadfid(example("2D_HN"); firstpoint=Dict(T2Dim => 1.0))
 nothing # hide
 ```
 
@@ -221,7 +221,7 @@ transformed. `loadfid` loads the series axis as an unknown dimension (`X2Dim`), 
 processing functions leave alone:
 
 ```@example process
-series = exampledata("pseudo2D_T2"; fid=true)
+series = loadfid(example("pseudo2D_T2"))
 dims(series)
 ```
 

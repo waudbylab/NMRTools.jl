@@ -5,14 +5,20 @@
 Example data now come from [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/),
 shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artifacts.
 
-- **`exampledata`** loads any dataset in NMRExampleData. The names used before still work, as
-  aliases, and names can be shortened to the start of the full name or of any part of it.
-  The first time a dataset is used in a session, who to credit, what to cite and the licence
-  are shown.
-- **`exampledata()`** offers a menu of the datasets in an interactive session, and lists them
-  otherwise.
-- **`exampleinfo(name)`** gives a dataset's title, description, credit, citation and licence.
-- An unknown name now throws an `ArgumentError` rather than an `NMRToolsError`.
+- **Breaking: `exampledata` is replaced by `example`.** `example(name)` gives the path of an
+  example dataset, downloading it the first time, and the usual loaders load it:
+  `loadnmr(example("2D_HN"))`, `loadfid(example("2D_HN"))`. The names used before still work, as
+  aliases, and names can be shortened to the start of the full name or of any part of it. The
+  first time a dataset is used in a session, who to credit, what to cite and the licence are
+  shown. `example()` offers a menu of the datasets, `exampleinfo(name)` describes one, and
+  `exampleanalysis(name)` gives the analysis saved with it.
+- **Breaking: the BMRB shifts of ubiquitin are no longer bundled.** Use `loadbmrb(17769)`.
+- **`loadnmr` and `loadfid` take a vector of paths**, such as a titration series, and return a
+  vector of spectra.
+- **`loadfid` finds the experiment from any path inside it**, such as a `pdata` folder or an
+  nmrPipe file beside the raw data, so a processed spectrum's path gives its raw data.
+- **`loadpeaks` takes a folder**, such as an NMRAnalysis output folder, and reads the
+  `peaklist.csv` inside it.
 
 ## v0.3.1
 

@@ -13,7 +13,7 @@ First, load in some data. This pseudo-3D kinetic data — a series of 1H,15N SOF
 ```@example 1
 using NMRTools, CairoMakie
 
-spec = exampledata("pseudo3D_kinetics")
+spec = loadnmr(example("pseudo3D_kinetics"))
 nothing # hide
 ```
 
@@ -50,7 +50,7 @@ nothing # hide
 First, load in some data — a series of 1H,15N HSQC spectra from a titration experiment:
 
 ```@example 1
-spectra2d = exampledata("2D_HN_titration")
+spectra2d = loadnmr(example("2D_HN_titration"))
 nothing # hide
 ```
 
@@ -82,7 +82,7 @@ nothing # hide
 The same approach works for 1D spectra:
 
 ```@example 1
-spectra1d = exampledata("1D_19F_titration")
+spectra1d = loadnmr(example("1D_19F_titration"))
 fig, ax, _ = nmrplot(spectra1d[1]; xlims=(-122, -125), title="")
 record(fig, "titration1d.gif", spectra1d; framerate=4) do s
     empty!(ax)

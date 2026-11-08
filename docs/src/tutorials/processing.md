@@ -9,7 +9,7 @@ ubiquitin in H₂O, recorded with excitation sculpting to suppress the water sig
 
 ```@example proc
 using NMRTools, CairoMakie
-fid = exampledata("1D_1H"; fid=true)
+fid = loadfid(example("1D_1H"))
 nothing # hide
 ```
 

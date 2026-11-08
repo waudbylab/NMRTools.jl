@@ -2,9 +2,9 @@ using NMRTools
 using Test
 
 @testset "NMRBase: NMRData" begin
-    dat1a = exampledata("pseudo2D_XSTE")
-    dat1b = exampledata("pseudo2D_XSTE")
-    dat2 = exampledata("1D_19F")
+    dat1a = loadnmr(example("pseudo2D_XSTE"))
+    dat1b = loadnmr(example("pseudo2D_XSTE"))
+    dat2 = loadnmr(example("1D_19F"))
     dat2b = NMRData(dat2) # create NMRData from another NMRData object
     @test dat1a == dat1b # test equality
     @test dat1a ≠ dat2
@@ -84,7 +84,7 @@ end
     @test units(datG, 2) == "T m⁻¹"
 
     # offsets
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
     spec2 = shiftdim(spec, 1, 0.5)
     @test data(spec2, 1)[1] - data(spec, 1)[1] ≈ 0.5
     spec2 = shiftdim(spec2, F1Dim, 0.5)
@@ -266,7 +266,7 @@ end
     using NMRTools.NMRIO: resolve_programmatic_lists!
 
     # Test 1: Linear spacing with start/step
-    spec1 = exampledata("pseudo2D_XSTE")  # 2k x 10
+    spec1 = loadnmr(example("pseudo2D_XSTE"))  # 2k x 10
     annotations1 = Dict{String,Any}("dimensions" => ["calibration.duration", "f1"],
                                     "calibration" =>
                                         Dict{String,Any}("duration" => Dict{String,
@@ -283,7 +283,7 @@ end
     @test annotations1["calibration"]["duration"][end] ≈ 0.019
 
     # Test 2: Linear spacing with start/end
-    spec2 = exampledata("pseudo2D_XSTE")  # 2k x 10
+    spec2 = loadnmr(example("pseudo2D_XSTE"))  # 2k x 10
     annotations2 = Dict{String,Any}("dimensions" => ["calibration.duration", "f1"],
                                     "calibration" =>
                                         Dict{String,Any}("duration" => Dict{String,
@@ -301,7 +301,7 @@ end
     @test annotations2["calibration"]["duration"][2] ≈ 0.001 + spacing
 
     # Test 3: Logarithmic spacing with start/end
-    spec3 = exampledata("pseudo2D_XSTE")  # 2k x 10
+    spec3 = loadnmr(example("pseudo2D_XSTE"))  # 2k x 10
     annotations3 = Dict{String,Any}("dimensions" => ["calibration.duration", "f1"],
                                     "calibration" =>
                                         Dict{String,Any}("duration" => Dict{String,
@@ -319,7 +319,7 @@ end
           log(0.001) + (log(0.1) - log(0.001)) / (10 - 1)
 
     # Test 4: Second dimension mapping
-    spec4 = exampledata("pseudo2D_XSTE")  # 2k x 10
+    spec4 = loadnmr(example("pseudo2D_XSTE"))  # 2k x 10
     annotations4 = Dict{String,Any}("dimensions" => ["gradient.strength", "f1"],
                                     "gradient" =>
                                         Dict{String,Any}("strength" => Dict{String,
@@ -336,7 +336,7 @@ end
     @test annotations4["gradient"]["strength"][end] ≈ 0.95
 
     # Test 5: Counter-based pattern with integer counter
-    spec5 = exampledata("pseudo2D_XSTE")
+    spec5 = loadnmr(example("pseudo2D_XSTE"))
     annotations5 = Dict{String,Any}("dimensions" => ["calibration.duration", "f1"],
                                     "calibration" =>
                                         Dict{String,Any}("duration" => Dict{String,
@@ -361,7 +361,7 @@ end
     @test annotations5["calibration"]["duration"][end] ≈ 0.09
 
     # Test 6: Counter-based pattern with non-uniform counter
-    spec6 = exampledata("pseudo2D_XSTE")
+    spec6 = loadnmr(example("pseudo2D_XSTE"))
     annotations6 = Dict{String,Any}("dimensions" => ["gradient.strength", "f1"],
                                     "gradient" =>
                                         Dict{String,Any}("strength" => Dict{String,
@@ -384,7 +384,7 @@ end
 
 @testset "NMRBase: FQList conversions" begin
     # Create a test axis with known parameters
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
     ax = dims(spec, 1)
     bf = ax[:bf]
     offsetppm = ax[:offsetppm]
@@ -444,7 +444,7 @@ end
 end
 
 @testset "NMRBase: spectrometer channels" begin
-    spec = exampledata("2D_HN")
+    spec = loadnmr(example("2D_HN"))
 
     ch = channels(spec)
     @test ch isa AbstractDict
@@ -556,7 +556,7 @@ end
 end
 
 @testset "NMRBase: window functions" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("pseudo2D_XSTE"))
     @test dat[1, :window] isa Cos2Window
     @test dat[1, :window].tmax ≈ 0.0512
     @test length(apod(dat, 1)) == 2048
@@ -574,7 +574,7 @@ end
     @test decimate(1:10, 2) == [1.5, 3.5, 5.5, 7.5, 9.5]
 
     # NMR data
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("pseudo2D_XSTE"))
     @test size(decimate(dat, 10, 1)) == (204, 10)
     @test decimate(dat, 10, 1)[2, 2] ≈ 43.59735595703125
     @test size(decimate(dat, 3, 2)) == (2048, 3)
@@ -582,20 +582,20 @@ end
 end
 
 @testset "NMRBase: stack" begin
-    specs = [loadnmr(exampledata("1D_19F_titration"; path=true)[1]),
-             loadnmr(exampledata("1D_19F_titration"; path=true)[2]),
-             loadnmr(exampledata("1D_19F_titration"; path=true)[3])]
+    specs = [loadnmr(example("1D_19F_titration")[1]),
+             loadnmr(example("1D_19F_titration")[2]),
+             loadnmr(example("1D_19F_titration")[3])]
     stacked = stack(specs)
     @test size(stacked) == (32768, 3)
 
-    specs2 = [loadnmr(exampledata("1D_19F_titration"; path=true)[1]),
-              exampledata("2D_HN")]
+    specs2 = [loadnmr(example("1D_19F_titration")[1]),
+              loadnmr(example("2D_HN"))]
     @test_throws DimensionMismatch stack(specs2)
 
-    specs3 = [loadnmr(exampledata("2D_HN_titration"; path=true)[1]),
-              loadnmr(exampledata("2D_HN_titration"; path=true)[2]),
-              loadnmr(exampledata("2D_HN_titration"; path=true)[3]),
-              loadnmr(exampledata("2D_HN_titration"; path=true)[4])]
+    specs3 = [loadnmr(example("2D_HN_titration")[1]),
+              loadnmr(example("2D_HN_titration")[2]),
+              loadnmr(example("2D_HN_titration")[3]),
+              loadnmr(example("2D_HN_titration")[4])]
     # expect warning that experiments do not have same rg
     @test (@test_logs (:warn,) size(stack(specs3))) == (768, 512, 4)
 end
@@ -701,7 +701,7 @@ end
 end
 
 @testset "NMRBase: Peak detection (1D)" begin
-    spec = exampledata("1D_19F")
+    spec = loadnmr(example("1D_19F"))
     pks = detectpeaks(spec)
     @test pks isa Vector{Peak{1}}
     @test length(pks) == 1
@@ -725,11 +725,11 @@ end
     @test label(p) == "F"
 
     # pseudo-2D data must be sliced first
-    @test_throws ArgumentError detectpeaks(exampledata("pseudo2D_XSTE"))
+    @test_throws ArgumentError detectpeaks(loadnmr(example("pseudo2D_XSTE")))
 end
 
 @testset "NMRBase: Peak detection (synthetic Lorentzian)" begin
-    spec = exampledata("1D_19F")
+    spec = loadnmr(example("1D_19F"))
     ax = dims(spec, F1Dim)
     ν = hz(ax)
     for (δ0, fwhm) in ((-123.7, 20.0), (-121.0, 50.0))
@@ -752,7 +752,7 @@ end
 end
 
 @testset "NMRBase: Peak detection (2D)" begin
-    spec = exampledata("2D_HN")
+    spec = loadnmr(example("2D_HN"))
     pks = detectpeaks(spec; sign=:positive)
     @test pks isa Vector{Peak{2}}
     @test length(pks) > 10
@@ -772,7 +772,7 @@ end
 end
 
 @testset "NMRBase: register!" begin
-    spec = exampledata("2D_HN")
+    spec = loadnmr(example("2D_HN"))
     step = abs.((data(dims(spec, 1))[2] - data(dims(spec, 1))[1],
                  data(dims(spec, 2))[2] - data(dims(spec, 2))[1]))
     pks = detectpeaks(spec; sign=:positive)[1:40]
@@ -801,7 +801,7 @@ end
 
     # negative peaks count as much as positive ones, and one huge peak elsewhere
     # does not outweigh several weaker matches
-    spec1 = exampledata("1D_19F")
+    spec1 = loadnmr(example("1D_19F"))
     ax = dims(spec1, F1Dim)
     ν = hz(ax)
     function lorentz(δ, h)
@@ -826,7 +826,7 @@ end
     # See GitHub issue #25: https://github.com/waudbylab/NMRTools.jl/issues/25
 
     # 2D pseudo-data test
-    dat1a = exampledata("pseudo2D_XSTE")
+    dat1a = loadnmr(example("pseudo2D_XSTE"))
     dat3 = dat1a[:, 3]  # slice creates new NMRData
 
     # Set label on the slice
@@ -844,7 +844,7 @@ end
     @test dat1a[:noise] != 123.0  # original should not change
 
     # Test that NMRData constructor also creates independent copy
-    dat2 = exampledata("1D_19F")
+    dat2 = loadnmr(example("1D_19F"))
     dat2b = NMRData(dat2)
     label!(dat2b, "copy label")
     @test label(dat2) != "copy label"  # original should not change
@@ -860,7 +860,7 @@ end
     @test label(dat1a) != "selectdim slice"
 
     # Test estimatenoise doesn't affect original after slicing
-    dat_for_noise = exampledata("1D_1H")
+    dat_for_noise = loadnmr(example("1D_1H"))
     dat_slice = dat_for_noise[7.0 .. 9.0]
     estimatenoise(dat_slice)
     # The original should have different noise value (or nil if not yet estimated)
@@ -884,7 +884,7 @@ end
 end
 
 @testset "NMRBase: finddim and resolvedim" begin
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
 
     # Test finddim with Nucleus
     @test finddim(spec, H1) == 1
@@ -900,7 +900,7 @@ end
 end
 
 @testset "NMRBase: shiftdim with nucleus" begin
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
     original_ppm = data(spec, 1)[1]
 
     # Test shiftdim with nucleus
@@ -929,12 +929,12 @@ end
 end
 
 @testset "NMRBase: isaqueous" begin
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
     @test isaqueous(spec) == true
 end
 
 @testset "NMRBase: reference function" begin
-    spec = exampledata("1D_1H")
+    spec = loadnmr(example("1D_1H"))
     original_ppm = data(spec, 1)[1]
 
     # Test basic referencing with explicit shift pair
@@ -963,7 +963,7 @@ end
 end
 
 @testset "NMRBase: reference with 2D data" begin
-    spec = exampledata("2D_HN")
+    spec = loadnmr(example("2D_HN"))
 
     # Get original ppm values
     original_f1 = data(spec, 1)[1]

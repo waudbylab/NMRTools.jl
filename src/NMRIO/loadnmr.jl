@@ -4,7 +4,8 @@
 Main function for loading NMR data. `experimentfolder` contains the path to an experiment directory,
 for identification of metadata, if the filename is not directly within an experiment.
 
-Returns an `NMRData` structure, or throws an `NMRToolsError` is there is a problem.
+Returns an `NMRData` structure, or throws an `NMRToolsError` is there is a problem. A vector of
+filenames, such as a titration series, gives a vector of `NMRData`.
 
 # Examples
 
@@ -133,6 +134,8 @@ end
 
 Load the full NMR spectrum for an experiment previously discovered by [`scanexperiments`](@ref NMRTools.NMRIO.scanexperiments).
 """
+loadnmr(filenames::AbstractVector; kwargs...) = [loadnmr(f; kwargs...) for f in filenames]
+
 function loadnmr(expt::NMRExperiment; pdatadir::Int=1, allcomponents::Bool=false)
     return loadnmr(joinpath(expt.path, "pdata", string(pdatadir)); allcomponents)
 end

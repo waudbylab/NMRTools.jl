@@ -18,7 +18,7 @@ using CairoMakie   # static figures; use GLMakie for interactive
 ## A single spectrum
 
 ```@example 1
-fig = nmrplot(exampledata("1D_1H"))
+fig = nmrplot(loadnmr(example("1D_1H")))
 save("makie-1D.svg", fig); nothing # hide
 ```
 
@@ -27,7 +27,7 @@ save("makie-1D.svg", fig); nothing # hide
 Set the plot range with `xlims` — the y-axis rescales to fit the visible region:
 
 ```@example 1
-fig = nmrplot(exampledata("1D_1H"), xlims=(-1, 4.5))
+fig = nmrplot(loadnmr(example("1D_1H")), xlims=(-1, 4.5))
 save("makie-1D-xlim.svg", fig); nothing # hide
 ```
 
@@ -36,7 +36,7 @@ save("makie-1D-xlim.svg", fig); nothing # hide
 Overlay additional spectra with `nmrplot!`:
 
 ```@example 1
-nmrplot!(fig, exampledata("1D_1H") / 2)
+nmrplot!(fig, loadnmr(example("1D_1H")) / 2)
 save("makie-1Db.svg", fig); nothing # hide
 ```
 
@@ -46,9 +46,9 @@ save("makie-1Db.svg", fig); nothing # hide
 
 ```@example 1
 fig = Figure()
-nmrplot(fig[1,1], exampledata("1D_19F_titration"), xlims=(-121.8,-125.2), vstack=true, title="vstack=true")
-nmrplot(fig[1,2], exampledata("1D_19F_titration"), xlims=(-121.8,-125.2), vstack=2, title="vstack=2")
-nmrplot(fig[1,3], exampledata("1D_19F_titration"), xlims=(-121.8,-125.2), vstack=10, title="vstack=10")
+nmrplot(fig[1,1], loadnmr(example("1D_19F_titration")), xlims=(-121.8,-125.2), vstack=true, title="vstack=true")
+nmrplot(fig[1,2], loadnmr(example("1D_19F_titration")), xlims=(-121.8,-125.2), vstack=2, title="vstack=2")
+nmrplot(fig[1,3], loadnmr(example("1D_19F_titration")), xlims=(-121.8,-125.2), vstack=10, title="vstack=10")
 save("makie-1D-vstack.svg", fig); nothing # hide
 ```
 
@@ -60,7 +60,7 @@ save("makie-1D-vstack.svg", fig); nothing # hide
 Add spectra one by one with `nmrplot!`, and add a legend with Makie's `axislegend`:
 
 ```@example 1
-dats = exampledata("1D_19F_titration")
+dats = loadnmr(example("1D_19F_titration"))
 fig, ax = nmrplot(dats[1], title="", xlims=(-120, -128))
 nmrplot!(fig, dats[5])
 nmrplot!(fig, dats[10])
@@ -98,8 +98,8 @@ save("spectrum.pdf", fig)
 
 ```@example 1
 fig = Figure()
-nmrplot(fig[1, 1], exampledata("1D_1H"); title="", xlims=(-1, 4.5))
-nmrplot(fig[1, 2], exampledata("2D_HN"); title="", xlims=(6, 10))
+nmrplot(fig[1, 1], loadnmr(example("1D_1H")); title="", xlims=(-1, 4.5))
+nmrplot(fig[1, 2], loadnmr(example("2D_HN")); title="", xlims=(6, 10))
 scatter(fig[2, :], randn(100))
 save("makie-plots.svg", fig); nothing # hide
 ```

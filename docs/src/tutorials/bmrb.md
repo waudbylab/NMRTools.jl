@@ -14,15 +14,8 @@ using NMRTools, CairoMakie
 
 [`loadbmrb`](@ref NMRTools.NMRIO.loadbmrb) downloads the shifts of a BMRB entry, given its number:
 
-```julia
-shifts = loadbmrb(17769)
-```
-
-The shifts of entry 17769 come with NMRTools as example data, so this page runs without network
-access:
-
 ```@example bmrb
-shifts = exampledata("BMRB_ubiquitin")
+shifts = loadbmrb(17769)
 shifts[1:5]
 ```
 
@@ -60,7 +53,7 @@ The HNCA was recorded at 298 K, the temperature of the BMRB entry. Its ¹H,¹⁵
 maximum over the ¹³C dimension, looks like an HSQC:
 
 ```@example bmrb
-hnca = exampledata("3D_HNCA")
+hnca = loadnmr(example("3D_HNCA"))
 hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3
 fig, ax, _ = nmrplot(hn_proj; title="HNCA projection with BMRB peaks")
 nmrplot!(ax, predicted)
@@ -132,7 +125,7 @@ length(predicted), length(allnh)
 
 ```@example bmrb
 nh2(p) = 6.4 < ppm(p, 1) < 7.9 && 108.5 < ppm(p, 2) < 114.5
-hsqc = exampledata("2D_HN")
+hsqc = loadnmr(example("2D_HN"))
 fig, ax, _ = nmrplot(hsqc[6.4 .. 7.9, 108.5 .. 114.5]; title="side-chain NH₂ region")
 nmrplot!(ax, filter(nh2, register(sidechains, hsqc)); color=:red)
 save("bmrb-sidechains.svg", fig); nothing # hide
@@ -183,7 +176,7 @@ with temperature by different amounts for each residue, so a uniform offset cann
 peak:
 
 ```@example bmrb
-cold = exampledata("2D_HN")
+cold = loadnmr(example("2D_HN"))
 cold[:temperature]
 ```
 

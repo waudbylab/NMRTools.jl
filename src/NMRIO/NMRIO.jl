@@ -6,8 +6,7 @@ using Dates
 using Downloads
 using JSON
 using MulticomplexNumbers
-using NMRExampleData: examples, exampleinfo, examplepath
-using REPL.TerminalMenus: RadioMenu, request
+using NMRExampleData: examples, exampleinfo, example, exampleanalysis
 using YAML
 
 include("../sample-schemas/migration-code/migrate.jl")
@@ -26,7 +25,6 @@ include("samples.jl")
 include("experiment.jl")
 include("scan.jl")
 include("ucsf.jl")
-include("exampledata.jl")
 include("sumexpts.jl")
 include("peaklists.jl")
 include("bmrb.jl")
@@ -47,6 +45,6 @@ export findsample
 export findexperiments
 
 # examples
-export exampledata, exampleinfo
+export examples, exampleinfo, example, exampleanalysis
 
 end

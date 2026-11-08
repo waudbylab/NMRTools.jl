@@ -18,7 +18,7 @@ spec = loadnmr("path/to/experiment/1/pdata/101")     # pdata/101
 ```
 
 ```@example load
-dir = exampledata("2D_HN"; path=true)
+dir = example("2D_HN")
 spec = loadnmr(dir)
 size(spec)
 ```
@@ -51,7 +51,7 @@ Pass the file name of an nmrPipe spectrum. For a 3D stored as a series of planes
 with `%03d` (or similar) in place of the plane number:
 
 ```@example load
-pipe = exampledata("3D_HNCA_pipe"; path=true)
+pipe = example("3D_HNCA_pipe")
 basename(pipe)
 ```
 
@@ -65,7 +65,7 @@ size(spec3d)
 ## UCSF (Sparky)
 
 ```@example load
-ucsf = loadnmr(exampledata("3D_HNCA_ucsf"; path=true))
+ucsf = loadnmr(example("3D_HNCA_ucsf"))
 size(ucsf)
 ```
 

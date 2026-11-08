@@ -16,7 +16,7 @@ Time dimensions have coordinates in seconds.
 
 ```@example units
 using NMRTools
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2D_HN"))
 acqus(spec, :p, 1)          # pulse length p1, in s
 ```
 

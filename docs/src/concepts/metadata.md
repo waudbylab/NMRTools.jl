@@ -38,7 +38,7 @@ metadata(spec, F1Dim)          # the whole dictionary for one axis
 
 ```@example meta
 using NMRTools
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2D_HN"))
 spec[:pulseprogram], spec[F2Dim, :nucleus], spec[F1Dim, :window]
 ```
 

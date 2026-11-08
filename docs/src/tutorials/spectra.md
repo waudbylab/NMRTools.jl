@@ -15,12 +15,12 @@ using NMRTools, CairoMakie
 `pdata` folder, an nmrPipe file or a UCSF file. Here we use the bundled example data:
 
 ```@example spectra
-spec = exampledata("1D_19F")
+spec = loadnmr(example("1D_19F"))
 nothing # hide
 ```
 
-`exampledata(name; path=true)` gives the folder the data were loaded from, which is what you would
-pass to `loadnmr` for your own data:
+`example(name)` gives the path of an example dataset, which is what you would pass to `loadnmr`
+for your own data:
 
 ```julia
 spec = loadnmr("path/to/experiment/1")             # pdata/1 by default
@@ -58,7 +58,7 @@ save("spectra-region.svg", fig); nothing # hide
 The same works in two dimensions. A range in both dimensions gives a smaller 2D spectrum:
 
 ```@example spectra
-spec2d = exampledata("2D_HN")
+spec2d = loadnmr(example("2D_HN"))
 fig = nmrplot(spec2d[7.5 .. 8.7, 116 .. 126])
 save("spectra-2d-region.svg", fig); nothing # hide
 ```
@@ -104,7 +104,7 @@ A pseudo-2D experiment, such as a relaxation series, has a frequency dimension a
 non-frequency dimension:
 
 ```@example spectra
-relax = exampledata("pseudo2D_T2")
+relax = loadnmr(example("pseudo2D_T2"))
 dims(relax)
 ```
 
@@ -136,7 +136,7 @@ Processed spectra are loaded as real data by default. Pass `allcomponents=true` 
 imaginary parts too:
 
 ```@example spectra
-spec19f = loadnmr(exampledata("1D_19F"; path=true); allcomponents=true)
+spec19f = loadnmr(example("1D_19F"); allcomponents=true)
 eltype(spec19f)
 ```
 

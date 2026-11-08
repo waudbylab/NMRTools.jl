@@ -31,7 +31,8 @@ const _PHASESENSITIVE = (:states, :states_tppi, :echoantiecho)
 
 Load raw Bruker time-domain data (`fid` for 1D, `ser` for nD) as an [`NMRData`](@ref) with
 `Multicomplex` elements and `TimeDimension` axes, ready for processing. `filename` is the `fid` or
-`ser` file or the experiment folder.
+`ser` file, the experiment folder, or anything inside it such as a `pdata` folder, so the path a
+processed spectrum was loaded from gives its raw data. A vector of paths gives a vector of FIDs.
 
 Phase-sensitive indirect dimensions (States, States-TPPI, echo/anti-echo) are combined into extra
 imaginary units, so a 2D experiment has `Multicomplex{Float64,2,4}` elements and even 1D data use
@@ -69,23 +70,9 @@ spec = fid |> apodize(Cos2Window()) |> zerofill |> ft |> autophase |> realest
 See also [`autoprocess`](@ref NMRTools.NMRBase.autoprocess), [`savefid`](@ref).
 """
 function loadfid(filename; removefilter=true, firstpoint=nothing)
-    filename = abspath(string(filename))
-
     # 1. locate the binary file and enclosing experiment folder
-    if isdir(filename)
-        expfolder = filename
-        if isfile(joinpath(filename, "ser"))
-            datafile = joinpath(filename, "ser")
-        elseif isfile(joinpath(filename, "fid"))
-            datafile = joinpath(filename, "fid")
-        else
-            throw(NMRToolsError("loadfid: no fid or ser file found in $filename"))
-        end
-    else
-        datafile = filename
-        expfolder = dirname(filename)
-        isfile(datafile) || throw(SystemError("loadfid: cannot open $datafile"))
-    end
+    datafile = _fidfile(abspath(string(filename)))
+    expfolder = dirname(datafile)
 
     # 2. load text metadata (acqus, acqu2s, …, title, channels, pulse program)
     md = loadmetadata(expfolder)
@@ -107,6 +94,25 @@ function loadfid(filename; removefilter=true, firstpoint=nothing)
     spec = addsampleinfo(spec)
 
     return spec
+end
+
+loadfid(filenames::AbstractVector; kwargs...) = [loadfid(f; kwargs...) for f in filenames]
+
+# The fid or ser file for `path`: the file itself, or that of the experiment folder holding
+# `path`, which may be the folder, a processed-data folder or a processed file inside it.
+function _fidfile(path)
+    basename(path) in ("fid", "ser") && isfile(path) && return path
+    ispath(path) || throw(SystemError("loadfid: cannot open $path"))
+    dir = isdir(path) ? path : dirname(path)
+    while !isfile(joinpath(dir, "acqus"))
+        dirname(dir) == dir &&
+            throw(NMRToolsError("loadfid: $path is not inside a Bruker experiment folder"))
+        dir = dirname(dir)
+    end
+    for f in ("ser", "fid")
+        isfile(joinpath(dir, f)) && return joinpath(dir, f)
+    end
+    throw(NMRToolsError("loadfid: no fid or ser file found in $dir"))
 end
 
 # Binary reading ###################################################################################

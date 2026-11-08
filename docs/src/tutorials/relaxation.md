@@ -16,7 +16,7 @@ using LsqFit
 using Measurements
 using Statistics
 
-spec = exampledata("pseudo2D_T2")
+spec = loadnmr(example("pseudo2D_T2"))
 nothing # hide
 ```
 

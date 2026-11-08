@@ -120,7 +120,7 @@ be accessed using this function.
 
 # Examples
 ```jldoctest
-julia> spec = exampledata("2D_HN");
+julia> spec = loadnmr(example("2D_HN"));
 
 julia> acqus(spec, :pulprog)
 "sfhmqcf3gpph.cw"
@@ -171,7 +171,7 @@ axis, e.g. the carbon channel in a ¹³C-edited experiment read out on ¹H.
 
 # Examples
 ```jldoctest
-julia> spec = exampledata("2D_HN");
+julia> spec = loadnmr(example("2D_HN"));
 
 julia> channels(spec, C13)[:bf]
 1.5092041e8

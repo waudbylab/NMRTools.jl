@@ -8,14 +8,14 @@ moves the list by it. `register` returns a moved copy instead.
 
 ```@example reg
 using NMRTools, CairoMakie
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2D_HN"))
 nothing # hide
 ```
 
 ## A list from the BMRB
 
 ```@example reg
-predicted = peaklist(exampledata("BMRB_ubiquitin"), "H", "N")
+predicted = peaklist(loadbmrb(17769), "H", "N")
 moved = register(predicted, spec)
 nothing # hide
 ```
@@ -29,7 +29,7 @@ A list picked in one spectrum can be registered onto another, for example the ne
 titration:
 
 ```@example reg
-series = exampledata("2D_HN_titration")
+series = loadnmr(example("2D_HN_titration"))
 pks = detectpeaks(series[1]; snr=20, sign=:positive)
 moved = register(pks, series[end])
 fig, ax, _ = nmrplot(series[end][7.5 .. 8.7, 116 .. 126]; title="")
@@ -78,7 +78,7 @@ Registration works in any number of dimensions, as long as the list and spectrum
 number:
 
 ```julia
-register!(peaklist(shifts, "H", "N", "CA"), exampledata("3D_HNCA"))
+register!(peaklist(shifts, "H", "N", "CA"), loadnmr(example("3D_HNCA")))
 ```
 
 ## In a pipeline

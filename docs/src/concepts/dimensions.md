@@ -65,7 +65,7 @@ dimensions, its nucleus (`H1`, `N15`). [`resolvedim`](@ref) converts any of thes
 
 ```@example dims
 using NMRTools
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2D_HN"))
 finddim(spec, N15)
 ```
 

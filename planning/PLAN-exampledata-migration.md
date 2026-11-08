@@ -1,7 +1,7 @@
 # Moving the example data to NMRExampleData.jl
 
-NMRTools 0.3.2 loads its example data from NMRExampleData.jl and no longer has an
-`Artifacts.toml`. Its tests and documentation still use the old names (`"2D_HN"` and so on),
+NMRTools 0.3.2 finds its example data with NMRExampleData.jl's `example(name)`, loads them with
+`loadnmr` and `loadfid`, and no longer has an `Artifacts.toml`. Its tests and documentation still use the old names (`"2D_HN"` and so on),
 which must therefore exist in NMRExampleData as **aliases** of the new datasets. An alias is an
 exact match, so these names keep meaning the same data however many datasets are added. Once the
 data are in place, the documentation can move to the new names in one sweep.
@@ -11,17 +11,17 @@ these datasets. Merge it after that.
 
 ## What each dataset must provide
 
-`exampledata(name; path=true)` returns the dataset's `spectrum` path, so `spectrum` must point at
-the same thing the old artifact path did. The tests and documentation then reach files inside it
-by relative path.
+`example(name)` returns the dataset's `path`, so `path` must point at the same thing the old
+artifact path did. The tests and documentation then reach files inside it by relative path.
+`loadfid(example(name))` finds the raw data in the experiment folder holding that path.
 
-| Old name (alias) | Suggested name | `spectrum` must give | Raw data | Also needed |
+| Old name (alias) | Suggested name | `path` must give | Raw data | Also needed |
 |:--|:--|:--|:--|:--|
 | `1D_1H` | `1d_1h_ubq` | the experiment folder | yes | |
 | `1D_19F` | `1d_19f_<sample>` | the experiment folder | yes | `test.ft1` in the experiment folder |
 | `1D_19F_titration` | `titration1d_<sample>` | 11 experiment folders, in order | yes | the folders named `1` to `11`, side by side (the `sumexpts` tests copy `1` to `3` from their parent) |
 | `2D_HN` | `2d_hn_ubq` | the experiment folder | yes | `test.ft2` and `hmqc.ucsf` in the experiment folder |
-| `2D_HN_titration` | `titration2d_<sample>` | `["1/test.ft2", …, "11/test.ft2"]` | **no** | a test checks that `fid=true` fails |
+| `2D_HN_titration` | `titration2d_<sample>` | `["1/test.ft2", …, "11/test.ft2"]` | **no** | a test checks that `loadfid` fails |
 | `pseudo2D_T2` | `relaxation1d_<sample>` | the experiment folder | yes | |
 | `pseudo2D_XSTE` | `diffusion1d_<sample>` | the experiment folder | yes | `test.ft1` in the experiment folder |
 | `pseudo3D_HN_R2` | `relaxation2d_ubq` | the experiment folder | | |
@@ -30,9 +30,7 @@ by relative path.
 | `3D_HNCA_pipe` | `3d_hnca_ubq_pipe` | `smile/test%03d.ft3` | | the same size as `3D_HNCA_ucsf` |
 | `3D_HNCA_ucsf` | `3d_hnca_ubq_ucsf` | `hnca.ucsf` | | |
 
-`BMRB_ubiquitin` stays in NMRTools (`data/bmr17769_3.str`). `exampledata` loads any `spectrum`
-ending in `.str` with `loadbmrb`, so it could move to NMRExampleData later without changing
-NMRTools; its name would then become an alias as well.
+The BMRB shifts of ubiquitin are no longer bundled: the docs call `loadbmrb(17769)`.
 
 The old artifacts could not be inspected while this was prepared, so the layouts above are
 inferred from how the tests and documentation use them. Check each against the old artifact

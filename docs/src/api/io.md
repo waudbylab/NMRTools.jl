@@ -11,8 +11,17 @@ loadnmr
 loadfid
 loadmetadata
 loadjdx
-exampledata
+```
+
+## Example data
+
+From [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/).
+
+```@docs
+example
+exampleanalysis
 exampleinfo
+examples
 ```
 
 ## Saving
