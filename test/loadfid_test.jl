@@ -146,3 +146,21 @@ end
         @test imag(parent(dat)[1, 1]) ≈ ltoh(raw[2]) * 2.0^-6
     end
 end
+
+@testset "loadfid and loadnmr: paths inside an experiment, and vectors of paths" begin
+    expt = joinpath(TESTDATA, "samples", "2")
+    fid = loadfid(expt)
+    # the experiment is found from its fid file, a pdata folder or the folder itself
+    @test size(loadfid(joinpath(expt, "fid"))) == size(fid)
+    @test size(loadfid(joinpath(expt, "pdata", "1"))) == size(fid)
+    @test_throws NMRToolsError loadfid(mktempdir())
+    # a series loads as a vector
+    @test length(loadfid([expt, expt])) == 2
+    @test length(loadnmr([expt, expt])) == 2
+    # a peak list in a folder, such as an NMRAnalysis output folder
+    pks = detectpeaks(loadnmr(expt))
+    mktempdir() do dir
+        savepeaks(joinpath(dir, "peaklist.csv"), pks)
+        @test length(loadpeaks(dir)) == length(pks)
+    end
+end
