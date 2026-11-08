@@ -722,8 +722,8 @@ end
     # loadfid finds the experiment from inside it: a pdata folder, or a processed file
     @test size(loadfid(joinpath(example("2D_HN"), "pdata", "1"))) == size(fid)
     @test size(loadfid(example("2D_HN", :nmrpipe))) == size(fid)
-    # nmrPipe data alone has no raw data
-    @test_throws NMRToolsError loadfid(example("2D_HN_titration"))
+    # a dataset without its raw data
+    @test_throws NMRToolsError loadfid(example("pseudo3D_HN_R2"))
 
     @test_throws ArgumentError example("no such data")
     @test !isempty(exampleinfo("2D_HN").title)

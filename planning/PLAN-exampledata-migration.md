@@ -24,7 +24,7 @@ by file name. `loadfid(example(name))` finds the raw data in the experiment fold
 | `1D_19F` | `1d_19f_<sample>` | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
 | `1D_19F_titration` | `titration1d_<sample>` | 11 experiment folders, in order | yes | the folders named `1` to `11`, side by side (the `sumexpts` tests copy `1` to `3` from their parent) |
 | `2D_HN` | `2d_hn_ubq` | the experiment folder | yes | `nmrpipe`: its `test.ft2`; `ucsf`: its `hmqc.ucsf` |
-| `2D_HN_titration` | `titration2d_<sample>` | `["1/test.ft2", …, "11/test.ft2"]` | **no** | a test checks that `loadfid` fails |
+| `2D_HN_titration` | `titration2d_fir_nbox` (added) | 11 experiment folders, in order | yes | |
 | `pseudo2D_T2` | `relaxation1d_<sample>` | the experiment folder | yes | |
 | `pseudo2D_XSTE` | `diffusion1d_<sample>` | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
 | `pseudo3D_HN_R2` | `relaxation2d_ubq` | the experiment folder | | |
