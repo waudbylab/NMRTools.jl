@@ -86,7 +86,7 @@ end
 
 @testset "PlotsExt: Multicomplex 1D (slice)" begin
     datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
-    datMC = datMC2D[:, 1]
+    datMC = datMC2D[:, 129]   # through the strongest peak
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
     # 1D recipe goes all the way to series data in one apply_recipe call

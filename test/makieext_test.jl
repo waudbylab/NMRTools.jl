@@ -248,7 +248,7 @@ end
 
 @testset "MakieExt: Multicomplex 1D slice" begin
     datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
-    datMC = datMC2D[:, 1]
+    datMC = datMC2D[:, 129]   # through the strongest peak
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
     fig, ax, plt = nmrplot(datMC)
