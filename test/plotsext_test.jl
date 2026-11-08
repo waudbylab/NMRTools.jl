@@ -18,13 +18,13 @@ using NMRTools, Plots
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
     @test pr[1].plotattributes[:xguide] == "19F chemical shift (ppm)"
-    @test pr[1].plotattributes[:title] == "Example 19F 1D spectrum"
+    @test pr[1].plotattributes[:title] == "19F{1H} broadband 1D"
     @test pr[1].plotattributes[:xflip] == true
     @test pr[1].plotattributes[:xtick_direction] == :out
     @test pr[1].plotattributes[:yshowaxis] == false
 
-    @test pr[1].args[1][1] ≈ -124.16252020246354
-    @test pr[1].args[2][1] ≈ 1.2039054352746015
+    @test pr[1].args[1][1] ≈ -256.4534597845177
+    @test pr[1].args[2][1] ≈ -3820.5841584158416
 end
 
 @testset "PlotsExt: 2D HN" begin

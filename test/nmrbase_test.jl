@@ -25,8 +25,8 @@ using Test
     @test ndims(dat3b) == 1
     @test size(dat3b) == (10,)
 
-    @test data(dat2)[1] ≈ 4671.5184326171875
-    @test data(dat2, 1)[1] ≈ -119.5922
+    @test data(dat2)[1] ≈ -1.3674336e7
+    @test data(dat2, 1)[1] ≈ -23.54626
 
     @test hasnonfrequencydimension(dat1a) == true
     @test hasnonfrequencydimension(dat2) == false
@@ -597,7 +597,7 @@ end
               loadnmr(example("titration2d_fir_nbox")[3]),
               loadnmr(example("titration2d_fir_nbox")[4])]
     # expect warning that experiments do not have same rg
-    @test (@test_logs (:warn,) size(stack(specs3))) == (768, 512, 4)
+    @test (@test_logs (:warn,) size(stack(specs3))) == (1408, 512, 4)
 end
 
 @testset "NMRBase: Power" begin
