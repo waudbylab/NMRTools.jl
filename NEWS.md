@@ -17,6 +17,10 @@ shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artif
   vector of spectra.
 - **`loadfid` finds the experiment from any path inside it**, such as a `pdata` folder or an
   nmrPipe file beside the raw data, so a processed spectrum's path gives its raw data.
+- **Raw data from older Bruker firmware.** Where `GRPDLY` is not recorded (`DSPFVS` 10–13),
+  `loadfid` looks the digital-filter group delay up from `DSPFVS` and `DECIM`, as nmrPipe and
+  nmrglue do, rather than removing none. Such FIDs previously transformed with a first-order phase
+  error of some 70 dwells.
 - **`loadpeaks` takes a folder**, such as an NMRAnalysis output folder, and reads the
   `peaklist.csv` inside it.
 

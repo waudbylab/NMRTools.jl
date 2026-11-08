@@ -164,3 +164,17 @@ end
         @test length(loadpeaks(dir)) == length(pks)
     end
 end
+
+@testset "loadfid: group delay of older firmware, from DSPFVS and DECIM" begin
+    groupdelay = NMRTools.NMRIO._groupdelay
+    # recorded directly from DSPFVS 20
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 20, :grpdly => 67.98)) == 67.98
+    # before GRPDLY was recorded, looked up as nmrPipe and nmrglue do
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 12, :decim => 16, :grpdly => -1)) == 71.625
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 10, :decim => 24, :grpdly => -1)) ≈ 61.020833
+    # a combination with no known delay is left alone, with a warning
+    @test (@test_logs (:warn,) groupdelay(Dict(:digmod => 1, :dspfvs => 14, :decim => 16,
+                                                :grpdly => -1))) == 0.0
+    # analogue filtering has none
+    @test groupdelay(Dict(:digmod => 0, :dspfvs => 12, :decim => 16, :grpdly => -1)) == 0.0
+end
