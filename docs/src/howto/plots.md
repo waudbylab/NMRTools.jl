@@ -11,7 +11,7 @@ Load and plot an example 1D ¹⁹F spectrum using the `loadnmr` and `plot` comma
 
 ```@example 1
 using NMRTools, Plots
-spec = loadnmr(example("1D_19F"))
+spec = loadnmr(example("1d_19f_fragments"))
 plot(spec)
 savefig("plot-1D.svg"); nothing # hide
 ```

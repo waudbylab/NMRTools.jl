@@ -23,7 +23,7 @@ folder or an nmrPipe file. Example data, from
 
 ```@example gs
 using NMRTools, CairoMakie
-spec = loadnmr(example("1D_19F"))
+spec = loadnmr(example("1d_19f_fragments"))
 size(spec), label(spec)
 ```
 

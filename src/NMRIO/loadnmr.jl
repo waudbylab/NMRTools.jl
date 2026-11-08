@@ -1,40 +1,23 @@
 """
-    loadnmr(filename, experimentfolder=nothing)
+    loadnmr(filename; experimentfolder=nothing, allcomponents=false)
 
 Main function for loading NMR data. `experimentfolder` contains the path to an experiment directory,
 for identification of metadata, if the filename is not directly within an experiment.
+`allcomponents=true` loads the imaginary parts of Bruker processed data as well, as
+multicomplex data.
 
 Returns an `NMRData` structure, or throws an `NMRToolsError` is there is a problem. A vector of
 filenames, such as a titration series, gives a vector of `NMRData`.
 
 # Examples
 
-nmrPipe import:
-
 ```julia
-loadnmr("exampledata/1D_1H/1/test.ft1");
-loadnmr("exampledata/1D_19F/1/test.ft1");
-loadnmr("exampledata/2D_HN/1/test.ft2");
-loadnmr("exampledata/pseudo2D_XSTE/1/test.ft1");
-loadnmr("exampledata/pseudo3D_HN_R2/1/ft/test%03d.ft2");
-```
-
-Bruker pdata import:
-
-```julia
-loadnmr("exampledata/1D_19F/1");
-loadnmr("exampledata/1D_19F/1/");
-loadnmr("exampledata/1D_19F/1/pdata/1");
-loadnmr("exampledata/1D_19F/1/pdata/1/");
-```
-
-ucsf (Sparky) import:
-
-```julia
-loadnmr("exampledata/2D_HN/1/hmqc.ucsf");
-loadnmr("exampledata/1D_19F/1/");
-loadnmr("exampledata/1D_19F/1/pdata/1");
-loadnmr("exampledata/1D_19F/1/pdata/1/");
+loadnmr("expt/1")               # Bruker processed data, pdata/1
+loadnmr("expt/1/pdata/101")     # another processed spectrum
+loadnmr("expt/1/test.ft2")      # nmrPipe
+loadnmr("expt/1/ft/test%03d.ft2")  # an nmrPipe plane series
+loadnmr("expt/1/hmqc.ucsf")     # UCSF (Sparky)
+loadnmr(example("2d_hn_ubq"))   # example data
 ```
 """
 function loadnmr(filename; experimentfolder=nothing, allcomponents=false)

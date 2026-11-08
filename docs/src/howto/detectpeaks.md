@@ -67,7 +67,7 @@ filter(p -> 7.5 < ppm(p, 1) < 8.7, pks)
 The same function works in any number of dimensions:
 
 ```@example detect
-detectpeaks(loadnmr(example("1D_19F")))
+detectpeaks(loadnmr(example("1d_19f_fragments")))
 ```
 
 ```@example detect

@@ -46,7 +46,7 @@ end
 end
 
 @testset "MakieExt: 1D 19F" begin
-    dat = loadnmr(example("1D_19F"))
+    dat = loadnmr(example("1d_19f_fragments"))
     fig, ax, plt = nmrplot(dat)
 
     @test fig isa Makie.Figure
@@ -57,7 +57,7 @@ end
     @test ax.xgridvisible[] == false
     @test ax.yticksvisible[] == false
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments.png"
 end
 
 @testset "MakieExt: 2D HN" begin
@@ -159,27 +159,27 @@ end
 end
 
 @testset "MakieExt: nmrplot! into existing axis" begin
-    dat = loadnmr(example("1D_19F"))
+    dat = loadnmr(example("1d_19f_fragments"))
     fig = Makie.Figure()
     ax = Makie.Axis(fig[1, 1])
     plt = nmrplot!(ax, dat)
     @test ax.xreversed[] == true
     @test plt isa Makie.Lines
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_nmrplotbang.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_nmrplotbang.png"
 end
 
 @testset "MakieExt: grid position" begin
-    dat = loadnmr(example("1D_19F"))
+    dat = loadnmr(example("1d_19f_fragments"))
     fig = Makie.Figure()
     ax, plt = nmrplot(fig[1, 1], dat)
     @test ax isa Makie.Axis
     @test ax.xreversed[] == true
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_gridpos.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_gridpos.png"
 
     fig = Figure(; size=(1000, 420))
-    nmrplot(fig[1, 1], loadnmr(example("1D_19F")); title="1D")
+    nmrplot(fig[1, 1], loadnmr(example("1d_19f_fragments")); title="1D")
     nmrplot(fig[1, 2], loadnmr(example("2d_hn_ubq")); title="2D", xlims=(6, 10))
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/subplots.png"
 end
@@ -201,11 +201,11 @@ end
 end
 
 @testset "MakieExt: 1D xlims auto-scales y to window" begin
-    dat = loadnmr(example("1D_19F"))
+    dat = loadnmr(example("1d_19f_fragments"))
     # No xlims: limits stay automatic.
     fig, ax, plt = nmrplot(dat)
     @test ax.limits[] === nothing || all(isnothing, ax.limits[])
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_nolims.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_nolims.png"
 
     # With xlims: explicit limits applied (x window + windowed y range).
     fig, ax, plt = nmrplot(dat; xlims=(-123, -122))
@@ -213,7 +213,7 @@ end
     fl = ax.finallimits[]
     @test Float64(minimum(fl)[1]) ≈ -123.0 atol = 1e-6
     @test Float64(maximum(fl)[1]) ≈ -122.0 atol = 1e-6
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_xlim.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_xlim.png"
 
     # Works for a series too.
     dats = loadnmr(example("1d_19f_titration_sh3"))
@@ -247,7 +247,7 @@ end
 end
 
 @testset "MakieExt: Multicomplex 1D slice" begin
-    datMC2D = loadnmr(example("2d_hn_ubq"); allcomponents=true)
+    datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
     datMC = datMC2D[:, 1]
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
@@ -392,7 +392,7 @@ end
 end
 
 @testset "MakieExt: peak overlays" begin
-    spec1 = loadnmr(example("1D_19F"))
+    spec1 = loadnmr(example("1d_19f_fragments"))
     fig, ax, _ = nmrplot(spec1)
     plt = nmrplot!(detectpeaks(spec1))
     @test plt isa Makie.VLines

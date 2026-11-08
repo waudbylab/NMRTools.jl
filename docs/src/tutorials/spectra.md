@@ -15,7 +15,7 @@ using NMRTools, CairoMakie
 `pdata` folder, an nmrPipe file or a UCSF file. Here we use the bundled example data:
 
 ```@example spectra
-spec = loadnmr(example("1D_19F"))
+spec = loadnmr(example("1d_19f_fragments"))
 nothing # hide
 ```
 
@@ -133,10 +133,18 @@ save("spectra-pseudo2d-slices.svg", fig); nothing # hide
 ## Real and imaginary parts
 
 Processed spectra are loaded as real data by default. Pass `allcomponents=true` to load the
-imaginary parts too:
+imaginary parts too, where TopSpin has kept them:
+
+```julia
+spec = loadnmr("path/to/experiment/1"; allcomponents=true)
+```
+
+The example datasets keep only the real parts of their processed spectra, so here we make a
+complex spectrum by processing the raw data instead, keeping the imaginary part with
+`real=false` (see [Processing a 1D spectrum](processing.md)):
 
 ```@example spectra
-spec19f = loadnmr(example("1D_19F"); allcomponents=true)
+spec19f = autoprocess(loadfid(example("1d_19f_fragments")); real=false)
 eltype(spec19f)
 ```
 
@@ -144,7 +152,7 @@ The element type is a first-order multicomplex number: a complex number whose im
 `im1`. `real` and `imag` give the two parts as real spectra:
 
 ```@example spectra
-region = spec19f[-124.5 .. -123]
+region = spec19f[-63 .. -61.5]
 fig, ax, _ = nmrplot(real.(region); title="real and imaginary parts")
 nmrplot!(ax, imag.(region))
 save("spectra-realimag.svg", fig); nothing # hide

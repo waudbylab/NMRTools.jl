@@ -13,7 +13,7 @@ using NMRTools, Plots
 """
 
 @testset "PlotsExt: 1D 19F" begin
-    dat = loadnmr(example("1D_19F"))
+    dat = loadnmr(example("1d_19f_fragments"))
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
@@ -61,7 +61,7 @@ end
 #     @test length(pr_vector_true) >= 6
 
 #     # Test 1D spectrum with reference normalization
-#     dat1_1d = loadnmr(example("1D_19F"))
+#     dat1_1d = loadnmr(example("1d_19f_fragments"))
 #     dat2_1d = dat1_1d * 3  # scaled version
 
 #     pr_1d_ref = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(:normalize => dat1_1d), dat2_1d)
@@ -75,17 +75,17 @@ end
 # end
 
 @testset "PlotsExt: Multicomplex 2D" begin
-    datMC = loadnmr(example("2d_hn_ubq"); allcomponents=true)
+    datMC = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
     @test parent(datMC) isa Matrix{<:Multicomplex}
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), datMC)
 
     @test pr[1].plotattributes[:normalize] == true
-    @test label(pr[1].args[2]) == "13C,15N ubiquitin"
+    @test label(pr[1].args[2]) == "50 uM 15N HsTRXL2 (UGGT2), 308 K, 15N BEST-TROSY"
 end
 
 @testset "PlotsExt: Multicomplex 1D (slice)" begin
-    datMC2D = loadnmr(example("2d_hn_ubq"); allcomponents=true)
+    datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
     datMC = datMC2D[:, 1]
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
@@ -96,10 +96,10 @@ end
 end
 
 @testset "PlotsExt: visual regression testing" begin
-    dat1 = loadnmr(example("1D_19F"))
+    dat1 = loadnmr(example("1d_19f_fragments"))
     @plottest begin
         plot(dat1)
-    end "plots-images/plot_1D_19F.png" false 0.02
+    end "plots-images/plot_1d_19f_fragments.png" false 0.02
 
     dat2 = loadnmr(example("2d_hn_ubq"))
     @plottest begin

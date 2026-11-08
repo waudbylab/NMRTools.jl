@@ -4,7 +4,7 @@ using Test
 @testset "NMRBase: NMRData" begin
     dat1a = loadnmr(example("diffusion1d_asyn"))
     dat1b = loadnmr(example("diffusion1d_asyn"))
-    dat2 = loadnmr(example("1D_19F"))
+    dat2 = loadnmr(example("1d_19f_fragments"))
     dat2b = NMRData(dat2) # create NMRData from another NMRData object
     @test dat1a == dat1b # test equality
     @test dat1a ≠ dat2
@@ -701,12 +701,13 @@ end
 end
 
 @testset "NMRBase: Peak detection (1D)" begin
-    spec = loadnmr(example("1D_19F"))
+    spec = loadnmr(example("1d_19f_fragments"))
     pks = detectpeaks(spec)
     @test pks isa Vector{Peak{1}}
-    @test length(pks) == 1
+    @test length(pks) == 33
+    @test issorted(intensity.(pks); rev=true)
     @test label(pks[1]) == "X1"
-    @test ppm(pks[1], 1) ≈ -123.698 atol = 0.005
+    @test ppm(pks[1], 1) ≈ -62.403 atol = 0.005
     @test intensity(pks[1]) > 0
     @test 1 < linewidth(pks[1], 1) < 100   # Hz
     @test length(detectpeaks(spec; snr=0.1)) > length(pks)
@@ -729,7 +730,7 @@ end
 end
 
 @testset "NMRBase: Peak detection (synthetic Lorentzian)" begin
-    spec = loadnmr(example("1D_19F"))
+    spec = loadnmr(example("1d_19f_fragments"))
     ax = dims(spec, F1Dim)
     ν = hz(ax)
     for (δ0, fwhm) in ((-123.7, 20.0), (-121.0, 50.0))
@@ -801,7 +802,7 @@ end
 
     # negative peaks count as much as positive ones, and one huge peak elsewhere
     # does not outweigh several weaker matches
-    spec1 = loadnmr(example("1D_19F"))
+    spec1 = loadnmr(example("1d_19f_fragments"))
     ax = dims(spec1, F1Dim)
     ν = hz(ax)
     function lorentz(δ, h)
@@ -844,7 +845,7 @@ end
     @test dat1a[:noise] != 123.0  # original should not change
 
     # Test that NMRData constructor also creates independent copy
-    dat2 = loadnmr(example("1D_19F"))
+    dat2 = loadnmr(example("1d_19f_fragments"))
     dat2b = NMRData(dat2)
     label!(dat2b, "copy label")
     @test label(dat2) != "copy label"  # original should not change

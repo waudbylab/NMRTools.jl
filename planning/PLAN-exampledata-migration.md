@@ -19,7 +19,7 @@ by file name. `loadfid(example(name))` finds the raw data in the experiment fold
 | Old name | Dataset | `path` | Raw data | `formats` |
 |:--|:--|:--|:--|:--|
 | `1D_1H` | `1d_1h_ubq` (added) | the experiment folder | yes | |
-| `1D_19F` | to be added | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
+| `1D_19F` | `1d_19f_fragments` (added; a different spectrum) | the experiment folder | yes | none, so no 1D nmrPipe test |
 | `1D_19F_titration` | `1d_19f_titration_sh3` (added) | 11 experiment folders, in order | yes | |
 | `2D_HN` | `2d_hn_ubq` (added) | the experiment folder | yes | `nmrpipe`: its `test.ft2`; `ucsf`: its `hmqc.ucsf` |
 | `2D_HN_titration` | `titration2d_fir_nbox` (added) | 11 experiment folders, in order | yes | |
@@ -29,8 +29,12 @@ by file name. `loadfid(example(name))` finds the raw data in the experiment fold
 | `pseudo3D_kinetics` | to be added | the experiment folder | | |
 | `3D_HNCA` | to be added, as `3d_hnca_ubq` | the experiment folder, with `pdata/131` and `pdata/231` | | `nmrpipe`: the old `3D_HNCA_pipe`'s `smile/test%03d.ft3`; `ucsf`: the old `3D_HNCA_ucsf`'s `hnca.ucsf`, the two the same size |
 
-The tests and documentation still use the old names `1D_19F`, `pseudo3D_kinetics` and `3D_HNCA`
-until those datasets are added.
+The tests and documentation still use the old names `pseudo3D_kinetics` and `3D_HNCA` until those
+datasets are added.
+
+The example datasets keep only the real parts of processed spectra, so `allcomponents=true` is
+tested on the bundled `test/test-data` (`samples/2`, `15n-trosy-ts3`, `15n-xste-ts3`), and the
+docs make a complex spectrum with `autoprocess(...; real=false)`.
 
 The BMRB shifts of ubiquitin are no longer bundled: the docs call `loadbmrb(17769)`.
 

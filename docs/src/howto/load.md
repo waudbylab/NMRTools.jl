@@ -24,11 +24,12 @@ size(spec)
 ```
 
 1D, 2D and 3D processed data (`1r`, `2rr`, `3rrr`) are read. By default only the real part is
-loaded; `allcomponents=true` loads the imaginary parts as well, as multicomplex data:
+loaded; `allcomponents=true` loads the imaginary parts as well, as multicomplex data, where
+TopSpin has kept them (`1i`, `2ii`, …). The example datasets keep only the real parts:
 
-```@example load
-spec = loadnmr(dir; allcomponents=true)
-eltype(spec)
+```julia
+spec = loadnmr("path/to/experiment/1"; allcomponents=true)
+eltype(spec)    # Multicomplex{Float64, 2, 4} for 2D data
 ```
 
 ## Raw data
