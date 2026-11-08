@@ -51,7 +51,7 @@ Pass the file name of an nmrPipe spectrum. For a 3D stored as a series of planes
 with `%03d` (or similar) in place of the plane number:
 
 ```@example load
-pipe = example("3D_HNCA_pipe")
+pipe = example("3D_HNCA", :nmrpipe)
 basename(pipe)
 ```
 
@@ -65,7 +65,7 @@ size(spec3d)
 ## UCSF (Sparky)
 
 ```@example load
-ucsf = loadnmr(example("3D_HNCA_ucsf"))
+ucsf = loadnmr(example("3D_HNCA", :ucsf))
 size(ucsf)
 ```
 

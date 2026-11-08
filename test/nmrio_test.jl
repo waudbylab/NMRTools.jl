@@ -3,7 +3,7 @@ using Test
 using Dates
 
 @testset "NMRIO: 1D 19F (nmrPipe)" begin
-    dat = loadnmr(joinpath(example("1D_19F"), "test.ft1"))
+    dat = loadnmr(example("1D_19F", :nmrpipe))
 
     @test size(dat) == (8751,)
     @test length(dat) == 8751
@@ -51,7 +51,7 @@ using Dates
 end
 
 @testset "NMRIO: 2D HN (nmrPipe)" begin
-    dat = loadnmr(joinpath(example("2D_HN"), "test.ft2"))
+    dat = loadnmr(example("2D_HN", :nmrpipe))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -140,7 +140,7 @@ end
 end
 
 @testset "NMRIO: pseudo-2D XSTE (nmrPipe)" begin
-    dat = loadnmr(joinpath(example("pseudo2D_XSTE"), "test.ft1"))
+    dat = loadnmr(example("pseudo2D_XSTE", :nmrpipe))
 
     @test size(dat) == (206, 10)
     @test length(dat) == 2060
@@ -440,7 +440,7 @@ end
 end
 
 @testset "3D data (nmrPipe)" begin
-    spec = loadnmr(example("3D_HNCA_pipe"))
+    spec = loadnmr(example("3D_HNCA", :nmrpipe))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
     @test dims(spec, 1)[1] ≈ 9.703234081887576
@@ -454,7 +454,7 @@ end
 end
 
 @testset "NMRIO: 2D HN (ucsf)" begin
-    dat = loadnmr(joinpath(example("2D_HN"), "hmqc.ucsf"))
+    dat = loadnmr(example("2D_HN", :ucsf))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -474,7 +474,7 @@ end
 end
 
 @testset "3D data (ucsf)" begin
-    spec = loadnmr(example("3D_HNCA_ucsf"))
+    spec = loadnmr(example("3D_HNCA", :ucsf))
     @test size(spec) == (384, 512, 128)
     @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
     @test dims(spec, 1)[1] ≈ 9.703234542832309
@@ -712,8 +712,7 @@ end
     @test length(loadnmr(example("1D_19F_titration"))) == 11
 
     @test isdir(example("2D_HN"))
-    @test endswith(example("3D_HNCA_pipe"), "test%03d.ft3")
-    @test size(loadnmr(example("3D_HNCA_ucsf"))) == size(loadnmr(example("3D_HNCA_pipe")))
+    @test endswith(example("3D_HNCA", :nmrpipe), "test%03d.ft3")
 
     # loader keywords are passed through, to every spectrum of a series too
     @test loadfid(example("2D_HN"); firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
@@ -722,12 +721,23 @@ end
 
     # loadfid finds the experiment from inside it: a pdata folder, or a processed file
     @test size(loadfid(joinpath(example("2D_HN"), "pdata", "1"))) == size(fid)
-    @test size(loadfid(joinpath(example("2D_HN"), "test.ft2"))) == size(fid)
+    @test size(loadfid(example("2D_HN", :nmrpipe))) == size(fid)
     # nmrPipe data alone has no raw data
     @test_throws NMRToolsError loadfid(example("2D_HN_titration"))
 
     @test_throws ArgumentError example("no such data")
     @test !isempty(exampleinfo("2D_HN").title)
+end
+
+@testset "Example data: every dataset in every format it has" begin
+    for format in (:bruker, :nmrpipe, :ucsf), name in examples(format)
+        @test loadnmr(example(name, format)) isa Union{NMRData,Vector{<:NMRData}}
+    end
+    # the same experiment read from different formats has the same shape
+    for name in examples(:nmrpipe) ∩ examples(:ucsf)
+        @test size(loadnmr(example(name, :nmrpipe))) == size(loadnmr(example(name, :ucsf)))
+    end
+    @test_throws ArgumentError example("2D_HN_titration", :ucsf)
 end
 
 @testset "sumexpts and savefid with read-only sources" begin

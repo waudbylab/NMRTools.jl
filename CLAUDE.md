@@ -145,5 +145,5 @@ Prefer multiple dispatch over conditional logic. Use positional arguments for th
 - SafeTestsets for isolated test environments
 - Visual regression tests for plotting (VisualRegressionTests.jl with reference PNGs)
 - Test data: real NMR datasets from NMRExampleData.jl, downloaded as lazy Julia artifacts on first use (Bruker, nmrPipe and UCSF formats)
-- Example data accessed via `loadnmr(example("2D_HN"))` etc., and files inside a dataset via `joinpath(example("2D_HN"), "test.ft2")`. Never use `artifact"..."`: NMRTools has no `Artifacts.toml`
+- Example data accessed via `loadnmr(example("2D_HN"))` etc., and other formats of the same data via `example("2D_HN", :nmrpipe)` or `:ucsf`; `examples(:ucsf)` lists every dataset with a format, so format tests run over all of them. Never use `artifact"..."` or hard-code file names inside a dataset: NMRTools has no `Artifacts.toml`
 - The precompile workload (`src/precompile.jl`) loads `test/test-data/samples/2`, `test/test-data/19f-cest-ts3` and `test/test-data/15n-trosy-ts3`, since the example data would need a download. Keep these datasets in place, or update the workload if they move.

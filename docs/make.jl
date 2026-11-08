@@ -9,7 +9,7 @@ DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 # credit, which would otherwise end up in example and doctest output.
 const EXAMPLES = ["1D_1H", "1D_19F", "1D_19F_titration", "2D_HN", "2D_HN_titration",
                   "pseudo2D_T2", "pseudo2D_XSTE", "pseudo3D_HN_R2", "pseudo3D_kinetics",
-                  "3D_HNCA", "3D_HNCA_pipe", "3D_HNCA_ucsf"]
+                  "3D_HNCA"]
 foreach(example, EXAMPLES)
 
 # the release notes page is generated from NEWS.md at the repository root
