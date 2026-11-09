@@ -1,6 +1,6 @@
 # Moving the example data to NMRExampleData.jl
 
-NMRTools 0.3.2 finds its example data with NMRExampleData.jl's `example(name)`, loads them with
+NMRTools 0.4.0 finds its example data with NMRExampleData.jl's `example(name)`, loads them with
 `loadnmr` and `loadfid`, and no longer has an `Artifacts.toml`. Its tests and documentation use
 the datasets' new names.
 

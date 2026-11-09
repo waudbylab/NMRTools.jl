@@ -1,6 +1,6 @@
 # NMRTools.jl release notes
 
-## v0.3.2
+## v0.4.0
 
 Example data now come from [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/),
 shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artifacts.
