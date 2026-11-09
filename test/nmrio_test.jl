@@ -385,7 +385,7 @@ end
 end
 
 @testset "3D data (Bruker pdata)" begin
-    spec = loadnmr(example("3D_HNCA"))
+    spec = loadnmr(example("3d_hnca_ubq"))
     @test size(spec) == (432, 64, 256)
     @test spec[5, 6, 7] ≈ 3506.28125
     @test label(spec, 1) == "1H"
@@ -395,27 +395,13 @@ end
     @test dims(spec, 2)[end] ≈ 107.84188874936109
     @test dims(spec, 3)[Near(45)] ≈ 44.99702749174231
 
-    spec13 = loadnmr(joinpath(example("3D_HNCA"), "pdata", "131"))
-    spec23 = loadnmr(joinpath(example("3D_HNCA"), "pdata", "231"))
+    spec13 = loadnmr(joinpath(example("3d_hnca_ubq"), "pdata", "131"))
+    spec23 = loadnmr(joinpath(example("3d_hnca_ubq"), "pdata", "231"))
     @test size(spec13) == (512, 256)
     @test size(spec23) == (512, 128)
     @test spec23[Near(7.2), Near(122)] ≈ 19735.930053710938
     @test spec13[Near(8.3), Near(63)] ≈ -321.002197265625
     @test maximum(spec) / spec[:noise] ≈ 698.6861209993058
-end
-
-@testset "3D data (nmrPipe)" begin
-    spec = loadnmr(example("3D_HNCA", :nmrpipe))
-    @test size(spec) == (384, 512, 128)
-    @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] ≈ 9.703234081887576
-    @test dims(spec, 2)[1] ≈ 68.7403353437212
-    @test dims(spec, 3)[end] ≈ 107.75223308061521
-    @test spec[10, 11, 12] ≈ 99473.6875
-    @test spec[1, :window] == Cos2Window(0.09261055758378933)
-    @test spec[2, :window] == CosWindow(0.057541115456864404)
-    @test spec[3, :window] == CosWindow(0.03894846805778692)
-    @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
 
 @testset "NMRIO: 2D HN (ucsf)" begin
@@ -436,18 +422,6 @@ end
 
     @test label(dat, 1) == "1H"
     @test label(dat, 2) == "15N"
-end
-
-@testset "3D data (ucsf)" begin
-    spec = loadnmr(example("3D_HNCA", :ucsf))
-    @test size(spec) == (384, 512, 128)
-    @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] ≈ 9.703234542832309
-    @test dims(spec, 2)[1] ≈ 68.74033212965945
-    @test dims(spec, 3)[end] ≈ 107.75222413893053
-    @test spec[10, 11, 12] ≈ 99473.6875
-    @test spec[1, :window] isa UnknownWindow
-    @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
 
 @testset "Samples and Experiments" begin
@@ -677,7 +651,6 @@ end
     @test length(loadnmr(example("1d_19f_titration_sh3"))) == 11
 
     @test isdir(example("2d_hn_ubq"))
-    @test endswith(example("3D_HNCA", :nmrpipe), "test%03d.ft3")
 
     # loader keywords are passed through, to every spectrum of a series too
     @test loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
@@ -696,8 +669,10 @@ end
 end
 
 @testset "Example data: every dataset in every format it has" begin
+    # one spectrum, a series, or nested lists of them where an analysis takes its data in roles
+    loaded(x) = x isa NMRData || (x isa AbstractVector && all(loaded, x))
     for format in (:bruker, :nmrpipe, :ucsf), name in examples(format)
-        @test loadnmr(example(name, format)) isa Union{NMRData,Vector{<:NMRData}}
+        @test loaded(loadnmr(example(name, format)))
     end
     # the same experiment read from different formats has the same shape
     for name in examples(:nmrpipe) ∩ examples(:ucsf)
@@ -727,4 +702,20 @@ end
         @test data(loadfid(joinpath(dir, "102"))) ≈ data(fids[1])
         foreach(i -> chmod(joinpath(dir, string(i)), 0o755; recursive=true), 1:3)
     end
+end
+
+@testset "NMRIO: TopSpin version from acqus" begin
+    mktempdir() do dir
+        f = joinpath(dir, "acqus")
+        for (title, v) in ("TopSpin 4.1.4" => v"4.1.4", "TopSpin 3.5 pl 6" => v"3.5",
+                           "TOPSPIN\t\tVersion 2.1" => v"2.1", "TopSpin 5.0.0" => v"5.0.0")
+            write(f, "##TITLE= Parameter file, $title\n")
+            @test NMRTools.NMRIO.topspinversion(f) == v
+        end
+        write(f, "##TITLE= Parameter file\n")
+        @test_throws NMRToolsError NMRTools.NMRIO.topspinversion(f)
+    end
+    # a TopSpin 3.5 vdlist is read from the experiment folder, not lists/vd
+    @test acqus(loadnmr(example("methylccr2d_fln5")[1]), :vdlist) ≈
+          [2, 6, 12, 20, 30, 40, 50, 60] * 1e-3
 end

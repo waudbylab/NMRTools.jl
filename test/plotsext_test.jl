@@ -162,7 +162,7 @@ end
     end "plots-images/plot_2D_overlay_colors.png" false 0.02
 
     @plottest begin
-        dat6 = loadnmr(example("3D_HNCA"))
+        dat6 = loadnmr(example("3d_hnca_ubq"))
         plot(maximum(dat6; dims=2)[:, 1, :] / 3)
     end "plots-images/plot_3D_HNCA_projection.png" false 0.02
 end

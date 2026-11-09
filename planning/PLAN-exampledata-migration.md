@@ -26,11 +26,10 @@ by file name. `loadfid(example(name))` finds the raw data in the experiment fold
 | `pseudo2D_T2` | `relaxation1d_aas` (added) | the experiment folder | yes | |
 | `pseudo2D_XSTE` | `diffusion1d_asyn` (added) | the experiment folder | yes | `nmrpipe`: its `test.ft1` |
 | `pseudo3D_HN_R2` | `relaxation2d_asyn` (added) | the experiment folder | no | |
-| `pseudo3D_kinetics` | to be added | the experiment folder | | |
-| `3D_HNCA` | to be added, as `3d_hnca_ubq` | the experiment folder, with `pdata/131` and `pdata/231` | | `nmrpipe`: the old `3D_HNCA_pipe`'s `smile/test%03d.ft3`; `ucsf`: the old `3D_HNCA_ucsf`'s `hnca.ucsf`, the two the same size |
+| `pseudo3D_kinetics` | `kinetics2d_cjun` (added) | the experiment folder | | |
+| `3D_HNCA` | `3d_hnca_ubq` (added) | the experiment folder, with `pdata/131` and `pdata/231` | | none, so no 3D nmrPipe or UCSF test |
 
-The tests and documentation still use the old names `pseudo3D_kinetics` and `3D_HNCA` until those
-datasets are added.
+Every old name is now replaced in the tests and documentation.
 
 The example datasets keep only the real parts of processed spectra, so `allcomponents=true` is
 tested on the bundled `test/test-data` (`samples/2`, `15n-trosy-ts3`, `15n-xste-ts3`), and the

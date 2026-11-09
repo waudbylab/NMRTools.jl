@@ -159,7 +159,7 @@ sample conditions and referencing, so expect a systematic offset; [`register!`](
 removes it, and `register` returns a moved copy:
 
 ```@example tools-bmrb
-hnca = loadnmr(example("3D_HNCA"))
+hnca = loadnmr(example("3d_hnca_ubq"))
 hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3   # ¹H,¹⁵N projection
 moved = register(backbone, hn_proj)
 fig, ax, _ = nmrplot(hn_proj; title="")

@@ -25,6 +25,9 @@ shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artif
   error of some 70 dwells.
 - **`loadpeaks` takes a folder**, such as an NMRAnalysis output folder, and reads the
   `peaklist.csv` inside it.
+- **Fixed: TopSpin versions with a patch level**, such as `TopSpin 3.5 pl 6`, were read as the
+  patch level (version 6), so lists such as the `vdlist` were looked for where TopSpin 4 keeps
+  them and not found.
 
 ## v0.3.1
 

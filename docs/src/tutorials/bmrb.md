@@ -53,7 +53,7 @@ The HNCA was recorded at 298 K, the temperature of the BMRB entry. Its ¹H,¹⁵
 maximum over the ¹³C dimension, looks like an HSQC:
 
 ```@example bmrb
-hnca = loadnmr(example("3D_HNCA"))
+hnca = loadnmr(example("3d_hnca_ubq"))
 hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3
 fig, ax, _ = nmrplot(hn_proj; title="HNCA projection with BMRB peaks")
 nmrplot!(ax, predicted)

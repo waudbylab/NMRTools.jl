@@ -122,7 +122,7 @@ save("makie-2D-normalize.svg", fig); nothing # hide
 Plot a plane or a strip of a 3D spectrum by selecting it first:
 
 ```@example 1
-hnca = loadnmr(example("3D_HNCA"))
+hnca = loadnmr(example("3d_hnca_ubq"))
 fig = nmrplot(hnca[:, Near(120.0), :]; title="¹H,¹³C plane at 120 ppm ¹⁵N")
 save("makie-3D-plane.svg", fig); nothing # hide
 ```

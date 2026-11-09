@@ -8,8 +8,8 @@ DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 # use of each dataset prints a download message, and the first use in a session shows who to
 # credit, which would otherwise end up in example and doctest output.
 const EXAMPLES = ["1d_1h_ubq", "1d_19f_fragments", "1d_19f_titration_sh3", "2d_hn_ubq", "titration2d_fir_nbox",
-                  "relaxation1d_aas", "diffusion1d_asyn", "relaxation2d_asyn", "pseudo3D_kinetics",
-                  "3D_HNCA"]
+                  "relaxation1d_aas", "diffusion1d_asyn", "relaxation2d_asyn", "kinetics2d_cjun",
+                  "3d_hnca_ubq"]
 foreach(example, EXAMPLES)
 
 # the release notes page is generated from NEWS.md at the repository root

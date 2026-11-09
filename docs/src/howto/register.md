@@ -78,7 +78,7 @@ Registration works in any number of dimensions, as long as the list and spectrum
 number:
 
 ```julia
-register!(peaklist(shifts, "H", "N", "CA"), loadnmr(example("3D_HNCA")))
+register!(peaklist(shifts, "H", "N", "CA"), loadnmr(example("3d_hnca_ubq")))
 ```
 
 ## In a pipeline

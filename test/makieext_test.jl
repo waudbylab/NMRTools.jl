@@ -349,7 +349,7 @@ end
 end
 
 # @testset "MakieExt: 3D contour" begin
-#     dat = loadnmr(example("3D_HNCA"))
+#     dat = loadnmr(example("3d_hnca_ubq"))
 #     fig, ax, plt = nmrplot(dat)
 #     @test ax isa Makie.Axis3
 #     @test plt isa Makie.Contour
@@ -365,7 +365,7 @@ end
 # end
 
 # @testset "MakieExt: 3D contour overlay" begin
-#     dat = loadnmr(example("3D_HNCA"))
+#     dat = loadnmr(example("3d_hnca_ubq"))
 #     # Vector overlay, like 2D contour series.
 #     fig, ax, plt = nmrplot([dat, dat / 2])
 #     @test ax isa Makie.Axis3

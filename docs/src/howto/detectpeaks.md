@@ -71,7 +71,7 @@ detectpeaks(loadnmr(example("1d_19f_fragments")))
 ```
 
 ```@example detect
-hnca = detectpeaks(loadnmr(example("3D_HNCA")); snr=20, sign=:positive)
+hnca = detectpeaks(loadnmr(example("3d_hnca_ubq")); snr=20, sign=:positive)
 hnca[1:3]
 ```
 

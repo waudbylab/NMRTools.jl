@@ -13,7 +13,7 @@ First, load in some data. This pseudo-3D kinetic data — a series of 1H,15N SOF
 ```@example 1
 using NMRTools, CairoMakie
 
-spec = loadnmr(example("pseudo3D_kinetics"))
+spec = loadnmr(example("kinetics2d_cjun"))
 nothing # hide
 ```
 

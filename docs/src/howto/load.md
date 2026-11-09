@@ -48,17 +48,23 @@ the details, and [Process step by step](process.md) for what to do next.
 
 ## nmrPipe
 
-Pass the file name of an nmrPipe spectrum. For a 3D stored as a series of planes, give a template
-with `%03d` (or similar) in place of the plane number:
+Pass the file name of an nmrPipe spectrum:
 
 ```@example load
-pipe = example("3D_HNCA", :nmrpipe)
+pipe = example("2d_hn_ubq", :nmrpipe)
 basename(pipe)
 ```
 
 ```@example load
-spec3d = loadnmr(pipe)
-size(spec3d)
+spec2d = loadnmr(pipe)
+size(spec2d)
+```
+
+For a 3D, or a pseudo-3D, stored as a series of planes, give a template with `%03d` (or similar)
+in place of the plane number:
+
+```julia
+spec3d = loadnmr("path/to/experiment/1/ft/test%03d.ft3")
 ```
 
 1D, 2D and 3D nmrPipe data are read, including pseudo-3D plane series.
@@ -66,7 +72,7 @@ size(spec3d)
 ## UCSF (Sparky)
 
 ```@example load
-ucsf = loadnmr(example("3D_HNCA", :ucsf))
+ucsf = loadnmr(example("2d_hn_ubq", :ucsf))
 size(ucsf)
 ```
 
