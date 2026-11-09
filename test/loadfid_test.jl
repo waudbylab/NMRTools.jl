@@ -178,3 +178,11 @@ end
     # analogue filtering has none
     @test groupdelay(Dict(:digmod => 0, :dspfvs => 12, :decim => 16, :grpdly => -1)) == 0.0
 end
+
+@testset "loadnmr: a path it cannot load" begin
+    dir = mktempdir()
+    err = try loadnmr(joinpath(dir, "missing")) catch e e end
+    @test err isa NMRToolsError && occursin("does not exist", err.message)
+    err = try loadnmr(dir) catch e e end
+    @test err isa NMRToolsError && occursin("unknown file format", err.message)
+end

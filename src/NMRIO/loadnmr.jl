@@ -37,6 +37,9 @@ function loadnmr(filename; experimentfolder=nothing, allcomponents=false)
 
     # raw time-domain data is handled by the dedicated loadfid entry point
     format == :bruker_fid && return loadfid(filename)
+    format == :unknown &&
+        throw(NMRToolsError(ispath(filename) ? "loadnmr: unknown file format for $filename" :
+                            "loadnmr: $filename does not exist"))
 
     # 2. get acqus metadata
     # TODO - this assumes we're dealing with Bruker data…
