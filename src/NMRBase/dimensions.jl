@@ -201,7 +201,7 @@ Returns the dimension index (1-based) or `nothing` if not found.
 
 # Examples
 ```jldoctest
-julia> spec = exampledata("2D_HN");     # a ¹H,¹⁵N spectrum
+julia> spec = loadnmr(example("2d_hn_ubq"));     # a ¹H,¹⁵N spectrum
 
 julia> finddim(spec, H1)
 1

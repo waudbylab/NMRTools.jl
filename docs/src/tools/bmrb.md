@@ -12,18 +12,9 @@ For a worked example, see [Assigning ubiquitin from the BMRB](../tutorials/bmrb.
 Give the BMRB entry number and the atoms correlated in each dimension, direct dimension first, and
 plot the result:
 
-```julia
-using NMRTools, CairoMakie
-hsqc = loadbmrb(17769, "H", "N")      # backbone ¹H,¹⁵N HSQC peaks of ubiquitin
-nmrplot(hsqc)
-```
-
-This downloads the entry from bmrb.io. The shifts of entry 17769 come with NMRTools, so here we
-read the bundled copy instead:
-
 ```@example tools-bmrb
 using NMRTools, CairoMakie
-hsqc = loadbmrb(exampledata("BMRB_ubiquitin"; path=true), "H", "N")
+hsqc = loadbmrb(17769, "H", "N")      # backbone ¹H,¹⁵N HSQC peaks of ubiquitin
 fig = nmrplot(hsqc; title="predicted ¹H,¹⁵N HSQC of ubiquitin")
 save("tools-bmrb-quick.svg", fig); nothing # hide
 ```
@@ -48,10 +39,10 @@ hsqc = loadbmrb(17769, H1, N15)              # download and build an ¹⁵N HSQC
 An entry may hold several shift lists, for example under different sample conditions. The first
 is used, with a warning, unless the `list` keyword selects another by its ID.
 
-The examples on this page use the shifts of ubiquitin (entry 17769), which come with NMRTools:
+The examples on this page use the shifts of ubiquitin (entry 17769):
 
 ```@example tools-bmrb
-shifts = exampledata("BMRB_ubiquitin")
+shifts = loadbmrb(17769)
 length(shifts)
 ```
 
@@ -168,7 +159,7 @@ sample conditions and referencing, so expect a systematic offset; [`register!`](
 removes it, and `register` returns a moved copy:
 
 ```@example tools-bmrb
-hnca = exampledata("3D_HNCA")
+hnca = loadnmr(example("3d_hnca_ubq"))
 hn_proj = dropdims(maximum(hnca; dims=F3Dim); dims=F3Dim) / 3   # ¹H,¹⁵N projection
 moved = register(backbone, hn_proj)
 fig, ax, _ = nmrplot(hn_proj; title="")

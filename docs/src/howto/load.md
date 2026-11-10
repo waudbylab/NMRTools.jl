@@ -18,17 +18,18 @@ spec = loadnmr("path/to/experiment/1/pdata/101")     # pdata/101
 ```
 
 ```@example load
-dir = exampledata("2D_HN"; path=true)
+dir = example("2d_hn_ubq")
 spec = loadnmr(dir)
 size(spec)
 ```
 
 1D, 2D and 3D processed data (`1r`, `2rr`, `3rrr`) are read. By default only the real part is
-loaded; `allcomponents=true` loads the imaginary parts as well, as multicomplex data:
+loaded; `allcomponents=true` loads the imaginary parts as well, as multicomplex data, where
+TopSpin has kept them (`1i`, `2ii`, …). The example datasets keep only the real parts:
 
-```@example load
-spec = loadnmr(dir; allcomponents=true)
-eltype(spec)
+```julia
+spec = loadnmr("path/to/experiment/1"; allcomponents=true)
+eltype(spec)    # Multicomplex{Float64, 2, 4} for 2D data
 ```
 
 ## Raw data
@@ -47,17 +48,23 @@ the details, and [Process step by step](process.md) for what to do next.
 
 ## nmrPipe
 
-Pass the file name of an nmrPipe spectrum. For a 3D stored as a series of planes, give a template
-with `%03d` (or similar) in place of the plane number:
+Pass the file name of an nmrPipe spectrum:
 
 ```@example load
-pipe = exampledata("3D_HNCA_pipe"; path=true)
+pipe = example("2d_hn_ubq", :nmrpipe)
 basename(pipe)
 ```
 
 ```@example load
-spec3d = loadnmr(pipe)
-size(spec3d)
+spec2d = loadnmr(pipe)
+size(spec2d)
+```
+
+For a 3D, or a pseudo-3D, stored as a series of planes, give a template with `%03d` (or similar)
+in place of the plane number:
+
+```julia
+spec3d = loadnmr("path/to/experiment/1/ft/test%03d.ft3")
 ```
 
 1D, 2D and 3D nmrPipe data are read, including pseudo-3D plane series.
@@ -65,7 +72,7 @@ size(spec3d)
 ## UCSF (Sparky)
 
 ```@example load
-ucsf = loadnmr(exampledata("3D_HNCA_ucsf"; path=true))
+ucsf = loadnmr(example("2d_hn_ubq", :ucsf))
 size(ucsf)
 ```
 

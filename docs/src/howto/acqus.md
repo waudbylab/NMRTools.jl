@@ -5,8 +5,8 @@ programme and any lists in the experiment folder are read. [`acqus`](@ref) looks
 
 ```@setup acq
 using NMRTools
-spec = exampledata("2D_HN")
-relax = exampledata("pseudo2D_T2")
+spec = loadnmr(example("2d_hn_ubq"))
+relax = loadnmr(example("relaxation1d_aas"))
 ```
 
 ## Parameters
@@ -16,7 +16,7 @@ parameters (pulse lengths, delays, powers, …) take an index, numbered as in To
 converted to seconds and frequencies to Hz (see [Time and frequency units](../concepts/units.md)):
 
 ```@repl acq
-spec = exampledata("2D_HN");
+spec = loadnmr(example("2d_hn_ubq"));
 acqus(spec, :pulprog)
 acqus(spec, "TE")          # temperature, K
 acqus(spec, :ns)
@@ -62,7 +62,7 @@ in NMRTools units: delays and pulse lengths in seconds, amplitudes in dB, and fr
 `nothing` for a list that is not present.
 
 ```@repl acq
-relax = exampledata("pseudo2D_T2");
+relax = loadnmr(example("relaxation1d_aas"));
 acqus(relax, :vclist)
 ```
 

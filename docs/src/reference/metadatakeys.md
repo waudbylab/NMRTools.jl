@@ -16,7 +16,7 @@ for how metadata are organised.
 
 ```@example keys
 using NMRTools
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2d_hn_ubq"))
 spec[:ns], spec[F1Dim, :swppm], acqus(spec, :p, 1)
 ```
 

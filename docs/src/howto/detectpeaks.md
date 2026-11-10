@@ -6,7 +6,7 @@ as a `Vector{Peak{N}}`, strongest first. For an introduction, see the tutorial
 
 ```@example detect
 using NMRTools, CairoMakie
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2d_hn_ubq"))
 nothing # hide
 ```
 
@@ -67,11 +67,11 @@ filter(p -> 7.5 < ppm(p, 1) < 8.7, pks)
 The same function works in any number of dimensions:
 
 ```@example detect
-detectpeaks(exampledata("1D_19F"))
+detectpeaks(loadnmr(example("1d_19f_fragments")))
 ```
 
 ```@example detect
-hnca = detectpeaks(exampledata("3D_HNCA"); snr=20, sign=:positive)
+hnca = detectpeaks(loadnmr(example("3d_hnca_ubq")); snr=20, sign=:positive)
 hnca[1:3]
 ```
 

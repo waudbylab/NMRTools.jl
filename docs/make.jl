@@ -4,9 +4,13 @@ ENV["GKSwstype"] = "100"
 
 DocMeta.setdocmeta!(NMRTools, :DocTestSetup, :(using NMRTools); recursive=true)
 
-# Fetch the example data before building: on a fresh machine the first use of each artifact
-# prints a download message, which would end up in example and doctest output.
-foreach(name -> exampledata(name; path=true), NMRTools.NMRIO.EXAMPLEDATA_NAMES)
+# The example data used in these pages. Fetch them before building: on a fresh machine the first
+# use of each dataset prints a download message, and the first use in a session shows who to
+# credit, which would otherwise end up in example and doctest output.
+const EXAMPLES = ["1d_1h_ubq", "1d_19f_fragments", "1d_19f_titration_sh3", "2d_hn_ubq", "titration2d_fir_nbox",
+                  "relaxation1d_aas", "diffusion1d_asyn", "relaxation2d_asyn", "kinetics2d_cjun",
+                  "3d_hnca_ubq"]
+foreach(example, EXAMPLES)
 
 # the release notes page is generated from NEWS.md at the repository root
 write(joinpath(@__DIR__, "src", "releasenotes.md"),

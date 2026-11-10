@@ -1,59 +1,9 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Test
 using Dates
 
-@testset "NMRIO: 1D 19F (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"1D_19F", "test.ft1"))
-
-    @test size(dat) == (8751,)
-    @test length(dat) == 8751
-
-    @test parent(dat) isa Vector{Float64}
-
-    @test dat[1] ≈ -3741.875
-    @test dat[end] ≈ 5973.625
-    @test maximum(dat) ≈ 1.274037375e6
-
-    @test label(dat) == "Example 19F 1D spectrum"
-    @test dat[:title] == """Example 19F 1D spectrum
-    Sample details in second line
-    and third line"""
-    @test dat[:ns] == 64
-    @test dat[:rg] ≈ 76.02
-    @test dat[:format] == :nmrpipe
-    @test dat[:ndim] == 1
-
-    @test scale(dat) ≈ 4865.28
-
-    @test acqus(dat, :pulprog) == "zg"
-    @test acqus(dat, :p, 1) ≈ 13.25e-6
-    @test acqus(dat, "P", 2) == 22e-6
-    @test acqus(dat, :d, 1) == 4
-    @test acqus(dat)[:te] ≈ 318.1509
-
-    @test dims(dat, 1) isa FrequencyDimension
-    @test length(dims(dat, 1)) == 8751
-    @test dims(dat, 1)[1] ≈ -119.99959383646768
-    @test dims(dat, 1)[2] ≈ -120.00050820180846
-    @test dims(dat, 1)[end] ≈ -128.00029056823928
-
-    @test metadata(dat, 1, :sf) ≈ 470.4608353134155e6
-    @test dat[1, :bf] ≈ 470.5220031738281e6
-    @test label(dat, 1) == "19F"
-    @test dat[1, :td] == 14097
-    @test dat[1, :tdzf] == 32768
-    @test dat[1, :region] == 5448:14198
-    @test dat[1, :offsetppm] == -130
-    @test dat[1, :window] == ExponentialWindow(5.0, 0.9999472073130639)
-    @test dat[1, :swhz] ≈ 14097.744257799108
-    @test dat[1, :swppm] ≈ 29.961923486479087
-    @test dat[1, :pseudodim] == false
-end
-
 @testset "NMRIO: 2D HN (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"2D_HN", "test.ft2"))
+    dat = loadnmr(example("2d_hn_ubq", :nmrpipe))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -142,7 +92,7 @@ end
 end
 
 @testset "NMRIO: pseudo-2D XSTE (nmrPipe)" begin
-    dat = loadnmr(joinpath(artifact"pseudo2D_XSTE", "test.ft1"))
+    dat = loadnmr(example("diffusion1d_asyn", :nmrpipe))
 
     @test size(dat) == (206, 10)
     @test length(dat) == 2060
@@ -217,62 +167,85 @@ end
 end
 
 @testset "NMRIO: 1D 19F (Bruker pdata)" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
 
-    @test size(dat) == (5000,)
-    @test length(dat) == 5000
+    @test size(dat) == (524288,)
+    @test length(dat) == 524288
 
     @test parent(dat) isa Vector{Float64}
 
-    @test dat[1] ≈ 4671.5184326171875
-    @test dat[end] ≈ 5857.3370361328125
-    @test maximum(dat) ≈ 23737.674377441406
+    @test dat[1] ≈ -1.3674336e7
+    @test dat[end] ≈ -1.2348128e7
+    @test maximum(dat) ≈ 1.2941039392e10
 
-    @test label(dat) == "Example 19F 1D spectrum"
-    @test dat[:title] == """Example 19F 1D spectrum
-    Sample details in second line
-    and third line"""
-    @test dat[:ns] == 64
-    @test dat[:rg] ≈ 76.02
+    @test label(dat) == "19F{1H} broadband 1D"
+    @test dat[:title] == "19F{1H} broadband 1D"
+    @test dat[:ns] == 32
+    @test dat[:rg] == 101
     @test dat[:format] == :pdata
     @test dat[:ndim] == 1
 
-    @test scale(dat) ≈ 4865.28
+    @test scale(dat) == 3232
 
-    @test acqus(dat, :pulprog) == "zg"
-    @test acqus(dat, :p, 1) ≈ 13.25e-6
-    @test acqus(dat, "P", 2) == 22e-6
-    @test acqus(dat, :d, 1) == 4
-    @test acqus(dat)[:te] ≈ 318.1509
+    @test acqus(dat, :pulprog) == "19F_bb_1d.cw"
+    @test acqus(dat, :p, 1) ≈ 15e-6
+    @test acqus(dat, "P", 2) ≈ 24e-6
+    @test acqus(dat, :d, 1) == 5
+    @test acqus(dat)[:te] ≈ 297.9989
 
     @test dims(dat, 1) isa FrequencyDimension
-    @test length(dims(dat, 1)) == 5000
-    @test dims(dat, 1)[1] ≈ -119.5922
-    @test dims(dat, 1)[2] ≈ -119.59311424688988
-    @test dims(dat, 1)[end] ≈ -124.16252020246354
+    @test length(dims(dat, 1)) == 524288
+    @test dims(dat, 1)[1] ≈ -23.54626
+    @test dims(dat, 1)[2] ≈ -23.546704236076394
+    @test dims(dat, 1)[end] ≈ -256.4534597845177
 
-    @test metadata(dat, 1, :sf) ≈ 470.5217922204685e6
-    @test dat[1, :bf] ≈ 470.582968e6
+    @test metadata(dat, 1, :sf) ≈ 564.8613503357828e6
+    @test dat[1, :bf] ≈ 564.9404420439999e6
     @test label(dat, 1) == "19F"
-    @test dat[1, :td] == 14097
-    @test dat[1, :tdzf] == 32768
-    @test dat[1, :region] == 5000:9999
-    @test dat[1, :offsetppm] ≈ -129.99998659428783
-    @test dat[1, :window] == ExponentialWindow(10.0, 0.9999471999999971)
-    @test dat[1, :swhz] ≈ 14097.744360902296
-    @test dat[1, :swppm] ≈ 29.95804208728246
+    @test dat[1, :td] == 131072
+    @test dat[1, :tdzf] == 524288
+    @test ismissing(dat[1, :region])
+    @test dat[1, :offsetppm] ≈ -140.00008201029704
+    @test dat[1, :window] == ExponentialWindow(10.0, 0.9961472000000003)
+    @test dat[1, :swhz] ≈ 131578.947368421
+    @test dat[1, :swppm] ≈ 232.9076440205941
     @test dat[1, :pseudodim] == false
+end
 
-    # load complex spectrum (imaginary part conjugated relative to TopSpin's 1i)
-    dat2 = loadnmr(artifact"1D_19F"; allcomponents=true)
-    @test dat2[100] == Multicomplex(4920.725646972656, 17351.53515625)
+# the example datasets keep only the real part of processed data, so loading the imaginary
+# parts is tested on the bundled data
+@testset "NMRIO: imaginary parts (Bruker pdata)" begin
+    dir = joinpath("test-data", "samples", "2")
+    dat = loadnmr(dir)
+    dat2 = loadnmr(dir; allcomponents=true)
+    # imaginary part conjugated relative to TopSpin's 1i
+    @test dat2[100] == Multicomplex(6578.3896484375, -8973.736328125)
+    @test realest(dat2[100]) == dat[100]
     @test metadata(dat2, 1, :mcindex) == 1
     # loaded data can be phased like processed data
     @test realest(phase(phase(dat2, 1, 30.0), 1, -30.0)) ≈ realest(dat2)
+
+    # bicomplex for 2D
+    dir = joinpath("test-data", "15n-trosy-ts3")
+    dat = loadnmr(dir)
+    datMC = loadnmr(dir; allcomponents=true)
+    @test size(datMC) == (2048, 256)
+    @test parent(datMC) isa Matrix{<:Multicomplex}
+    @test order(datMC[1, 1]) == 2
+    @test datMC[1, 100] == Multicomplex(9430.4609375, -18832.8984375, 14886.5859375, -7175.4921875)
+    @test realest(datMC[1, 100]) == dat[1, 100]
+    @test metadata(datMC, 1, :mcindex) == 1 && metadata(datMC, 2, :mcindex) == 2
+    @test metadata(dat, 2, :mcindex) == 2         # set for real-only data too
+
+    # first-order multicomplex for a pseudo-2D, whose second dimension is not transformed
+    dir = joinpath("test-data", "15n-xste-ts3")
+    datC = loadnmr(dir; allcomponents=true)
+    @test datC[2, 3] == Multicomplex(-26.444091796875, -208.23861694335938)
+    @test metadata(datC, 1, :mcindex) == 1 && isnothing(metadata(datC, 2, :mcindex))
 end
 
 @testset "NMRIO: 2D HN (Bruker pdata)" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
 
     @test size(dat) == (1216, 512)
     @test length(dat) == 622592
@@ -380,28 +353,18 @@ end
     @test dat[:field] isa Float64
     @test 14.0 < dat[:field] < 14.2  # ~600 MHz spectrometer ≈ 14.1 T
 
-    # load multicomplex spectrum (bicomplex for 2D)
-    datMC = loadnmr(artifact"2D_HN"; allcomponents=true)
-    @test size(datMC) == (1216, 512)
-    @test parent(datMC) isa Matrix{<:Multicomplex}
-    @test order(datMC[1, 1]) == 2  # bicomplex
-    @test realest(datMC[1, 100]) == dat[1, 100]  # real-real component matches real-only import
-    @test metadata(datMC, 1, :mcindex) == 1 && metadata(datMC, 2, :mcindex) == 2
-    @test metadata(dat, 2, :mcindex) == 2         # set for real-only data too
+    @test metadata(dat, 1, :mcindex) == 1 && metadata(dat, 2, :mcindex) == 2
 end
 
 @testset "NMRIO: pseudo-2D (Bruker pdata)" begin
-    dat = exampledata("pseudo2D_XSTE")
-    datC = loadnmr(artifact"pseudo2D_XSTE"; allcomponents=true)
+    dat = loadnmr(example("diffusion1d_asyn"))
 
     @test size(dat) == (2048, 10)
 
     @test parent(dat) isa Matrix{Float64}
-    @test parent(datC) isa Matrix{Multicomplex{Float64,1,2}}
 
     @test dat[2, 3] ≈ -32.08953857421875
-    @test datC[2, 3] == Multicomplex(-32.08953857421875, -87.19561767578125)
-    @test metadata(datC, 1, :mcindex) == 1 && isnothing(metadata(datC, 2, :mcindex))
+    @test metadata(dat, 1, :mcindex) == 1 && isnothing(metadata(dat, 2, :mcindex))
 
     @test dat[:title] == "15N aSyn, 283 K - XSTE\nDELTA = 100ms, delta = 4ms, G = 5-95%"
 
@@ -415,14 +378,14 @@ end
 end
 
 @testset "pseudo3D data (Bruker pdata)" begin
-    dat = exampledata("pseudo3D_HN_R2")
+    dat = loadnmr(example("relaxation2d_asyn"))
     @test size(dat) == (512, 512, 11)
     @test dat[5, 6, 7] ≈ 2370.09375
     @test acqus(dat, :vclist) == [0, 1, 2, 3, 4, 6, 8, 10, 12, 14, 16]
 end
 
 @testset "3D data (Bruker pdata)" begin
-    spec = exampledata("3D_HNCA")
+    spec = loadnmr(example("3d_hnca_ubq"))
     @test size(spec) == (432, 64, 256)
     @test spec[5, 6, 7] ≈ 3506.28125
     @test label(spec, 1) == "1H"
@@ -432,8 +395,8 @@ end
     @test dims(spec, 2)[end] ≈ 107.84188874936109
     @test dims(spec, 3)[Near(45)] ≈ 44.99702749174231
 
-    spec13 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "131"))
-    spec23 = loadnmr(joinpath(artifact"3D_HNCA", "pdata", "231"))
+    spec13 = loadnmr(joinpath(example("3d_hnca_ubq"), "pdata", "131"))
+    spec23 = loadnmr(joinpath(example("3d_hnca_ubq"), "pdata", "231"))
     @test size(spec13) == (512, 256)
     @test size(spec23) == (512, 128)
     @test spec23[Near(7.2), Near(122)] ≈ 19735.930053710938
@@ -441,22 +404,8 @@ end
     @test maximum(spec) / spec[:noise] ≈ 698.6861209993058
 end
 
-@testset "3D data (nmrPipe)" begin
-    spec = loadnmr(joinpath(artifact"3D_HNCA_pipe", "smile", "test%03d.ft3"))
-    @test size(spec) == (384, 512, 128)
-    @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] ≈ 9.703234081887576
-    @test dims(spec, 2)[1] ≈ 68.7403353437212
-    @test dims(spec, 3)[end] ≈ 107.75223308061521
-    @test spec[10, 11, 12] ≈ 99473.6875
-    @test spec[1, :window] == Cos2Window(0.09261055758378933)
-    @test spec[2, :window] == CosWindow(0.057541115456864404)
-    @test spec[3, :window] == CosWindow(0.03894846805778692)
-    @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
-end
-
 @testset "NMRIO: 2D HN (ucsf)" begin
-    dat = loadnmr(joinpath(artifact"2D_HN", "hmqc.ucsf"))
+    dat = loadnmr(example("2d_hn_ubq", :ucsf))
 
     @test size(dat) == (568, 256)
     @test length(dat) == 145408
@@ -473,18 +422,6 @@ end
 
     @test label(dat, 1) == "1H"
     @test label(dat, 2) == "15N"
-end
-
-@testset "3D data (ucsf)" begin
-    spec = loadnmr(joinpath(artifact"3D_HNCA_ucsf", "hnca.ucsf"))
-    @test size(spec) == (384, 512, 128)
-    @test label(spec) == "500 uM 13C,15N ubiquitin, 298 K, BEST-HNCA"
-    @test dims(spec, 1)[1] ≈ 9.703234542832309
-    @test dims(spec, 2)[1] ≈ 68.74033212965945
-    @test dims(spec, 3)[end] ≈ 107.75222413893053
-    @test spec[10, 11, 12] ≈ 99473.6875
-    @test spec[1, :window] isa UnknownWindow
-    @test maximum(spec) / spec[:noise] ≈ 492.00351859142154
 end
 
 @testset "Samples and Experiments" begin
@@ -558,7 +495,7 @@ end
     @test found[1][:date] == DateTime(2023, 10, 9, 10, 11, 34)
 end
 @testset "NMRIO: peak lists" begin
-    spec = exampledata("2D_HN")
+    spec = loadnmr(example("2d_hn_ubq"))
     pks = detectpeaks(spec; sign=:positive)[1:5]
     pks[2] = Peak(pks[2]; label="G10")
 
@@ -572,7 +509,7 @@ end
         @test startswith(lines[4], "G10,,")
         @test loadpeaks(f) == pks
         @test loadpeaks(f, spec) == pks
-        @test_throws DimensionMismatch loadpeaks(f, exampledata("1D_19F"))
+        @test_throws DimensionMismatch loadpeaks(f, loadnmr(example("1d_19f_fragments")))
 
         # unlabelled peaks are written as X1, X2, ...
         savepeaks(f, [Peak(8.0, 120.0), Peak(7.0, 110.0; label="A")])
@@ -583,7 +520,7 @@ end
 
         # a 1D list
         f1 = joinpath(dir, "peaks1d.csv")
-        p1 = detectpeaks(exampledata("1D_19F"))
+        p1 = detectpeaks(loadnmr(example("1d_19f_fragments")))
         savepeaks(f1, p1)
         @test loadpeaks(f1) == p1
 
@@ -702,38 +639,50 @@ end
     @test tokens == ["a", "b c", "d'e", "it's", "\nline 1\nline 2", "f"]
 end
 
-@testset "exampledata: raw data, paths and BMRB shifts" begin
-    fid = exampledata("2D_HN"; fid=true)
+@testset "Example data: loading spectra, series and raw data" begin
+    fid = loadfid(example("2d_hn_ubq"))
     @test fid isa NMRData{<:NMRTools.Multicomplex{Float64,2,4},2}
     @test dims(fid, 1) isa T1Dim
     @test dims(fid, 2) isa T2Dim
 
-    series = exampledata("1D_19F_titration"; fid=true)
+    series = loadfid(example("1d_19f_titration_sh3"))
     @test length(series) == 11
     @test dims(first(series), 1) isa T1Dim
+    @test length(loadnmr(example("1d_19f_titration_sh3"))) == 11
 
-    @test isdir(exampledata("2D_HN"; path=true))
-    @test length(exampledata("1D_19F_titration"; path=true)) == 11
-    @test endswith(exampledata("3D_HNCA_pipe"; path=true), "test%03d.ft3")
-    @test size(exampledata("3D_HNCA_ucsf")) == size(exampledata("3D_HNCA_pipe"))
+    @test isdir(example("2d_hn_ubq"))
 
-    # loader keywords are passed through
-    @test exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
+    # loader keywords are passed through, to every spectrum of a series too
+    @test loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0))[T2Dim, :firstpoint] == 1.0
     @test fid[T2Dim, :firstpoint] == 0.5
-    @test eltype(exampledata("1D_19F"; allcomponents=true)) <: NMRTools.Multicomplex
+    @test all(f -> f[T1Dim, :firstpoint] == 1.0,
+              loadfid(example("1d_19f_titration_sh3"); firstpoint=Dict(T1Dim => 1.0)))
 
-    @test_throws ArgumentError exampledata("2D_HN_titration"; fid=true)
-    @test_throws NMRToolsError exampledata("no such data")
+    # loadfid finds the experiment from inside it: a pdata folder, or a processed file
+    @test size(loadfid(joinpath(example("2d_hn_ubq"), "pdata", "1"))) == size(fid)
+    @test size(loadfid(example("2d_hn_ubq", :nmrpipe))) == size(fid)
+    # a dataset without its raw data
+    @test_throws NMRToolsError loadfid(example("relaxation2d_asyn"))
 
-    shifts = exampledata("BMRB_ubiquitin")
-    @test shifts isa Vector{ChemicalShift}
-    @test length(shifts) == 1001
-    @test isfile(exampledata("BMRB_ubiquitin"; path=true))
-    @test length(peaklist(shifts, "H", "N")) == 72
+    @test_throws ArgumentError example("no such data")
+    @test !isempty(exampleinfo("2d_hn").title)
+end
+
+@testset "Example data: every dataset in every format it has" begin
+    # one spectrum, a series, or nested lists of them where an analysis takes its data in roles
+    loaded(x) = x isa NMRData || (x isa AbstractVector && all(loaded, x))
+    for format in (:bruker, :nmrpipe, :ucsf), name in examples(format)
+        @test loaded(loadnmr(example(name, format)))
+    end
+    # the same experiment read from different formats has the same shape
+    for name in examples(:nmrpipe) ∩ examples(:ucsf)
+        @test size(loadnmr(example(name, :nmrpipe))) == size(loadnmr(example(name, :ucsf)))
+    end
+    @test_throws ArgumentError example("titration2d_fir_nbox", :ucsf)
 end
 
 @testset "sumexpts and savefid with read-only sources" begin
-    src = dirname(exampledata("1D_19F_titration"; path=true)[1])
+    src = dirname(example("1d_19f_titration_sh3")[1])
     mktempdir() do dir
         for i in 1:3
             cp(joinpath(src, string(i)), joinpath(dir, string(i)))
@@ -753,4 +702,20 @@ end
         @test data(loadfid(joinpath(dir, "102"))) ≈ data(fids[1])
         foreach(i -> chmod(joinpath(dir, string(i)), 0o755; recursive=true), 1:3)
     end
+end
+
+@testset "NMRIO: TopSpin version from acqus" begin
+    mktempdir() do dir
+        f = joinpath(dir, "acqus")
+        for (title, v) in ("TopSpin 4.1.4" => v"4.1.4", "TopSpin 3.5 pl 6" => v"3.5",
+                           "TOPSPIN\t\tVersion 2.1" => v"2.1", "TopSpin 5.0.0" => v"5.0.0")
+            write(f, "##TITLE= Parameter file, $title\n")
+            @test NMRTools.NMRIO.topspinversion(f) == v
+        end
+        write(f, "##TITLE= Parameter file\n")
+        @test_throws NMRToolsError NMRTools.NMRIO.topspinversion(f)
+    end
+    # a TopSpin 3.5 vdlist is read from the experiment folder, not lists/vd
+    @test acqus(loadnmr(example("methylccr2d_fln5")[1]), :vdlist) ≈
+          [2, 6, 12, 20, 30, 40, 50, 60] * 1e-3
 end

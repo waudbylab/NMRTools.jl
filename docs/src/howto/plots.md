@@ -11,7 +11,7 @@ Load and plot an example 1D ¹⁹F spectrum using the `loadnmr` and `plot` comma
 
 ```@example 1
 using NMRTools, Plots
-spec = exampledata("1D_19F")
+spec = loadnmr(example("1d_19f_fragments"))
 plot(spec)
 savefig("plot-1D.svg"); nothing # hide
 ```
@@ -75,7 +75,7 @@ spectra = map(loadnmr, filenames)
 This creates a vector of `NMRData` objects containing the individual spectra. To plot this series, pass the list to the plot function:
 
 ```@example 1
-spectra = exampledata("1D_19F_titration"); # hide
+spectra = loadnmr(example("1d_19f_titration_sh3")); # hide
 plot(spectra, xlims=(-125, -122))
 savefig("plot-19F-titration.svg"); nothing # hide
 ```
@@ -113,7 +113,7 @@ savefig("plot-19F-stack-space.svg"); nothing # hide
 2D spectra can be loaded and plotted in the same way as for 1D experiments:
 
 ```@example 1
-spec2d = exampledata("2D_HN")
+spec2d = loadnmr(example("2d_hn_ubq"))
 plot(spec2d)
 xlims!(6, 9.5)
 savefig("plot-2D.svg"); nothing # hide
@@ -178,7 +178,7 @@ spectra2d = map(loadnmr, filenames)
 These can be plotted by passing the list of spectra to the plot function, with automatic normalisation for varying numbers of scans and receiver gain:
 
 ```@example 1
-spectra2d = exampledata("2D_HN_titration"); # hide
+spectra2d = loadnmr(example("titration2d_fir_nbox")); # hide
 plot(spectra2d / 2, legend=:topleft, xlims=(8.1,8.6), ylims=(119.5,124.5))
 savefig("plot-2D-titration.svg"); nothing # hide
 ```
@@ -222,7 +222,7 @@ For 2D spectra, normalization affects both the intensity scaling and the contour
 
 ```julia
 # Load a series of 2D spectra
-spectra2d = exampledata("2D_HN_titration")
+spectra2d = loadnmr(example("titration2d_fir_nbox"))
 
 # Plot spectra 2-5, but normalize to spectrum 1
 plot(spectra2d[2:5], normalize=spectra2d[1])
@@ -236,7 +236,7 @@ Plot recipes are available for pseudo-2D data like diffusion, relaxation or kine
 
 ```@example 1
 # load a diffusion measurement, processed in topspin using xf2
-diffusiondata = exampledata("pseudo2D_XSTE")
+diffusiondata = loadnmr(example("diffusion1d_asyn"))
 
 # set the gradient strengths - which varied from 2% to 98% of the max, over 10 points
 diffusiondata = setgradientlist(diffusiondata, LinRange(0.02, 0.98, 10))

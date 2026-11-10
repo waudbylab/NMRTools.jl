@@ -1,6 +1,4 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Test
 using CairoMakie
 using FileIO
@@ -35,20 +33,20 @@ function save_rgb(filename, fig)
 end
 
 @testset "MakieExt: FIDs are drawn as lines" begin
-    fid = exampledata("1D_1H"; fid=true)
+    fid = loadfid(example("1d_1h_ubq"))
     fig, ax, plt = nmrplot(fid)
     @test plt isa Lines
     plt2 = nmrplot!(ax, imag.(fid))
     @test plt2 isa Lines
 
     # other non-frequency data (e.g. a relaxation curve) stay as points
-    relax = exampledata("pseudo2D_T2")
+    relax = loadnmr(example("relaxation1d_aas"))
     fig, ax, plt = nmrplot(relax[Near(0.85), :])
     @test plt isa Scatter
 end
 
 @testset "MakieExt: 1D 19F" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
     fig, ax, plt = nmrplot(dat)
 
     @test fig isa Makie.Figure
@@ -59,11 +57,11 @@ end
     @test ax.xgridvisible[] == false
     @test ax.yticksvisible[] == false
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments.png"
 end
 
 @testset "MakieExt: 2D HN" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fig, ax, plt = nmrplot(dat)
 
     @test fig isa Makie.Figure
@@ -78,7 +76,7 @@ end
 end
 
 @testset "MakieExt: 2D HN colour overrides" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fig, ax, plt = nmrplot(dat; poscolor=:red)
     @test count(p -> p isa Makie.Contour, ax.scene.plots) == 2
 
@@ -109,7 +107,7 @@ end
 end
 
 @testset "MakieExt: top-level axis overrides" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fig, ax, plt = nmrplot(dat; title="My HN", xlabel="¹H", ylabel="¹⁵N")
     @test ax.title[] == "My HN"
     @test ax.xlabel[] == "¹H"
@@ -119,7 +117,7 @@ end
 end
 
 @testset "MakieExt: legend kwarg" begin
-    dats = exampledata("2D_HN_titration")
+    dats = loadnmr(example("titration2d_fir_nbox"))
     fig, ax, plt = nmrplot(dats; legend=true)
     @test any(c -> c isa Makie.Legend, fig.content)
 
@@ -137,7 +135,7 @@ end
 end
 
 @testset "MakieExt: nmrplot! forwards from Figure / FigureAxisPlot" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fap = nmrplot(dat)
     # Both forms should work.
     plt2 = nmrplot!(fap, dat; poscolor=:red)
@@ -149,7 +147,7 @@ end
 end
 
 @testset "MakieExt: 2D overlay cycles colours" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fap = nmrplot(dat)
     plt1_color = fap.plot.color[]
     plt2 = nmrplot!(fap, dat / 2)
@@ -161,33 +159,33 @@ end
 end
 
 @testset "MakieExt: nmrplot! into existing axis" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
     fig = Makie.Figure()
     ax = Makie.Axis(fig[1, 1])
     plt = nmrplot!(ax, dat)
     @test ax.xreversed[] == true
     @test plt isa Makie.Lines
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_nmrplotbang.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_nmrplotbang.png"
 end
 
 @testset "MakieExt: grid position" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
     fig = Makie.Figure()
     ax, plt = nmrplot(fig[1, 1], dat)
     @test ax isa Makie.Axis
     @test ax.xreversed[] == true
 
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_gridpos.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_gridpos.png"
 
     fig = Figure(; size=(1000, 420))
-    nmrplot(fig[1, 1], exampledata("1D_19F"); title="1D")
-    nmrplot(fig[1, 2], exampledata("2D_HN"); title="2D", xlims=(6, 10))
+    nmrplot(fig[1, 1], loadnmr(example("1d_19f_fragments")); title="1D")
+    nmrplot(fig[1, 2], loadnmr(example("2d_hn_ubq")); title="2D", xlims=(6, 10))
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/subplots.png"
 end
 
 @testset "MakieExt: vector of 1D" begin
-    dats = exampledata("1D_19F_titration")
+    dats = loadnmr(example("1d_19f_titration_sh3"))
     fig, ax, plt = nmrplot(dats)
     @test ax isa Makie.Axis
     @test count(p -> p isa Makie.Lines, ax.scene.plots) == length(dats)
@@ -203,11 +201,11 @@ end
 end
 
 @testset "MakieExt: 1D xlims auto-scales y to window" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
     # No xlims: limits stay automatic.
     fig, ax, plt = nmrplot(dat)
     @test ax.limits[] === nothing || all(isnothing, ax.limits[])
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_nolims.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_nolims.png"
 
     # With xlims: explicit limits applied (x window + windowed y range).
     fig, ax, plt = nmrplot(dat; xlims=(-123, -122))
@@ -215,17 +213,17 @@ end
     fl = ax.finallimits[]
     @test Float64(minimum(fl)[1]) ≈ -123.0 atol = 1e-6
     @test Float64(maximum(fl)[1]) ≈ -122.0 atol = 1e-6
-    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_xlim.png"
+    @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1d_19f_fragments_xlim.png"
 
     # Works for a series too.
-    dats = exampledata("1D_19F_titration")
+    dats = loadnmr(example("1d_19f_titration_sh3"))
     fig, ax, plt = nmrplot(dats; xlims=(-125, -121))
     @test ax.limits[] !== nothing
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/1D_19F_titration_xlim.png"
 end
 
 @testset "MakieExt: vector of 2D" begin
-    dats = exampledata("2D_HN_titration")
+    dats = loadnmr(example("titration2d_fir_nbox"))
     fig, ax, plt = nmrplot(dats)
     @test ax isa Makie.Axis
     @test ax.xreversed[] == true
@@ -249,8 +247,8 @@ end
 end
 
 @testset "MakieExt: Multicomplex 1D slice" begin
-    datMC2D = loadnmr(artifact"2D_HN"; allcomponents=true)
-    datMC = datMC2D[:, 1]
+    datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
+    datMC = datMC2D[:, 129]   # through the strongest peak
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
     fig, ax, plt = nmrplot(datMC)
@@ -260,7 +258,7 @@ end
 end
 
 @testset "MakieExt: 2D projections" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fig, ax, plt = nmrplot(dat; xprojection=true, yprojection=true)
     @test ax isa Makie.Axis
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/2D_HN_projections.png"
@@ -280,7 +278,7 @@ end
 end
 
 @testset "MakieExt: overlay with projections" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
     fap = nmrplot(dat; xprojection=true, yprojection=true)
     plt2 = nmrplot!(fap, dat / 2; xprojection=true, yprojection=true,
                     poscolor=:red)
@@ -289,7 +287,7 @@ end
 end
 
 @testset "MakieExt: vector of pseudo-2D" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("diffusion1d_asyn"))
     fig, ax, plt = nmrplot([dat, dat / 2]; style=:flat)
     @test ax isa Makie.Axis
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/pseudo2D_flat_series.png"
@@ -302,7 +300,7 @@ end
 end
 
 @testset "MakieExt: pseudo-2D overlay" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("diffusion1d_asyn"))
     fap = nmrplot(dat; style=:flat)
     plt2 = nmrplot!(dat / 2; style=:flat, color=:green)
     @test plt2 isa Makie.Lines
@@ -316,7 +314,7 @@ end
 end
 
 @testset "MakieExt: pseudo-2D heatmap (default)" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("diffusion1d_asyn"))
     fig, ax, plt = nmrplot(dat)
     @test ax isa Makie.Axis
     @test ax.xreversed[] == true
@@ -330,7 +328,7 @@ end
 end
 
 @testset "MakieExt: pseudo-2D flat" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("diffusion1d_asyn"))
     fig, ax, plt = nmrplot(dat; style=:flat)
     @test ax isa Makie.Axis
     @test ax.xreversed[] == true
@@ -342,7 +340,7 @@ end
 end
 
 @testset "MakieExt: pseudo-2D waterfall" begin
-    dat = exampledata("pseudo2D_XSTE")
+    dat = loadnmr(example("diffusion1d_asyn"))
     fig, ax, plt = nmrplot(dat; style=:waterfall)
     @test ax isa Makie.Axis3
     @test plt isa Makie.Lines
@@ -351,7 +349,7 @@ end
 end
 
 # @testset "MakieExt: 3D contour" begin
-#     dat = exampledata("3D_HNCA")
+#     dat = loadnmr(example("3d_hnca_ubq"))
 #     fig, ax, plt = nmrplot(dat)
 #     @test ax isa Makie.Axis3
 #     @test plt isa Makie.Contour
@@ -367,7 +365,7 @@ end
 # end
 
 # @testset "MakieExt: 3D contour overlay" begin
-#     dat = exampledata("3D_HNCA")
+#     dat = loadnmr(example("3d_hnca_ubq"))
 #     # Vector overlay, like 2D contour series.
 #     fig, ax, plt = nmrplot([dat, dat / 2])
 #     @test ax isa Makie.Axis3
@@ -381,26 +379,26 @@ end
 
 @testset "MakieExt: general xlims/ylims" begin
     # 2D
-    dat2 = exampledata("2D_HN")
+    dat2 = loadnmr(example("2d_hn_ubq"))
     fig, ax, plt = nmrplot(dat2; xlims=(6, 10), ylims=(110, 125))
     @test ax.limits[] !== nothing
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/2D_HN_lims.png"
 
     # pseudo-2D heatmap
-    datp = exampledata("pseudo2D_XSTE")
+    datp = loadnmr(example("diffusion1d_asyn"))
     fig, ax, plt = nmrplot(datp; xlims=(5, 10))
     @test ax.limits[] !== nothing
     @visualtest (fname -> save_rgb(fname, fig)) "makie-images/pseudo2D_XSTE_xlim.png"
 end
 
 @testset "MakieExt: peak overlays" begin
-    spec1 = exampledata("1D_19F")
+    spec1 = loadnmr(example("1d_19f_fragments"))
     fig, ax, _ = nmrplot(spec1)
     plt = nmrplot!(detectpeaks(spec1))
     @test plt isa Makie.VLines
     @test any(p -> p isa Makie.Text, ax.scene.plots)
 
-    spec2 = exampledata("2D_HN")
+    spec2 = loadnmr(example("2d_hn_ubq"))
     fig, ax, _ = nmrplot(spec2)
     pks = detectpeaks(spec2; sign=:positive)
     plt = nmrplot!(ax, pks; color=:blue)

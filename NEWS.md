@@ -1,5 +1,34 @@
 # NMRTools.jl release notes
 
+## v0.4.0
+
+Example data now come from [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/),
+shared with NMRAnalysis.jl and NMRScreen.jl, instead of from NMRTools' own artifacts.
+
+- **Breaking: `exampledata` is replaced by `example`.** `example(name)` gives the path of an
+  example dataset, downloading it the first time, and the usual loaders load it:
+  `loadnmr(example("2d_hn_ubq"))`, `loadfid(example("2d_hn_ubq"))`. The datasets have new names,
+  given in the [catalogue](https://waudbylab.org/NMRExampleData.jl/stable/catalogue/): `2D_HN` is
+  now `2d_hn_ubq`, for example. Names can be shortened to the start of the full name or of any
+  part of it. The
+  first time a dataset is used in a session, who to credit, what to cite and the licence are
+  shown. `example()` offers a menu of the datasets, `exampleinfo(name)` describes one, and
+  `exampleanalysis(name)` gives the analysis saved with it.
+- **Breaking: the BMRB shifts of ubiquitin are no longer bundled.** Use `loadbmrb(17769)`.
+- **`loadnmr` and `loadfid` take a vector of paths**, such as a titration series, and return a
+  vector of spectra.
+- **`loadfid` finds the experiment from any path inside it**, such as a `pdata` folder or an
+  nmrPipe file beside the raw data, so a processed spectrum's path gives its raw data.
+- **Raw data from older Bruker firmware.** Where `GRPDLY` is not recorded (`DSPFVS` 10–13),
+  `loadfid` looks the digital-filter group delay up from `DSPFVS` and `DECIM`, as nmrPipe and
+  nmrglue do, rather than removing none. Such FIDs previously transformed with a first-order phase
+  error of some 70 dwells.
+- **`loadpeaks` takes a folder**, such as an NMRAnalysis output folder, and reads the
+  `peaklist.csv` inside it.
+- **Fixed: TopSpin versions with a patch level**, such as `TopSpin 3.5 pl 6`, were read as the
+  patch level (version 6), so lists such as the `vdlist` were looked for where TopSpin 4 keeps
+  them and not found.
+
 ## v0.3.1
 
 This release fixes solvent filtering and automatic phasing of multidimensional spectra, adds raw

@@ -7,7 +7,7 @@ and without linear prediction in the ¹⁵N dimension.
 
 ```@example lp
 using NMRTools, CairoMakie
-fid = exampledata("2D_HN"; fid=true, firstpoint=Dict(T2Dim => 1.0))
+fid = loadfid(example("2d_hn_ubq"); firstpoint=Dict(T2Dim => 1.0))
 size(fid)
 ```
 

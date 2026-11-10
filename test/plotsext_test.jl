@@ -1,6 +1,4 @@
 using NMRTools
-using Artifacts
-using LazyArtifacts
 using Plots
 using Test
 using VisualRegressionTests
@@ -15,22 +13,22 @@ using NMRTools, Plots
 """
 
 @testset "PlotsExt: 1D 19F" begin
-    dat = exampledata("1D_19F")
+    dat = loadnmr(example("1d_19f_fragments"))
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
     @test pr[1].plotattributes[:xguide] == "19F chemical shift (ppm)"
-    @test pr[1].plotattributes[:title] == "Example 19F 1D spectrum"
+    @test pr[1].plotattributes[:title] == "19F{1H} broadband 1D"
     @test pr[1].plotattributes[:xflip] == true
     @test pr[1].plotattributes[:xtick_direction] == :out
     @test pr[1].plotattributes[:yshowaxis] == false
 
-    @test pr[1].args[1][1] ≈ -124.16252020246354
-    @test pr[1].args[2][1] ≈ 1.2039054352746015
+    @test pr[1].args[1][1] ≈ -256.4534597845177
+    @test pr[1].args[2][1] ≈ -3820.5841584158416
 end
 
 @testset "PlotsExt: 2D HN" begin
-    dat = exampledata("2D_HN")
+    dat = loadnmr(example("2d_hn_ubq"))
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), dat)
 
@@ -41,8 +39,8 @@ end
 end
 
 # @testset "PlotsExt: normalize parameter with reference spectrum" begin
-#     dat1 = exampledata("2D_HN")
-#     dat2 = exampledata("2D_HN") * 2  # scaled version
+#     dat1 = loadnmr(example("2d_hn_ubq"))
+#     dat2 = loadnmr(example("2d_hn_ubq")) * 2  # scaled version
 
 #     # Test single 2D spectrum with reference normalization
 #     pr_ref = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(:normalize => dat1), dat2)
@@ -63,7 +61,7 @@ end
 #     @test length(pr_vector_true) >= 6
 
 #     # Test 1D spectrum with reference normalization
-#     dat1_1d = exampledata("1D_19F")
+#     dat1_1d = loadnmr(example("1d_19f_fragments"))
 #     dat2_1d = dat1_1d * 3  # scaled version
 
 #     pr_1d_ref = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(:normalize => dat1_1d), dat2_1d)
@@ -77,18 +75,18 @@ end
 # end
 
 @testset "PlotsExt: Multicomplex 2D" begin
-    datMC = loadnmr(artifact"2D_HN"; allcomponents=true)
+    datMC = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
     @test parent(datMC) isa Matrix{<:Multicomplex}
 
     pr = Plots.RecipesBase.apply_recipe(Dict{Symbol,Any}(), datMC)
 
     @test pr[1].plotattributes[:normalize] == true
-    @test label(pr[1].args[2]) == "13C,15N ubiquitin"
+    @test label(pr[1].args[2]) == "50 uM 15N HsTRXL2 (UGGT2), 308 K, 15N BEST-TROSY"
 end
 
 @testset "PlotsExt: Multicomplex 1D (slice)" begin
-    datMC2D = loadnmr(artifact"2D_HN"; allcomponents=true)
-    datMC = datMC2D[:, 1]
+    datMC2D = loadnmr(joinpath("test-data", "15n-trosy-ts3"); allcomponents=true)
+    datMC = datMC2D[:, 129]   # through the strongest peak
     @test parent(datMC) isa AbstractVector{<:Multicomplex}
 
     # 1D recipe goes all the way to series data in one apply_recipe call
@@ -98,12 +96,12 @@ end
 end
 
 @testset "PlotsExt: visual regression testing" begin
-    dat1 = exampledata("1D_19F")
+    dat1 = loadnmr(example("1d_19f_fragments"))
     @plottest begin
         plot(dat1)
-    end "plots-images/plot_1D_19F.png" false 0.02
+    end "plots-images/plot_1d_19f_fragments.png" false 0.02
 
-    dat2 = exampledata("2D_HN")
+    dat2 = loadnmr(example("2d_hn_ubq"))
     @plottest begin
         plot(dat2)
     end "plots-images/plot_2D_HN.png" false 0.02
@@ -120,7 +118,7 @@ end
         plot(dat2; poscolor=:limegreen, negcontours=false)
     end "plots-images/plot_2D_noneg.png" false 0.02
 
-    dat3 = exampledata("pseudo2D_XSTE")
+    dat3 = loadnmr(example("diffusion1d_asyn"))
     dat3 = setgradientlist(dat3, LinRange(0.05, 0.95, 10), 0.55)
     @plottest begin
         plot(dat3[7 .. 9, :])
@@ -129,7 +127,7 @@ end
         heatmap(dat3[7 .. 9, :])
     end "plots-images/plot_pseudo2D_XSTE_heatmap.png" false 0.02
 
-    dat4 = exampledata("1D_19F_titration")
+    dat4 = loadnmr(example("1d_19f_titration_sh3"))
     @plottest begin
         plot(dat4; xlims=(-125, -122))
     end "plots-images/plot_1D_19F_titration.png" false 0.02
@@ -140,7 +138,7 @@ end
         plot(dat4; xlims=(-125, -121), vstack=5)
     end "plots-images/plot_1D_19F_titration_vstack_5.png" false 0.02
 
-    dat5 = exampledata("2D_HN_titration")
+    dat5 = loadnmr(example("titration2d_fir_nbox"))
     @plottest begin
         plot(dat5)
     end "plots-images/plot_2D_HN_titration.png" false 0.02
@@ -164,7 +162,7 @@ end
     end "plots-images/plot_2D_overlay_colors.png" false 0.02
 
     @plottest begin
-        dat6 = exampledata("3D_HNCA")
+        dat6 = loadnmr(example("3d_hnca_ubq"))
         plot(maximum(dat6; dims=2)[:, 1, :] / 3)
     end "plots-images/plot_3D_HNCA_projection.png" false 0.02
 end

@@ -5,7 +5,7 @@ an `old => new` pair: where a reference signal currently appears, and where it s
 
 ```@example ref
 using NMRTools, CairoMakie
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2d_hn_ubq"))
 nothing # hide
 ```
 

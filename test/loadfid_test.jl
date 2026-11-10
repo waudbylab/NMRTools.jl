@@ -146,3 +146,43 @@ end
         @test imag(parent(dat)[1, 1]) ≈ ltoh(raw[2]) * 2.0^-6
     end
 end
+
+@testset "loadfid and loadnmr: paths inside an experiment, and vectors of paths" begin
+    expt = joinpath(TESTDATA, "samples", "2")
+    fid = loadfid(expt)
+    # the experiment is found from its fid file, a pdata folder or the folder itself
+    @test size(loadfid(joinpath(expt, "fid"))) == size(fid)
+    @test size(loadfid(joinpath(expt, "pdata", "1"))) == size(fid)
+    @test_throws NMRToolsError loadfid(mktempdir())
+    # a series loads as a vector
+    @test length(loadfid([expt, expt])) == 2
+    @test length(loadnmr([expt, expt])) == 2
+    # a peak list in a folder, such as an NMRAnalysis output folder
+    pks = detectpeaks(loadnmr(expt))
+    mktempdir() do dir
+        savepeaks(joinpath(dir, "peaklist.csv"), pks)
+        @test length(loadpeaks(dir)) == length(pks)
+    end
+end
+
+@testset "loadfid: group delay of older firmware, from DSPFVS and DECIM" begin
+    groupdelay = NMRTools.NMRIO._groupdelay
+    # recorded directly from DSPFVS 20
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 20, :grpdly => 67.98)) == 67.98
+    # before GRPDLY was recorded, looked up as nmrPipe and nmrglue do
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 12, :decim => 16, :grpdly => -1)) == 71.625
+    @test groupdelay(Dict(:digmod => 1, :dspfvs => 10, :decim => 24, :grpdly => -1)) ≈ 61.020833
+    # a combination with no known delay is left alone, with a warning
+    @test (@test_logs (:warn,) groupdelay(Dict(:digmod => 1, :dspfvs => 14, :decim => 16,
+                                                :grpdly => -1))) == 0.0
+    # analogue filtering has none
+    @test groupdelay(Dict(:digmod => 0, :dspfvs => 12, :decim => 16, :grpdly => -1)) == 0.0
+end
+
+@testset "loadnmr: a path it cannot load" begin
+    dir = mktempdir()
+    err = try loadnmr(joinpath(dir, "missing")) catch e e end
+    @test err isa NMRToolsError && occursin("does not exist", err.message)
+    err = try loadnmr(dir) catch e e end
+    @test err isa NMRToolsError && occursin("unknown file format", err.message)
+end

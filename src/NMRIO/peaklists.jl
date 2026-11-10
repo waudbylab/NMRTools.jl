@@ -15,7 +15,8 @@
     loadpeaks(filename, spec) -> Vector{Peak{N}}
 
 Read a peak list: either a `peaklist.csv` as written by [`savepeaks`](@ref) and by
-NMRAnalysis.jl, a hand-made list of `label x y` lines, or a Sparky `.list` file.
+NMRAnalysis.jl, a hand-made list of `label x y` lines, or a Sparky `.list` file. Given a folder,
+such as an NMRAnalysis output folder, read the `peaklist.csv` inside it.
 
 CSV files are matched by column name, so column order and extra columns do not matter.
 Linewidths and intensities are read where present and are otherwise `NaN`. A list in
@@ -30,12 +31,14 @@ is still read correctly.
 # Examples
 ```julia
 pks = loadpeaks("out/peaklist.csv")
+pks = loadpeaks("out")                       # the same
 pks = loadpeaks("hsqc.list", spec)
 ```
 """
 loadpeaks(filename::AbstractString) = loadpeaks(filename, nothing)
 
 function loadpeaks(filename::AbstractString, spec)
+    isdir(filename) && (filename = joinpath(filename, "peaklist.csv"))
     isfile(filename) || throw(ArgumentError("no such peak list: $filename"))
     pks = _issparky(filename) ? _readsparky(filename, spec) : _readpeakcsv(filename)
     if !isnothing(spec) && !isempty(pks) && ndims(first(pks)) != ndims(spec)

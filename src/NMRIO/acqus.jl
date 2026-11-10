@@ -228,25 +228,28 @@ function replacefrequencies!(dic)
 end
 
 """
-    parsetopspinversion(acqusfilename)
+    topspinversion(acqusfilename)
 
 Return the TopSpin version as a VersionNumber (e.g. v"4.2.0").
 
-This is obtained from the end of the first line of the acqus file, e.g.
+This is the first version number in the first line of the acqus file, without any patch
+level, e.g.
 ```
 ##TITLE= Parameter file, TopSpin 4.2.0
+##TITLE= Parameter file, TopSpin 3.5 pl 6
 ##TITLE= Parameter file, TOPSPIN		Version 2.1
-##TITLE= Parameter file, TOPSPIN		Version 3.2
 ```
 """
 function topspinversion(acqusfilename)
     isfile(acqusfilename) ||
         throw(NMRToolsError("getting TopSpin version: $(acqusfilename) is not a valid acqus file"))
 
-    firstline = readlines(acqusfilename)[1]
-    version = split(firstline)[end]
-
-    return VersionNumber(version)
+    # e.g. "TopSpin 4.1.4", "TopSpin 3.5 pl 6" (patch level 6) or "TOPSPIN\tVersion 2.1"
+    firstline = readline(acqusfilename)
+    m = match(r"\d+\.\d+(\.\d+)?", firstline)
+    isnothing(m) &&
+        throw(NMRToolsError("getting TopSpin version: no version in the first line of $(acqusfilename)"))
+    return VersionNumber(m.match)
 end
 
 function parsepulseprogram!(dic, basedir)

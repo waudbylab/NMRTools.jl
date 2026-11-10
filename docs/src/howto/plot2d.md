@@ -10,7 +10,7 @@ using CairoMakie   # static figures; use GLMakie for interactive
 ## A single spectrum
 
 ```@example 1
-spec2d = exampledata("2D_HN")
+spec2d = loadnmr(example("2d_hn_ubq"))
 fig = nmrplot(spec2d)
 save("makie-2D.svg", fig); nothing # hide
 ```
@@ -20,7 +20,7 @@ save("makie-2D.svg", fig); nothing # hide
 Add 1D projections along either axis:
 
 ```@example 1
-fig = nmrplot(exampledata("2D_HN"), xprojection=true, yprojection=true)
+fig = nmrplot(loadnmr(example("2d_hn_ubq")), xprojection=true, yprojection=true)
 save("makie-2D-projections.svg", fig); nothing # hide
 ```
 
@@ -29,7 +29,7 @@ save("makie-2D-projections.svg", fig); nothing # hide
 Plot a series of spectra in one call; colours cycle automatically and a legend can be added:
 
 ```@example 1
-fig = nmrplot(exampledata("2D_HN_titration"), legend=:lt)
+fig = nmrplot(loadnmr(example("titration2d_fir_nbox")), legend=:lt)
 save("makie-2D-series.svg", fig); nothing # hide
 ```
 
@@ -81,7 +81,7 @@ Pseudo-2D spectra (one frequency + one non-frequency dimension) support three di
 | `:waterfall` | 3D slice view |
 
 ```@example 1
-diffusiondata = exampledata("pseudo2D_XSTE")
+diffusiondata = loadnmr(example("diffusion1d_asyn"))
 diffusiondata = setgradientlist(diffusiondata, LinRange(0.02, 0.98, 10))
 fig = nmrplot(diffusiondata, xlims=(7, 9.5))
 save("makie-pseudo2D-heatmap.svg", fig); nothing # hide
@@ -110,7 +110,7 @@ Pass a reference spectrum as `normalize` to put several spectra on the same cont
 account of differences in scans and receiver gain:
 
 ```@example 1
-spectra = exampledata("2D_HN_titration")
+spectra = loadnmr(example("titration2d_fir_nbox"))
 fig = nmrplot(spectra[[1, 11]]; normalize=spectra[1], title="first and last titration points")
 save("makie-2D-normalize.svg", fig); nothing # hide
 ```
@@ -122,7 +122,7 @@ save("makie-2D-normalize.svg", fig); nothing # hide
 Plot a plane or a strip of a 3D spectrum by selecting it first:
 
 ```@example 1
-hnca = exampledata("3D_HNCA")
+hnca = loadnmr(example("3d_hnca_ubq"))
 fig = nmrplot(hnca[:, Near(120.0), :]; title="¹H,¹³C plane at 120 ppm ¹⁵N")
 save("makie-3D-plane.svg", fig); nothing # hide
 ```

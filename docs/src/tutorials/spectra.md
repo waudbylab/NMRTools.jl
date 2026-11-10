@@ -15,12 +15,12 @@ using NMRTools, CairoMakie
 `pdata` folder, an nmrPipe file or a UCSF file. Here we use the bundled example data:
 
 ```@example spectra
-spec = exampledata("1D_19F")
+spec = loadnmr(example("1d_19f_fragments"))
 nothing # hide
 ```
 
-`exampledata(name; path=true)` gives the folder the data were loaded from, which is what you would
-pass to `loadnmr` for your own data:
+`example(name)` gives the path of an example dataset, which is what you would pass to `loadnmr`
+for your own data:
 
 ```julia
 spec = loadnmr("path/to/experiment/1")             # pdata/1 by default
@@ -58,7 +58,7 @@ save("spectra-region.svg", fig); nothing # hide
 The same works in two dimensions. A range in both dimensions gives a smaller 2D spectrum:
 
 ```@example spectra
-spec2d = exampledata("2D_HN")
+spec2d = loadnmr(example("2d_hn_ubq"))
 fig = nmrplot(spec2d[7.5 .. 8.7, 116 .. 126])
 save("spectra-2d-region.svg", fig); nothing # hide
 ```
@@ -104,7 +104,7 @@ A pseudo-2D experiment, such as a relaxation series, has a frequency dimension a
 non-frequency dimension:
 
 ```@example spectra
-relax = exampledata("pseudo2D_T2")
+relax = loadnmr(example("relaxation1d_aas"))
 dims(relax)
 ```
 
@@ -133,10 +133,18 @@ save("spectra-pseudo2d-slices.svg", fig); nothing # hide
 ## Real and imaginary parts
 
 Processed spectra are loaded as real data by default. Pass `allcomponents=true` to load the
-imaginary parts too:
+imaginary parts too, where TopSpin has kept them:
+
+```julia
+spec = loadnmr("path/to/experiment/1"; allcomponents=true)
+```
+
+The example datasets keep only the real parts of their processed spectra, so here we make a
+complex spectrum by processing the raw data instead, keeping the imaginary part with
+`real=false` (see [Processing a 1D spectrum](processing.md)):
 
 ```@example spectra
-spec19f = loadnmr(exampledata("1D_19F"; path=true); allcomponents=true)
+spec19f = autoprocess(loadfid(example("1d_19f_fragments")); real=false)
 eltype(spec19f)
 ```
 
@@ -144,7 +152,7 @@ The element type is a first-order multicomplex number: a complex number whose im
 `im1`. `real` and `imag` give the two parts as real spectra:
 
 ```@example spectra
-region = spec19f[-124.5 .. -123]
+region = spec19f[-63 .. -61.5]
 fig, ax, _ = nmrplot(real.(region); title="real and imaginary parts")
 nmrplot!(ax, imag.(region))
 save("spectra-realimag.svg", fig); nothing # hide

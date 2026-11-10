@@ -11,7 +11,7 @@ spectrum, looks at them, and saves them.
 
 ```@example peaks
 using NMRTools, CairoMakie
-spec = exampledata("2D_HN")
+spec = loadnmr(example("2d_hn_ubq"))
 pks = detectpeaks(spec; sign=:positive)
 ```
 
@@ -36,8 +36,8 @@ save("peaks-2d.svg", fig); nothing # hide
 1D peaks are drawn as vertical lines, with their labels along the top of the axis:
 
 ```@example peaks
-spec1d = exampledata("1D_19F")
-fig, ax, _ = nmrplot(spec1d; xlims=(-123, -124.5))
+spec1d = loadnmr(example("1d_19f_fragments"))
+fig, ax, _ = nmrplot(spec1d; xlims=(-61.5, -64))
 nmrplot!(detectpeaks(spec1d))
 save("peaks-1d.svg", fig); nothing # hide
 ```

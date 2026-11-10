@@ -16,13 +16,14 @@ Use GLMakie instead of CairoMakie for interactive plots in a window.
 
 ## Plot a 1D spectrum
 
-NMRTools comes with example data, loaded with [`exampledata`](@ref NMRTools.NMRIO.exampledata).
-For your own data, use [`loadnmr`](@ref NMRTools.NMRIO.loadnmr) with the path of a Bruker
-experiment folder or an nmrPipe file.
+[`loadnmr`](@ref NMRTools.NMRIO.loadnmr) loads a spectrum from the path of a Bruker experiment
+folder or an nmrPipe file. Example data, from
+[NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/), are found with
+`example(name)`, which gives the path to load, downloading the dataset the first time.
 
 ```@example gs
 using NMRTools, CairoMakie
-spec = exampledata("1D_19F")
+spec = loadnmr(example("1d_19f_fragments"))
 size(spec), label(spec)
 ```
 
@@ -50,7 +51,7 @@ Two-dimensional spectra are plotted in the same way. Contour levels start at fiv
 level:
 
 ```@example gs
-spec2d = exampledata("2D_HN")
+spec2d = loadnmr(example("2d_hn_ubq"))
 fig = nmrplot(spec2d)
 save("gs-2d.svg", fig); nothing # hide
 ```
@@ -87,7 +88,7 @@ spec2d[:ns], spec2d[F2Dim, :nucleus]   # number of scans; nucleus of the second 
 transformation and automatic phasing.
 
 ```@example gs
-fid = exampledata("1D_1H"; fid=true)
+fid = loadfid(example("1d_1h_ubq"))
 spec1h = autoprocess(fid)
 fig = nmrplot(spec1h[-1 .. 10]; title="")
 save("gs-fid.svg", fig); nothing # hide
