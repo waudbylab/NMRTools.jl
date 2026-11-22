@@ -1008,19 +1008,26 @@ end
         return ls[(first + 1):(last - 1)]
     end
 
-    # two lines of key fields replace the whole dictionary
+    # two lines of key fields replace the whole dictionary: the sample, then the acquisition
     block = metadatablock(render(spec))
     @test length(block) == 2
     @test occursin("label=13C,15N ubiquitin", block[1])
-    @test occursin("field=14.1 T", block[1])
     @test occursin("temperature=277 K", block[1])
     @test occursin("solvent=H2O+D2O", block[1])
     @test occursin("date=2019-11-20", block[2])
-    @test occursin("pulseprogram=sfhmqcf3gpph.cw", block[2])
+    @test occursin("field=14.1 T", block[2])
     @test occursin("ns=2", block[2])
-    @test !occursin("sample=", join(block)) # shown only when present
-    @test !occursin("annotations=", join(block))
+    @test occursin("pulseprogram=sfhmqcf3gpph.cw", block[2])
     @test !occursin("Dict{Symbol", render(spec))
+
+    # sample and annotation status are always shown, and the lines are of similar length
+    @test occursin("sample=false", block[1])
+    @test occursin("annotations=false", block[2])
+    @test abs(textwidth(block[1]) - textwidth(block[2])) <= 20
+    withsample = loadnmr("test-data/samples/2")
+    withannotations = loadnmr("test-data/19f-cest-ts3")
+    @test occursin("sample=true", metadatablock(render(withsample))[1])
+    @test occursin("annotations=true", metadatablock(render(withannotations))[2])
 
     # long labels and pulse programmes are cut, as is any line wider than the terminal
     longer = deepcopy(spec)
@@ -1031,7 +1038,7 @@ end
     @test occursin("pulseprogram=a_very_long_pulse_p…", block[2])
     @test all(l -> textwidth(l) <= 40, metadatablock(render(spec; size=(60, 40))))
 
-    # data without metadata show only dimensions and values
+    # data without metadata still report sample and annotation status, and nothing else
     bare = NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3)))
-    @test isempty(metadatablock(render(bare)))
+    @test strip.(metadatablock(render(bare))) == ["sample=false", "annotations=false"]
 end

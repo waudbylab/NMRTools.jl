@@ -4,8 +4,8 @@
 
 - **Spectra no longer print all their metadata at the REPL.** The whole `acqus` file and channel
   tables were printed above the data, which filled the screen. A spectrum now shows its dimensions,
-  two lines of key fields (label, sample and annotations if present, field, temperature, solvent,
-  date, pulse programme and scans) and the data. `metadata(spec)` still returns everything.
+  two lines of key fields (label, sample status, temperature and solvent; date, field, scans,
+  pulse programme and annotation status) and the data. `metadata(spec)` still returns everything.
 
 ## v0.4.0
 

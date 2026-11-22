@@ -45,17 +45,20 @@ function _summarylines(A::AbstractNMRData, width::Integer)
     label = metadata(A, :label)
     pulseprogram = metadata(A, :pulseprogram)
     date = metadata(A, :date)
+    # Line 1 describes the sample, line 2 the acquisition. This also keeps the two lines of
+    # similar length (about 75 and 85 characters at most). Sample and annotation status are
+    # always shown.
     line1 = (_field("label", _isset(label) ? _shorten(_firstline(label), 20) : nothing),
-             _field("sample", hassample(A) ? true : nothing),
-             _field("field", metadata(A, :field), "T"),
+             _field("sample", hassample(A)),
              _field("temperature", metadata(A, :temperature), "K"),
              _field("solvent", metadata(A, :solvent)))
     line2 = (_field("date",
                     date isa Dates.DateTime ? Dates.format(date, "yyyy-mm-dd") : date),
+             _field("field", metadata(A, :field), "T"),
+             _field("ns", metadata(A, :ns)),
              _field("pulseprogram",
                     _isset(pulseprogram) ? _shorten(pulseprogram, 20) : nothing),
-             _field("annotations", hasannotations(A) ? true : nothing),
-             _field("ns", metadata(A, :ns)))
+             _field("annotations", hasannotations(A)))
 
     lines = [join(filter(!isnothing, line), "; ") for line in (line1, line2)]
     return [_shorten(line, width) for line in lines if !isempty(line)]
