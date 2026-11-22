@@ -40,7 +40,10 @@ function _field(name, value::Real, unit)
     return string(name, '=', isinteger(rounded) ? Int(rounded) : rounded, ' ', unit)
 end
 
-# Key fields on at most two lines, each cut to `width`
+# Fields share one line if they fit in this many characters, rather than two
+const ONELINEWIDTH = 80
+
+# Key fields on one or two lines, each cut to `width`
 function _summarylines(A::AbstractNMRData, width::Integer)
     # with no metadata to report, show no block rather than two lines of `false`
     keys = (:label, :temperature, :solvent, :date, :field, :ns, :pulseprogram)
@@ -65,8 +68,11 @@ function _summarylines(A::AbstractNMRData, width::Integer)
                     _isset(pulseprogram) ? _shorten(pulseprogram, 20) : nothing),
              _field("annotations", hasannotations(A)))
 
-    lines = [join(filter(!isnothing, line), "; ") for line in (line1, line2)]
-    return [_shorten(line, width) for line in lines if !isempty(line)]
+    fields = (filter(!isnothing, line1), filter(!isnothing, line2))
+    oneline = join(Iterators.flatten(fields), "; ")
+    lines = textwidth(oneline) <= min(width, ONELINEWIDTH) ? [oneline] :
+            [join(line, "; ") for line in fields if !isempty(line)]
+    return [_shorten(line, width) for line in lines]
 end
 
 function DD.show_main(io::IO, mime::MIME"text/plain", A::AbstractNMRData;

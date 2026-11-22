@@ -1045,7 +1045,16 @@ end
     @test isempty(metadatablock(render(NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3));
                                                metadata=Dict{Symbol,Any}()))))
 
-    # but a single set field brings it back, with the status flags
+    # a few fields share one line, in the same order
     bare[:solvent] = "D2O"
-    @test strip.(metadatablock(render(bare))) == ["sample=false; solvent=D2O", "annotations=false"]
+    @test strip.(metadatablock(render(bare))) == ["sample=false; solvent=D2O; annotations=false"]
+    bare[:ns] = 16
+    bare[:date] = spec[:date] # 2019-11-20
+    @test strip.(metadatablock(render(bare))) ==
+          ["sample=false; solvent=D2O; date=2019-11-20; ns=16; annotations=false"]
+
+    # but only as long as they fit: here the fields are too long for 80 characters
+    bare[:label] = "x" ^ 30
+    bare[:pulseprogram] = "y" ^ 30
+    @test length(metadatablock(render(bare))) == 2
 end
