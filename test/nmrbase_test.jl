@@ -993,3 +993,68 @@ end
         @test data(spec4, 2)[1] - original_f2 ≈ -0.5
     end
 end
+
+@testset "NMRBase: metadata display" begin
+    spec = loadnmr(example("2d_hn_ubq"))
+    render(A; size=(60, 100)) = sprint(show, MIME"text/plain"(), A;
+                                       context=(:displaysize => size, :limit => true))
+    # the rows between the `metadata` separator and the closing of the box (DimensionalData's own
+    # dims lines can be wider than the terminal, and the data fill the rest of the screen)
+    function metadatablock(s)
+        ls = split(s, '\n')
+        first = findfirst(l -> startswith(l, "├") && occursin(" metadata ", l), ls)
+        isnothing(first) && return String[]
+        last = findnext(l -> startswith(l, "└"), ls, first)
+        return ls[(first + 1):(last - 1)]
+    end
+
+    # two lines of key fields replace the whole dictionary: the sample, then the acquisition
+    block = metadatablock(render(spec))
+    @test length(block) == 2
+    @test occursin("label=13C,15N ubiquitin", block[1])
+    @test occursin("temperature=277 K", block[1])
+    @test occursin("solvent=H2O+D2O", block[1])
+    @test occursin("date=2019-11-20", block[2])
+    @test occursin("field=14.1 T", block[2])
+    @test occursin("ns=2", block[2])
+    @test occursin("pulseprogram=sfhmqcf3gpph.cw", block[2])
+    @test !occursin("Dict{Symbol", render(spec))
+
+    # sample and annotation status are always shown, and the lines are of similar length
+    @test occursin("sample=false", block[1])
+    @test occursin("annotations=false", block[2])
+    @test abs(textwidth(block[1]) - textwidth(block[2])) <= 20
+    withsample = loadnmr("test-data/samples/2")
+    withannotations = loadnmr("test-data/19f-cest-ts3")
+    @test occursin("sample=true", metadatablock(render(withsample))[1])
+    @test occursin("annotations=true", metadatablock(render(withannotations))[2])
+
+    # long labels and pulse programmes are cut, as is any line wider than the terminal
+    longer = deepcopy(spec)
+    longer[:label] = "a very long label that cannot be shown in full"
+    longer[:pulseprogram] = "a_very_long_pulse_programme_name.cw"
+    block = metadatablock(render(longer))
+    @test occursin("label=a very long label t…", block[1])
+    @test occursin("pulseprogram=a_very_long_pulse_p…", block[2])
+    @test all(l -> textwidth(l) <= 40, metadatablock(render(spec; size=(60, 40))))
+
+    # data without metadata have no metadata block at all
+    bare = NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3)))
+    @test isempty(metadatablock(render(bare)))
+    @test !occursin("metadata", render(bare))
+    @test isempty(metadatablock(render(NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3));
+                                               metadata=Dict{Symbol,Any}()))))
+
+    # a few fields share one line, in the same order
+    bare[:solvent] = "D2O"
+    @test strip.(metadatablock(render(bare))) == ["sample=false; solvent=D2O; annotations=false"]
+    bare[:ns] = 16
+    bare[:date] = spec[:date] # 2019-11-20
+    @test strip.(metadatablock(render(bare))) ==
+          ["sample=false; solvent=D2O; date=2019-11-20; ns=16; annotations=false"]
+
+    # but only as long as they fit: here the fields are too long for 80 characters
+    bare[:label] = "x" ^ 30
+    bare[:pulseprogram] = "y" ^ 30
+    @test length(metadatablock(render(bare))) == 2
+end
