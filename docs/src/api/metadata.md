@@ -16,13 +16,6 @@ channels
 referencepulse
 ```
 
-## Metadata display
-
-```@docs
-metadatadisplay
-metadatadisplay!
-```
-
 ## Annotations
 
 ```@docs

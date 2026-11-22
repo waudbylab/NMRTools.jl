@@ -162,7 +162,6 @@ export AbstractMetadata, Metadata, NoMetadata
 export metadata
 export defaultmetadata
 export metadatahelp
-export metadatadisplay, metadatadisplay!
 export label, label!, units
 export acqus
 export channels, channel

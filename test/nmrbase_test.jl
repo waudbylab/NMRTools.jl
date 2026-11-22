@@ -996,64 +996,42 @@ end
 
 @testset "NMRBase: metadata display" begin
     spec = loadnmr(example("2d_hn_ubq"))
-    render(mode=nothing; size=(60, 100)) = sprint(show, MIME"text/plain"(), spec;
-                                                  context=(:displaysize => size,
-                                                           :limit => true,
-                                                           (isnothing(mode) ? () :
-                                                            (:nmrmetadata => mode,))...))
-    lines(s) = split(s, '\n')
+    render(A; size=(60, 100)) = sprint(show, MIME"text/plain"(), A;
+                                       context=(:displaysize => size, :limit => true))
     # the rows between the `metadata` separator and the closing of the box (DimensionalData's own
     # dims lines can be wider than the terminal, and the data fill the rest of the screen)
     function metadatablock(s)
-        ls = lines(s)
+        ls = split(s, '\n')
         first = findfirst(l -> startswith(l, "├") && occursin(" metadata ", l), ls)
         isnothing(first) && return String[]
         last = findnext(l -> startswith(l, "└"), ls, first)
         return ls[(first + 1):(last - 1)]
     end
 
-    # the default shows a few entries and counts the rest, so that the data remain visible
-    @test metadatadisplay() == :summary
-    summary = render()
-    @test occursin("sfhmqcf3gpph.cw", summary)
-    @test occursin(r"\d+ more entries", summary)
-    @test !occursin("Dict{Symbol", summary)
-    @test !occursin(":acqus", summary)
-    @test maximum(textwidth, metadatablock(summary)) <= 100
-    @test length(metadatablock(summary)) <= 12
+    # two lines of key fields replace the whole dictionary
+    block = metadatablock(render(spec))
+    @test length(block) == 2
+    @test occursin("label=13C,15N ubiquitin", block[1])
+    @test occursin("field=14.1 T", block[1])
+    @test occursin("temperature=277 K", block[1])
+    @test occursin("solvent=H2O+D2O", block[1])
+    @test occursin("date=2019-11-20", block[2])
+    @test occursin("pulseprogram=sfhmqcf3gpph.cw", block[2])
+    @test occursin("ns=2", block[2])
+    @test !occursin("sample=", join(block)) # shown only when present
+    @test !occursin("annotations=", join(block))
+    @test !occursin("Dict{Symbol", render(spec))
 
-    # narrow terminals are respected
-    @test maximum(textwidth, metadatablock(render(:summary; size=(24, 60)))) <= 60
-    @test maximum(textwidth, metadatablock(render(:keys; size=(24, 60)))) <= 60
-
-    # alternative modes
-    keysonly = render(:keys)
-    @test occursin("acqus", keysonly)
-    @test occursin("entries", keysonly)
-    @test !occursin("sfhmqcf3gpph.cw", keysonly)
-
-    nometadata = render(:none)
-    @test !occursin("metadata", nometadata)
-    @test occursin("dims", nometadata)
-
-    full = render(:full)
-    @test occursin("Dict{Symbol, Any}", full)
-    @test length(metadatablock(full)) > length(metadatablock(summary))
-
-    @test_throws ArgumentError render(:bogus)
-
-    # the session-wide setting, and its validation
-    try
-        @test metadatadisplay!(:keys) == :keys
-        @test metadatadisplay() == :keys
-        @test occursin("entries", render())
-        @test_throws ArgumentError metadatadisplay!(:bogus)
-        @test metadatadisplay() == :keys
-    finally
-        metadatadisplay!(:summary)
-    end
+    # long labels and pulse programmes are cut, as is any line wider than the terminal
+    longer = deepcopy(spec)
+    longer[:label] = "a very long label that cannot be shown in full"
+    longer[:pulseprogram] = "a_very_long_pulse_programme_name.cw"
+    block = metadatablock(render(longer))
+    @test occursin("label=a very long label t…", block[1])
+    @test occursin("pulseprogram=a_very_long_pulse_p…", block[2])
+    @test all(l -> textwidth(l) <= 40, metadatablock(render(spec; size=(60, 40))))
 
     # data without metadata show only dimensions and values
     bare = NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3)))
-    @test !occursin("metadata", sprint(show, MIME"text/plain"(), bare))
+    @test isempty(metadatablock(render(bare)))
 end
