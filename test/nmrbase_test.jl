@@ -1038,7 +1038,14 @@ end
     @test occursin("pulseprogram=a_very_long_pulse_p…", block[2])
     @test all(l -> textwidth(l) <= 40, metadatablock(render(spec; size=(60, 40))))
 
-    # data without metadata still report sample and annotation status, and nothing else
+    # data without metadata have no metadata block at all
     bare = NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3)))
-    @test strip.(metadatablock(render(bare))) == ["sample=false", "annotations=false"]
+    @test isempty(metadatablock(render(bare)))
+    @test !occursin("metadata", render(bare))
+    @test isempty(metadatablock(render(NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3));
+                                               metadata=Dict{Symbol,Any}()))))
+
+    # but a single set field brings it back, with the status flags
+    bare[:solvent] = "D2O"
+    @test strip.(metadatablock(render(bare))) == ["sample=false; solvent=D2O", "annotations=false"]
 end

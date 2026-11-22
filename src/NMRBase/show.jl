@@ -42,6 +42,11 @@ end
 
 # Key fields on at most two lines, each cut to `width`
 function _summarylines(A::AbstractNMRData, width::Integer)
+    # with no metadata to report, show no block rather than two lines of `false`
+    keys = (:label, :temperature, :solvent, :date, :field, :ns, :pulseprogram)
+    any(key -> _isset(metadata(A, key)), keys) || hassample(A) || hasannotations(A) ||
+        return String[]
+
     label = metadata(A, :label)
     pulseprogram = metadata(A, :pulseprogram)
     date = metadata(A, :date)
