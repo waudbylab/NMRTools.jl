@@ -52,6 +52,7 @@ include("dimensions.jl")
 include("nmrdata.jl")
 include("windows.jl")
 include("metadata.jl")
+include("show.jl")
 include("noise.jl")
 include("processing.jl")
 include("harmonic.jl")
@@ -161,6 +162,7 @@ export AbstractMetadata, Metadata, NoMetadata
 export metadata
 export defaultmetadata
 export metadatahelp
+export metadatadisplay, metadatadisplay!
 export label, label!, units
 export acqus
 export channels, channel

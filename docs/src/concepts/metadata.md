@@ -46,6 +46,29 @@ Acquisition parameters are kept as parsed from the `acqus` files and read with
 [`acqus`](@ref), which accepts Bruker parameter names in either case; see
 [Find acquisition parameters](../howto/acqus.md).
 
+## How metadata are displayed
+
+The spectrum dictionary holds the whole `acqus` file, the channel tables and more, so showing it
+in full would fill the screen and push the data off it. At the REPL, an `NMRData` therefore shows
+its dimensions, then a short summary of the metadata (label, pulse programme, solvent,
+temperature, field, scans, noise, date and file) with a count of the remaining entries, and then
+the data. [`metadatadisplay!`](@ref) chooses what is shown instead:
+
+| Mode | Shows |
+|:-----|:------|
+| `:summary` (default) | a few key entries and a count of the rest |
+| `:keys` | the names of all entries, without values |
+| `:none` | no metadata, only dimensions and data |
+| `:full` | every entry and value, as DimensionalData.jl prints them |
+
+```julia
+metadatadisplay!(:keys)   # for the rest of the session; put this in startup.jl to keep it
+```
+
+The display for a single `show` can be changed through an `IOContext`, with
+`show(IOContext(stdout, :nmrmetadata => :full), MIME"text/plain"(), spec)`. Whatever the mode,
+all the metadata remain available through [`metadata`](@ref).
+
 ## Metadata types
 
 Where a parameter has structure beyond a single number, NMRTools stores it as a typed object

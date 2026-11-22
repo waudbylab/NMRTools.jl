@@ -993,3 +993,67 @@ end
         @test data(spec4, 2)[1] - original_f2 ≈ -0.5
     end
 end
+
+@testset "NMRBase: metadata display" begin
+    spec = loadnmr(example("2d_hn_ubq"))
+    render(mode=nothing; size=(60, 100)) = sprint(show, MIME"text/plain"(), spec;
+                                                  context=(:displaysize => size,
+                                                           :limit => true,
+                                                           (isnothing(mode) ? () :
+                                                            (:nmrmetadata => mode,))...))
+    lines(s) = split(s, '\n')
+    # the rows between the `metadata` separator and the closing of the box (DimensionalData's own
+    # dims lines can be wider than the terminal, and the data fill the rest of the screen)
+    function metadatablock(s)
+        ls = lines(s)
+        first = findfirst(l -> startswith(l, "├") && occursin(" metadata ", l), ls)
+        isnothing(first) && return String[]
+        last = findnext(l -> startswith(l, "└"), ls, first)
+        return ls[(first + 1):(last - 1)]
+    end
+
+    # the default shows a few entries and counts the rest, so that the data remain visible
+    @test metadatadisplay() == :summary
+    summary = render()
+    @test occursin("sfhmqcf3gpph.cw", summary)
+    @test occursin(r"\d+ more entries", summary)
+    @test !occursin("Dict{Symbol", summary)
+    @test !occursin(":acqus", summary)
+    @test maximum(textwidth, metadatablock(summary)) <= 100
+    @test length(metadatablock(summary)) <= 12
+
+    # narrow terminals are respected
+    @test maximum(textwidth, metadatablock(render(:summary; size=(24, 60)))) <= 60
+    @test maximum(textwidth, metadatablock(render(:keys; size=(24, 60)))) <= 60
+
+    # alternative modes
+    keysonly = render(:keys)
+    @test occursin("acqus", keysonly)
+    @test occursin("entries", keysonly)
+    @test !occursin("sfhmqcf3gpph.cw", keysonly)
+
+    nometadata = render(:none)
+    @test !occursin("metadata", nometadata)
+    @test occursin("dims", nometadata)
+
+    full = render(:full)
+    @test occursin("Dict{Symbol, Any}", full)
+    @test length(metadatablock(full)) > length(metadatablock(summary))
+
+    @test_throws ArgumentError render(:bogus)
+
+    # the session-wide setting, and its validation
+    try
+        @test metadatadisplay!(:keys) == :keys
+        @test metadatadisplay() == :keys
+        @test occursin("entries", render())
+        @test_throws ArgumentError metadatadisplay!(:bogus)
+        @test metadatadisplay() == :keys
+    finally
+        metadatadisplay!(:summary)
+    end
+
+    # data without metadata show only dimensions and values
+    bare = NMRData(rand(4, 3), (F1Dim(1:4), F2Dim(1:3)))
+    @test !occursin("metadata", sprint(show, MIME"text/plain"(), bare))
+end

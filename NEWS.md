@@ -1,5 +1,14 @@
 # NMRTools.jl release notes
 
+## Unreleased
+
+- **Spectra no longer print all their metadata at the REPL.** The whole `acqus` file and channel
+  tables were printed above the data, which filled the screen. A spectrum now shows its
+  dimensions, a summary of the metadata (label, pulse programme, solvent, temperature, field,
+  scans, noise, date and file, and the number of other entries) and the data. `metadatadisplay!`
+  chooses between `:summary` (the default), `:keys` (the names of all entries), `:none` and
+  `:full` (the previous behaviour). `metadata(spec)` still returns everything.
+
 ## v0.4.0
 
 Example data now come from [NMRExampleData.jl](https://waudbylab.org/NMRExampleData.jl/stable/),
